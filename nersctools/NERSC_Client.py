@@ -48,22 +48,25 @@ curlcommand = '/usr/bin/curl'
 curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
 
 # I will have to figure out how to pack these in a command,
-# but for the moment here they are.  I drop 2 defaults,
-# the Partition and the #Nodes, since I don't care about
-# those.  I don't need the %.8u option either,
-# since I already know whose jobs they are.
+#  but for the moment here they are.  I drop 2 defaults,
+#  the Partition and the #Nodes, since I don't care about
+#  those.  I don't need the %.8u option either,
+#  since I already know whose jobs they are.
 # I can't be sure that mine will be the only icecubed jobs,
-# so I retain the %.8j for the job name
-SQUEUEOPTIONS = '-o \"%.18i %.8j %.2t %.10M %.42k %R\"'
+#  so I retain the %.8j for the job name
+# The -h option means no headers printed, which should
+#  simplify parsing.
+SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 # This will be associated with a sbatch option which I will
-# use as sbatchoption = SBATCHOPTIONS.format(filename)
-SBATCHOPTIONS = '--comment=\"{}\"'
+#  use as sbatchoption = SBATCHOPTIONS.format(filename, logdir, filename)
+SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetnerscinfo = curltargethost + 'nersccontrol/info/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -275,12 +278,63 @@ def Phase1():
 
 def Phase2():
     # Check NERSCandC status
-    #  Quit if Halt or Error
+    #  Quit if Halt or Error or fails to get info
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetgetnerscinfo)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
+    if str(code) != 0:
+        return
+        # Failed to get information.  It's a waste of time trying to
+        # set an error when there are network problems
+    my_json = json.loads(singletodouble(outp.decode("utf-8"))
+    if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
+        if my_json['status'] == 'Drain':
+            return	# Go on to next phase
+        else:
+            abandon()	# Too risky to continue
+    #
     # Look for outstanding jobs: status= NERSCRunning, count=NC
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetfindbundles + mangle('status=\"NERSCRunning\"'))
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
+    if str(code) != 0:
+        return
+        # Failed to get information.  It's a waste of time trying to
+        # set an error when there are network problems
+    #  if NC =0, return, to next phase
+    #  abandon if fails to get info
+    bundleJobJson = json.loads(singletodouble(outp.decode("utf-8"))
+    numberJobs = len(bundleJobJson)
+    if numberJobs == 0:
+        return		# skip to the next phase
+    #
+    #
     #  slurm query for running jobs
+    
     #   if count of running jobs is equal to NC, return
     #  [[[[ CAN I MATCH THE slurm job ID TO THE FILE?
     #       I CAN include the file name in a comment! ]]]
+    #  foreach file in the expected jobs (NC)
+    #    check for slurm info for this job
+    #      if job is still active, nextfile
+    #    check log files for this file--with filename imprinted
+    #         this should be easy
+    #    open the relevant log file
+    #    from log file: check for completion
+    #       if not complete, and it isn't in slurm, we have a problem
+    #         log NERSCProblem for this file
+    #         log Error in NERSCandC
+    #         return to next phase
+    #    from log file: check size
+    #    if size matches expected
+    #       log NERSCClean for this file
+    #       delete the scratch file
+    #       move the old slurm log file to OLD
+    #       nextfile
+    #     else
+    #       log NERSCProblem for this file
+    #       nextfile
+    
     return
 
 # Look for files globus-copied into NERSC (PushDone)
