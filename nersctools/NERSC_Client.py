@@ -310,31 +310,96 @@ def Phase2():
     #
     #
     #  slurm query for running jobs
-    
+    command = [squeue, '-h', '-o',  '\"%.18i %.8j %.2t %.10M %.42k %R\"', 'icecubed']
+    outp, erro, code = getoutputerrorsimplecommand(command, 2)
+    if str(code) != 0:
+        return		# Why didn't we get an answer?  Try again later
+    #
+    lines = str(outp).splitlines()
+    # WARNING:  If the new rucio interface submits jobs under icecubed too, I'll need
+    #  to count just _my_ jobs and not rely on the total number.
     #   if count of running jobs is equal to NC, return
-    #  [[[[ CAN I MATCH THE slurm job ID TO THE FILE?
-    #       I CAN include the file name in a comment! ]]]
-    #  foreach file in the expected jobs (NC)
-    #    check for slurm info for this job
-    #      if job is still active, nextfile
-    #    check log files for this file--with filename imprinted
-    #         this should be easy
-    #    open the relevant log file
-    #    from log file: check for completion
-    #       if not complete, and it isn't in slurm, we have a problem
-    #         log NERSCProblem for this file
-    #         log Error in NERSCandC
-    #         return to next phase
-    #    from log file: check size
-    #    if size matches expected
-    #       log NERSCClean for this file
-    #       delete the scratch file
-    #       move the old slurm log file to OLD
-    #       nextfile
-    #     else
-    #       log NERSCProblem for this file
-    #       nextfile
-    
+    if len(lines) >= numberJobs:
+        return		# Everything is still running, nothing finished
+    #
+    for bjson in bundleJobJson:
+        # Check that either:
+        #   a) the bundle name is in the slurm list
+        #   b) the bundle name is in a completed log file
+        logfiles, logerr, logstat = getoutputerrorsimplecommand(['ls', SLURMLOGS], 1)
+        if str(logstat) != 0:
+            print(SLURMLOGS + ' access timed out')
+            return	# Why didn't we get an answer, since filesystem is there?
+        foundfile = ''
+        barename = bjson['idealName'].split('/')[-1]
+        for line in lines:
+            if barename in line:
+                foundfile = line
+        # ??? No log file ???
+        if foundfile = '':
+            print(bjson['idealName'])	# log this in email
+            flagBundleError(bjson['bundleStatus_id'])
+            return	# Something is gravely wrong
+        # OK, open the log file
+        try:
+            filepointer = open(foundfile, 'r')
+            filelines = filepointer.readlines()
+            filepointer.close()
+        except:
+            filelines = []
+        if len(filelines) == 0:
+            print(bjson['idealName'], foundfile, 'is empty')   # log this in email
+            flagBundleError(bjson['bundleStatus_id'])
+            return      # Something is gravely wrong
+        # Parse the log file for the size of the file in HPSS
+        foundsize = -1
+        for fline in filelines:
+            if barename in fline:
+                fwords = fline.split()
+                foundsize = int(fwords[4])
+        if foundsize != int(bjson['size']):
+            print(bjson['idealName'], foundsize, 'is not ', str(bjson['size']))
+            flagBundleError(bjson['bundleStatus_id'])
+            return      # Something is puzzlingly wrong
+        # If here, the job is done and the hpss size matches the expected 
+        #  log NERSCClean for this file
+        #  delete the scratch file
+        #  move the old slurm log file to OLD
+        #  nextfile
+        posturl = copy.deepcopy(basicposturl)
+        sqlcom = 'SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
+        posturl.append(targetupdatebundle + mangle(sqlcom))
+        outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+        if str(code) != 0:
+            # Try again
+            outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+            if str(code) != 0:
+                flagBundleError(bjson['bundleStatus_id'])
+                return      # Something is puzzlingly wrong
+        if str(outp) = 'OK':
+            command = [mv, foundfile, logdir + '/OLD/']
+            noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
+            if str(ncode) != 0:
+                noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
+                if str(ncode) != 0:
+                    print('Cannot move ', foundfile)
+                    continue
+            command = [rm, SCRATCHROOT + bjson['idealName']
+            noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
+            if str(ncode) != 0:
+                noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
+                if str(ncode) != 0:
+                    print('Cannot rm ', SCRATCHROOT + bjson['idealName'])
+                    continue
+        else:   # if str(outp) is not OK
+            # We had a communication error?
+            outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+            if str(outp) != 'OK':
+                cerr = 'Problem executing ' + posturl[-1]
+                posturl = copy.deepcopy(basicposturl).append(targetupdateerror + mangle(cerr))
+                outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+                # If I'm getting communication errors on this too, nothing to do
+                return
     return
 
 # Look for files globus-copied into NERSC (PushDone)
