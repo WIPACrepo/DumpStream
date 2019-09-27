@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "FILESYSTEM   SPACE_USED   SPACE_QUOTA   SPACE_PCT   INODE_USED   INODE_QUOTA   INODE_PCT"
+echo "cscratch1    49.10MiB     50.00TiB      0.0%        12.45K       10.00M        0.1%     "
+exit 0

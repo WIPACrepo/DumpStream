@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "Filesystem                                           1K-blocks           Used     Available Use% Mounted on"
+echo "10.100.104.4@o2ib4:10.100.104.5@o2ib4:/snx11168 29531080226208 20251671357380 8980599539968  70% /global/cscratch1"
+exit 0
