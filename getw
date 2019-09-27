@@ -1,0 +1,4 @@
+mestring=`echo " useCount=1 AND idealName LIKE \"%data/exp/IceCube/2018/unbiased/PFRaw/0227/f5f40fb0-5e%\""`
+myestring=`echo ${mestring} | sed 's/%/%25/g' | sed 's/ /@/g' | sed 's/\//+++/g' | sed 's/,/\,/g'`
+echo /bundles/specified/${myestring}
+curl -X GET -H "Content-Type: application/x-www-form-urlencoded" http://archivecontrol.wipac.wisc.edu:80/bundles/specified/"${myestring}"

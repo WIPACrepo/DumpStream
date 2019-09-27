@@ -1,0 +1,2 @@
+2019-09-26 09:53:37 quicktest.py: ['/home/jbellinger/archivecontrol/nersctools/gobad'] b"/home/jbellinger/archivecontrol/nersctools/gobad: line 2: return: can only `return' from a function or sourced script\n" 
+2019-09-26 09:53:37 quicktest.py: ['/home/jbellinger/archivecontrol/nersctools/gogood'] b"/home/jbellinger/archivecontrol/nersctools/gogood: line 2: return: can only `return' from a function or sourced script\n" 
