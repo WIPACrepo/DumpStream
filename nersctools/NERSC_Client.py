@@ -3,10 +3,10 @@ import site
 import os
 import json
 import urllib.parse
-import datetime
+#import datetime
 import subprocess
 import socket
-import string
+#import string
 import copy
 
 #####
@@ -24,6 +24,7 @@ if DEBUGLOCAL:
     rm = '/home/jbellinger/archivecontrol/nersctools/rm'
     hpss_avail = '/home/jbellinger/archivecontrol/nersctools/hpss_avail'
     df = '/home/jbellinger/archivecontrol/nersctools/df'
+    mv = '/home/jbellinger/archivecontrol/nersctools/mv'
     squeue = '/home/jbellinger/archivecontrol/nersctools/squeue'
     myquota = '/home/jbellinger/archivecontrol/nersctools/myquota'
     logdir = '/home/jbellinger/archivecontrol/nersctools/SLURMLOGS'
@@ -36,6 +37,7 @@ else:
     rm = '/usr/bin/rm'
     hpss_avail = '/usr/common/mss/bin/hpss_avail'
     df = '/usr/bin/df'
+    mv = '/usr/bin/mv'
     squeue = '/usr/bin/squeue'
     myquota = '/usr/bin/myquota'
     logdir = '/global/homes/i/icecubed/SLURMLOGS'
@@ -101,6 +103,9 @@ def fromjsonquotes(strFromPost):
     # here, but the remote jobs that feed this will
     return strFromPost.replace("\"", "\'")
 
+def singletodouble(stringTo):
+    return stringTo.replace('\'', '\"')
+
 def getoutputsimplecommand(cmd):
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -141,7 +146,7 @@ def getoutputsimplecommandtimeout(cmd, Timeout):
         if DEBUGPROCESS:
             print('ErrorB::::', cmd, " Failed to spawn")
         return ""
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         return "TIMEOUT"
     except Exception:
         if DEBUGPROCESS:
@@ -158,7 +163,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
     except subprocess.CalledProcessError:
         print(cmd, " Failed to spawn")
         return "", "", 1
-    except TimeoutExpired:
+    except subprocess.TimeoutExpired:
         return 'TIMEOUT', 'TIMEOUT', 1
     except Exception:
         print(cmd, " Unknown error", sys.exc_info()[0])
@@ -280,13 +285,13 @@ def Phase2():
     # Check NERSCandC status
     #  Quit if Halt or Error or fails to get info
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetgetnerscinfo)
+    geturl.append(targetnerscinfo)
     outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
     if str(code) != 0:
         return
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
-    my_json = json.loads(singletodouble(outp.decode("utf-8"))
+    my_json = json.loads(singletodouble(outp.decode("utf-8")))
     if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
         if my_json['status'] == 'Drain':
             return	# Go on to next phase
@@ -303,14 +308,14 @@ def Phase2():
         # set an error when there are network problems
     #  if NC =0, return, to next phase
     #  abandon if fails to get info
-    bundleJobJson = json.loads(singletodouble(outp.decode("utf-8"))
+    bundleJobJson = json.loads(singletodouble(outp.decode("utf-8")))
     numberJobs = len(bundleJobJson)
     if numberJobs == 0:
         return		# skip to the next phase
     #
     #
     #  slurm query for running jobs
-    command = [squeue, '-h', '-o',  '\"%.18i %.8j %.2t %.10M %.42k %R\"', 'icecubed']
+    command = [squeue, '-h', '-o', '\"%.18i %.8j %.2t %.10M %.42k %R\"', 'icecubed']
     outp, erro, code = getoutputerrorsimplecommand(command, 2)
     if str(code) != 0:
         return		# Why didn't we get an answer?  Try again later
@@ -326,9 +331,9 @@ def Phase2():
         # Check that either:
         #   a) the bundle name is in the slurm list
         #   b) the bundle name is in a completed log file
-        logfiles, logerr, logstat = getoutputerrorsimplecommand(['ls', SLURMLOGS], 1)
+        logfiles, logerr, logstat = getoutputerrorsimplecommand(['ls', logdir], 1)
         if str(logstat) != 0:
-            print(SLURMLOGS + ' access timed out')
+            print(logdir + ' access timed out')
             return	# Why didn't we get an answer, since filesystem is there?
         foundfile = ''
         barename = bjson['idealName'].split('/')[-1]
@@ -336,7 +341,7 @@ def Phase2():
             if barename in line:
                 foundfile = line
         # ??? No log file ???
-        if foundfile = '':
+        if foundfile == '':
             print(bjson['idealName'])	# log this in email
             flagBundleError(bjson['bundleStatus_id'])
             return	# Something is gravely wrong
@@ -376,7 +381,7 @@ def Phase2():
             if str(code) != 0:
                 flagBundleError(bjson['bundleStatus_id'])
                 return      # Something is puzzlingly wrong
-        if str(outp) = 'OK':
+        if str(outp) == 'OK':
             command = [mv, foundfile, logdir + '/OLD/']
             noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
             if str(ncode) != 0:
@@ -384,7 +389,7 @@ def Phase2():
                 if str(ncode) != 0:
                     print('Cannot move ', foundfile)
                     continue
-            command = [rm, SCRATCHROOT + bjson['idealName']
+            command = [rm, SCRATCHROOT + bjson['idealName']]
             noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
             if str(ncode) != 0:
                 noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
@@ -459,9 +464,9 @@ def Phase3():
     ##           update bundle info with new status
     ##           if count >= SLURMCOUNT
     ##               DONE with this phase
-    my_json = json.loads(singletodouble(listofbundles.decode("utf-8"))
+    my_json = json.loads(singletodouble(listofbundles.decode("utf-8")))
     for bundle in my_json:
-        idealname = bundle['idealName']
+        idealName = bundle['idealName']
         size = int(bundle['size'])
         key = bundle['bundleStatus_id']
         scratchname = SCRATCHROOT + idealName
@@ -478,7 +483,7 @@ def Phase3():
             flagBundleError(key)
             return	# Last phase, so no need to abandon()
         command = [sbatch, '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname,
-                '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out']        
+                   '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out']        
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
         if int(code) != 0:
             badFlag = True
