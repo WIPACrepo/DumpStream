@@ -315,9 +315,10 @@ def dumpcontrol(listostuff):
 
 ## nersccontrol
 
-# Info methods; 2 URLs to do the same thing
+# Info methods; 3 URLs to do the same thing
 @app.route("/nersccontrol")
 @app.route("/nersccontrol/info", methods=["GET", "POST"])
+@app.route("/nersccontrol/info/", methods=["GET", "POST"])
 def nersccontrolinfo():
     stuff = query_db('SELECT * FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1')
     return stuff[0]
@@ -462,6 +463,7 @@ def nersctake(estring):
 
 # Release the token
 @app.route("/nersctokenrelease", methods=["POST"])
+@app.route("/nersctokenrelease/", methods=["POST"])
 def nerscrelease():
     answer = query_db('UPDATE Token SET hostname=\"\",lastChangeTime=datetime(\'now\',\'localtime\')')
     if len(answer) > 1:
