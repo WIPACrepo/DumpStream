@@ -471,6 +471,24 @@ def nerscrelease():
         return "BUSY"
     return "OK"
 
+# Is the token in use?  (Monitoring)
+@app.route("/nersctokeninfo", methods=["GET"])
+def tokenusage():
+    answer = query_db('SELECT hostname,lastChangeTime FROM Token')
+    #print(answer)
+    if len(answer) < 1:
+        return "SILENT"
+    return answer[0]
+
+# What are the heartbeats? [Monitoring]
+@app.route("/heartbeatinfo/", methods=["GET"])
+def senseheartbeats():
+    answer = query_db('SELECT hostname,lastChangeTime FROM Heartbeats')
+    print(answer)
+    if len(answer) < 1:
+        return ""
+    return str(answer)
+
 #####
 #
 
@@ -510,20 +528,20 @@ def getspecified(estring):
         return ""
 
 # Update the specified bundle.  Wants the bundleStatus_id
-@app.route("/updatebundle/<estring", methods=["POST"])
+@app.route("/updatebundle/<estring>", methods=["GET", "POST"])
 def updatebundle(estring):
     # Yes, of course.  I use the string as the command.  All sorts
     # of horrors are possible
     unstring = kludgequote(unmangle(estring))
     try:
         print(unstring)
-        stuff = update_db_final(qstring)
+        stuff = query_db_final(unstring)
         if len(stuff) > 0:
             return str(stuff)
         else:
             return ""
     except:
-        print(str(stuff))
+        print("Failed with", unstring)
         return ""
 
 ### Insertion methods for bundles.  These aren't updates, but new bundles
