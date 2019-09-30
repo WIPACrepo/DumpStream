@@ -537,7 +537,7 @@ def updatebundle(estring):
         print(unstring)
         stuff = query_db_final(unstring)
         if len(stuff) > 0:
-            return str(stuff)
+            return str(stuff[0])
         else:
             return ""
     except:

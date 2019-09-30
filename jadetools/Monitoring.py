@@ -248,12 +248,12 @@ nstats = ''
 if int(code) != 0:
     nstats = 'DB Failure'
 else:
-    trialbunch = stringtodict(outp)
-    print(trialbunch)
+    trialbunch = stringtodict(str(outp))
+    #print(trialbunch)
     nstats = 'Beats: '
     for chunk in trialbunch:
-        print(chunk)
-        my_json = json.loads(singletodouble(outp.decode('utf-8')))
+        #print(chunk)
+        my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
         nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
 logit('NERSCHeartbeats= ', nstats)
 
@@ -282,7 +282,7 @@ for opt in BundleStatusOptions:
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetupdatebundle + mangle('SELECT COUNT(*) FROM BundleStatus where status = \"' + opt + '\"'))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    print(outp)
+    #print(outp)
     if int(code) != 0:
         nstats = nstats + 'DB Failure'
     else:
