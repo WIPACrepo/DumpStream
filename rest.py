@@ -597,8 +597,21 @@ def addbundle(estring):
     initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
     initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
     print(initialstring)
+    print("WAS NOT INSERTED BECAUSE I HAVE NOT IMPLEMENTED IT YET")
     return "OK done"
 
+# Get info about which data warehouse trees to search
+@app.route("/tree/<estring>", methods=["GET"])
+def gettree(estring):
+    # Only load this database table manually
+    ultimate = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
+    initialstring = "SELECT treetop FROM Trees WHERE ultimate=" + ultimate
+    try:
+        stuff = query_db_final(initialstring)
+    except:
+        print("Failed to query")
+        stuff = ''
+    return str(stuff)
 
 ### Debugging methods.  Here I'm doing the testing of json unpacking for bundling
 # IT DOES NOT HAVE DB INSERTION CODE

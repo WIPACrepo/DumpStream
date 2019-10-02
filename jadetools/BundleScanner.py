@@ -77,6 +77,7 @@ targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
 targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
+targettree = curltargethost + '/tree/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -415,6 +416,33 @@ GLOBUS_INFLIGHT_LIMIT = 3
 # Phase 3	Look for new local files
 # Get list of local bundle tree locations relevant to NERSC transfers
 def Phase3():
+    geturl = copy.deepcopy(basicgeturl)
+    ultimate = '\"NERSC\"'
+    geturl.append(targettree + mangle(ultimate))
+    answer = getoutputsimplecommandtimeout(geturl, 1)
+    danswer = massage(answer)
+    ErrorString = ''
+    candidateList = []
+    if danswer == '':
+        print('No place to search')
+        return		# Dunno, maybe this was deliberate
+    if 'FAILURE' in danswer:
+        print(danswer)
+        return
+    janswer = json.loads(singletodouble(danswer))
+    print(len(janswer), janswer)
+    for js in janswer:
+        dirs = js['treetop']
+        command = ['/bin/find', dirs, '-type', 'f']
+        outp, erro, code =  getoutputerrorsimplecommand(command, 30)
+        if int(code) != 0:
+            print(' Failed to find/search ' + str(dirs))
+            ErrorString = ErrorString + ' Failed to find/search ' + str(dirs)
+        if len(outp) == 0:
+            print('No output')
+            continue
+        print(outp)
+    #
     return
 # Foreach tree
 #   Find bundle files in each tree
@@ -440,4 +468,4 @@ def Phase4():
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JSONMade' 
-Phase2()
+Phase3()
