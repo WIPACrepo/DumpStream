@@ -148,7 +148,7 @@ def query_db_final(query, args=(), one=False):
 # Open the DB and insert or update it.  Do not close the connection
 def insert_db(query, args=(), one=False):
     if DEBUGDB:
-        print("Do query_db")
+        print("Do insert_db")
     conn = get_db()
     try:
         cur = conn.execute(query, args)
@@ -164,7 +164,7 @@ def insert_db(query, args=(), one=False):
 # Insert a row into the DB or update it.  Close the connection
 def insert_db_final(query, args=(), one=False):
     if DEBUGDB:
-        print("Do query_db_final")
+        print("Do insert_db_final")
     conn = get_db()
     try:
         cur = conn.execute(query, args)
@@ -535,9 +535,9 @@ def updatebundle(estring):
     unstring = kludgequote(unmangle(estring))
     try:
         print(unstring)
-        stuff = query_db_final(unstring)
+        stuff = insert_db_final(unstring)
         if len(stuff) > 0:
-            return str(stuff[0])
+            return str(stuff)
         else:
             return ""
     except:

@@ -87,7 +87,8 @@ snames = ['KiB', 'MiB', 'GiB', 'TiB']
 GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
 GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
 GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
-GLOBUS_OLD_SPACE = '/mnt/data/jade/mirror-old'
+GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror-old'
+GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror-problem-files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
@@ -134,7 +135,7 @@ def getoutputsimplecommand(cmd):
             print(error)
             print("===")
         if len(error) != 0:
-            print('ErrorA:::', cmd)
+            print('ErrorA:::', cmd, '::::', error)
             return ""
         else:
             return output
@@ -154,7 +155,7 @@ def getoutputsimplecommandtimeout(cmd, Timeout):
         #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
         if len(error) != 0:
-            print('ErrorA:::', cmd)
+            print('ErrorA:::', cmd, '::-::', error)
             return ""
         else:
             return output
@@ -206,15 +207,22 @@ def stringtodict(instring):
             if countflag == 0:
                 basic.append(instring[initial:num+1])
     return basic
+
+
+def massage(answer):
+    try:
+        relaxed = str(answer.decode("utf-8"))
+    except:
+        try:
+            relaxed = str(answer)
+        except:
+            relaxed = answer
+    return relaxed
         
 
 
 ########################################################
 # Main
-#GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-#GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
-#GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
-#GLOBUS_OLD_SPACE = '/mnt/data/jade/mirror-old'
 
 # Phase 0
 # Look for space usage
@@ -228,7 +236,7 @@ def Phase0():
     if int(code) != 0:
         ErrorString = ErrorString + ' Failed to df '
     else:
-        lines = outp.splitlines()
+        lines = outp.decode("utf-8").splitlines()
         size = -1
         for line in lines:
             if '/var/log' in str(line):
@@ -258,6 +266,7 @@ def Phase0():
 #targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
 #targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 GLOBUS_PROBLEM_SPACE = '/opt/testing/rest/test'
+GLOBUS_PROBLEM_HOLDING = '/opt/testing/rest/test'
 # 
 # Phase 1	Look for problem files
 # ls /mnt/data/jade/problem_files/globus-mirror
@@ -272,22 +281,141 @@ def Phase1():
     ErrorString = ''
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
-        ErrorString = ErrorString + ' Failed to ls ' + GLOBUS_PROBLEM_SPACE + ' '
-    else:
-        lines = outp.splitlines()
-        print(len(lines))
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBAL_PROBLEM_SPACE))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        return
+    # If here, ls worked ok.
+    lines = outp.decode("utf-8").splitlines()
+    if len(lines) == 0:
+        return	# OK, nothing to do
+    for line in lines:
+        if '.json' in str(line):
+            words = str(line).split('.json')
+            filefragment = words[0]
+            geturl = copy.deepcopy(basicgeturl)
+            trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
+            trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
+            #print(trysql)
+            geturl.append(targetupdatebundle + mangle(trysql))
+            answer = getoutputsimplecommandtimeout(geturl, 1)
+            #danswer = answer.decode("utf-8")
+            danswer = massage(answer)
+            if danswer == '':
+                continue
+            if 'FAILURE' in str(danswer):
+                ErrorString = ErrorString + ' FAILURE WITH ' + str(filefragment)
+                break
+            #
+            # What happens if I get multiple returns?????  DEBUG
+            #print(type(danswer),danswer)
+            janswer = json.loads(singletodouble(danswer))
+            if len(janswer) <= 0:
+                ErrorString = ErrorString + ' No DB info for ' + str(filefragment)
+                break
+            if len(janswer) > 1:
+                ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
+                break
+            #print(type(janswer),janswer)
+            #print(type(janswer[0]),janswer[0])
+            bsid = janswer[0]['bundleStatus_id']
+            posturl = copy.deepcopy(basicposturl)
+            trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE BundleStatus_id=' + str(bsid)
+            #print(trysql)
+            posturl.append(targetupdatebundle + mangle(trysql))
+            answer = getoutputsimplecommandtimeout(posturl, 1)
+            #print(answer)
+            command = ['/bin/mv', GLOBUS_PROBLEM_SPACE + '/' + str(line), GLOBUS_PROBLEM_HOLDING]
+            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            if int(code) != 0:
+                ErrorString = ErrorString + ' Failed to move ' + str(line)
 
+    if ErrorString != '':
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetsetdumperror + mangle(ErrorString))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+    #
+    # I have not implemented the rm of the Alert file
+    return
 
 # Phase 2	Look for transferred files
 # ls GLOBUS_DONE_SPACE
-# If no file present, done w/ phase 2
-# foreach .json file in the list
-#    Update BundleStatus for each with status = 'PushDone'
-#    move .json to GLOBUS_OLD_SPACE
-# Done with phase 2
-#
+# When you find some, move them to GLOBUS_DONE_HOLDING and
+# update their DB entries to PushDone
+def Phase2():
+    command = ['/bin/ls', GLOBUS_DONE_SPACE]
+    ErrorString = ''
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBAL_DONE_SPACE))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        return
+    # If here, ls worked ok.
+    lines = outp.decode("utf-8").splitlines()
+    if len(lines) == 0:
+        return	# OK, nothing to do
+    for line in lines:
+        if '.json' not in str(line):
+            continue
+        words = str(line).split('.json')
+        filefragment = words[0]
+        geturl = copy.deepcopy(basicgeturl)
+        trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
+        trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
+        #print(trysql)
+        geturl.append(targetupdatebundle + mangle(trysql))
+        answer = getoutputsimplecommandtimeout(geturl, 1)
+        #danswer = answer.decode("utf-8")
+        danswer = massage(answer)
+        if danswer == '':
+            continue
+        if 'FAILURE' in str(danswer):
+            ErrorString = ErrorString + ' FAILURE WITH ' + str(filefragment)
+            break
+        #
+        # What happens if I get multiple returns?????  DEBUG
+        #print(type(danswer),danswer)
+        janswer = json.loads(singletodouble(danswer))
+        if len(janswer) <= 0:
+            ErrorString = ErrorString + ' No DB info for ' + str(filefragment)
+            break
+        if len(janswer) > 1:
+            ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
+            break
+        #print(type(janswer),janswer)
+        #print(type(janswer[0]),janswer[0])
+        bsid = janswer[0]['bundleStatus_id']
+        posturl = copy.deepcopy(basicposturl)
+        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE BundleStatus_id=' + str(bsid)
+        #print(trysql)
+        posturl.append(targetupdatebundle + mangle(trysql))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        #print(answer)
+        command = ['/bin/mv', GLOBUS_DONE_SPACE + '/' + str(line), GLOBUS_DONE_HOLDING]
+        outp, erro, code = getoutputerrorsimplecommand(command, 1)
+        if int(code) != 0:
+            ErrorString = ErrorString + ' Failed to move ' + str(line)
+
+    if ErrorString != '':
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetsetdumperror + mangle(ErrorString))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+    #
+    return
+
+
+GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
+GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
+GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
+GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror-old'
+GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror-problem-files'
+GLOBUS_INFLIGHT_LIMIT = 3
+
 # Phase 3	Look for new local files
 # Get list of local bundle tree locations relevant to NERSC transfers
+def Phase3():
+    return
 # Foreach tree
 #   Find bundle files in each tree
 #   Accumulate information in locallist
@@ -299,6 +427,8 @@ def Phase1():
 # Done with phase 3
 #
 # Phase 4	Submit new files
+def Phase4():
+    return
 # Check CandC for go/nogo
 # If Error or Halt or Drain, done w/ phase 4
 # Query BundleStatus for the bundlelist of 'Untouched' bundles,
@@ -310,4 +440,4 @@ def Phase1():
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JSONMade' 
-Phase0()
+Phase2()
