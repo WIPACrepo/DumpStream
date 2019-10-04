@@ -266,19 +266,10 @@ def Phase3():
         reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
-        print(reply)
-        print(len(reply))
-        print(reply[0])
-        print(massage(reply))
-        janswer = json.loads(singletodouble(massage(reply[0])))
-        print(janswer['size'])
-    # OK; question:  I want size and sha512 of each file
+        print(reply[0]['size'], reply[0]['checksum'])
     # Can I fetch this info from the jade-lta database w/o hassles?
     # If not I have a potentially tedious sha512sum to run, and I'm
     # not keen on that
-    #  OTOH, security is an issue too.  What does jade need to have
-    #  passwordless access?
-    # 'SELECT size,checksum FROM jade_bundle WHERE bundle_file=\"' + filex + '\"'
     return
 # Foreach tree
 #   Find bundle files in each tree
