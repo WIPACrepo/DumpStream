@@ -282,10 +282,9 @@ def Phase3():
                 posturl = copy.deepcopy(basicposturl)
                 posturl.append(targetaddbundle + mangle(str(insdict)))
                 answer = getoutputsimplecommandtimeout(posturl, 1)
-                print(answer)
-    # Can I fetch this info from the jade-lta database w/o hassles?
-    # If not I have a potentially tedious sha512sum to run, and I'm
-    # not keen on that
+                if 'OK' not in str(answer):
+                    print(answer)
+                continue
     return
 # Foreach tree
 #   Find bundle files in each tree
@@ -296,9 +295,34 @@ def Phase3():
 # Parse the return:
 # If the file is not in BundleStatus, add it as 'Untouched'
 # Done with phase 3
-#
+
+
+###########
 # Phase 4	Submit new files
 def Phase4():
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpinfo)
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    janswer = json.loads(singletodouble(answer))
+    # I know a priori there is only one return line
+    status = janswer['status']
+    if status != 'Run':
+        return		# Don't load more in the globus pipeline
+    geturl = copy.deepcopy(basicgeturl)
+    #geturl.append(targetuntouchedall)
+    geturl.append(targetuntouchedall)
+    print(geturl)
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    print(answer)
+    if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
+        return
+    # There may be multiple entries here
+    #print(answer)
+    jjanswer = json.loads(singletodouble(answer))
+    numwaiting = len(jjanswer)
+    if numwaiting <= 0:
+        return		# Nothing to do
+    
     return
 # Check CandC for go/nogo
 # If Error or Halt or Drain, done w/ phase 4
@@ -311,4 +335,4 @@ def Phase4():
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JSONMade' 
-Phase3()
+Phase4()

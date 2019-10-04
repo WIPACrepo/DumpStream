@@ -501,7 +501,21 @@ def getoldestuntouched():
     qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC LIMIT 1'
     stuff = query_db_final(qstring)
     # sanity checking?
-    return stuff[0]
+    if 'DOCTYPE HTML PUBLIC' in stuff[0]:
+        return ['FAILURE']
+    return str(stuff)
+
+
+# Get the untouched bundles, in order of decreasing age
+@app.route("/bundles/alluntouched", methods=["GET"])
+@app.route("/bundles/alluntouched/", methods=["GET"])
+def getalluntouched():
+    qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC'
+    stuff = query_db_final(qstring)
+    # sanity checking?
+    if 'DOCTYPE HTML PUBLIC' in stuff[0]:
+        return ['FAILURE']
+    return str(stuff)
 
 # Get the bundle satisfying certain criteria.
 # The default is the oldest untouched, but you can specify anything,
