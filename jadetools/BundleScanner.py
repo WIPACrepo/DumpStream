@@ -6,6 +6,10 @@ import json
 import urllib.parse
 import subprocess
 import copy
+import os
+# IMPORT_db.py 
+# Assumes we have "import sys" as well
+import pymysql
 
 # IMPORT CODE_utils.py
 #####
@@ -230,6 +234,122 @@ def massage(answer):
         except:
             relaxed = answer
     return relaxed
+######################################################
+######
+# DB connection established
+def getdbgen():
+    try:
+        global DBdatabase
+        global DBcursor
+        # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
+        DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
+    except pymysql.OperationalError:
+        print(['ERROR: could not connect to MySQL archivedump database.'])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
+        sys.exit(1)
+    try:
+        #DBcursor = DBdatabase.cursor()
+        DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
+    except pymysql.OperationalError:
+        print(['ERROR: could not get cursor for database.'])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
+        sys.exit(1)
+    return
+
+####
+def returndbgen():
+    return DBcursor
+
+####
+def closedbgen():
+    DBcursor.close()
+    DBdatabase.close()
+    return
+
+####
+# Commit changes to DB specified
+def doCommitDB():
+    try:
+        DBdatabase.commit()
+    except pymysql.OperationalError:
+        DBdatabase.rollback()
+        print(['doCommitDB: ERROR: could not connect to MySQL archivedump database.'])
+        sys.exit(1)
+    except Exception:
+        DBdatabase.rollback()
+        print(['doCommitDB: Failed to execute the commit'])
+        sys.exit(1)
+
+
+# Save an old example
+#############################################
+#######
+#def getURLPathFailures(lid):
+#  s0 = "SELECT URLPath from SDSTReadyPool WHERE LogicalTapeID=" + str(lid) + " AND Flag=3"
+#  carray = []
+#  try:
+#    DBcursor.execute(s0)
+#    expectedtuple = DBcursor.fetchall()
+#    for val in expectedtuple:
+#     temp = val[0]
+#     carray.append(temp)
+#    return carray
+#  except pymysql.OperationalError:
+#    print(['ERROR: getURLPathFailures could not connect to MySQL IceProd SDSTReadyPool database.', s0])
+#    sys.exit(1)
+#  except Exception:
+#    print(['ERROR: getURLPathFailures undefined failure to connect to MySQL IceProd SDSTReadyPool database.', sys.exc_info()[0], s0])
+#    sys.exit(1)
+#  return []
+
+
+############################################
+######  Execute a command.  Crash if it fails, otherwise return silently
+def doOperationDB(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
+        return
+    except pymysql.OperationalError:
+        print(['ERROR: doOperationDB could not connect to MySQL ', string, ' database.', command])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: doOperationDB undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
+        sys.exit(1)
+    return
+
+############################################
+######  Execute a command.  Crash if it fails, return False if it didn't work right, True if it was OK
+def doOperationDBWarn(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
+        return True
+    except pymysql.OperationalError:
+        print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
+        sys.exit(1)
+    except IntegrityError:
+        print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
+        return False
+    except Exception:
+        print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
+        sys.exit(1)
+    return True
+
+############################################
+######  Execute a command, return the answer.  Or error messages if it failed
+def doOperationDBTuple(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
+        expectedtuple = dbcursor.fetchall()
+        return expectedtuple		#Assume you know what you want to do with this
+    except pymysql.OperationalError:
+        return ['ERROR: doOperationDBTuple could not connect to MySQL ', string, ' database.', command]
+    except Exception:
+        return ['ERROR: doOperationDBTuple undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command]
+    return [[]]
 
 
 ########################################################
@@ -440,7 +560,7 @@ def Phase3():
         print(danswer)
         return
     janswer = json.loads(singletodouble(danswer))
-    print(len(janswer), janswer)
+    #print(len(janswer), janswer)
     for js in janswer:
         dirs = js['treetop']
         command = ['/bin/find', dirs, '-type', 'f']
@@ -450,7 +570,7 @@ def Phase3():
             ErrorString = ErrorString + ' Failed to find/search ' + str(dirs)
         if len(outp) == 0:
             continue
-        print(outp)
+        #print(outp)
         lines = outp.splitlines()
         for t in lines:
             if '.zip' in str(t):
@@ -462,31 +582,42 @@ def Phase3():
         bigquery = bigquery + '\"' + p + '\",'
     # replace the last comma with a right parenthesis
     bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
-    print(bigq)
+    #print(bigq)
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle(bigq))
     answer = getoutputsimplecommandtimeout(geturl, 3)
     danswer = massage(answer)
     jjanswer = json.loads(singletodouble(danswer))
     nomatch = []
+    #print('# Candidates=', len(candidateList))
     for p in candidateList:
         mfound = False
         for js in jjanswer:
             if p == js['localName']:
                 mfound = True
                 break
-        if mfound:
-            break
-        nomatch.append[p]
+        if not mfound:
+            nomatch.append(p)
     if len(nomatch) == 0:
+        print(len(nomatch), 'No matches found')
         return		# All present and accounted for
     #
+    # OK, now check that the info is in the database.  Connect to
+    # jade-lta-db now.  Use the .my.cnf so I don't expose passwords
+    getdbgen()
+    cursor = returndbgen()
+    #
     for filex in nomatch:
-        command = ['/bin/ls', '-l', filex]
-        outp, erro, code =  getoutputerrorsimplecommand(command, 30)
-        if int(code) != 0:
-            ErrorString = ErrorString + ' Failed to ls ' + filex
+        mybasename = os.path.basename(filex)
+        reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
+        if 'ERROR' in reply:
             continue
+        print(reply)
+        print(len(reply))
+        print(reply[0])
+        print(massage(reply))
+        janswer = json.loads(singletodouble(massage(reply[0])))
+        print(janswer['size'])
     # OK; question:  I want size and sha512 of each file
     # Can I fetch this info from the jade-lta database w/o hassles?
     # If not I have a potentially tedious sha512sum to run, and I'm

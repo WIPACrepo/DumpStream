@@ -6,15 +6,23 @@ def getdbgen():
         global DBdatabase
         global DBcursor
         # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
-        DBdatabase = pymyql.connect(read_default_file='~/.my.cnf',)
-        DBcursor = DBdatabase.cursor()
-        return
+        DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
     except pymysql.OperationalError:
         print(['ERROR: could not connect to MySQL archivedump database.'])
         sys.exit(1)
     except Exception:
-        print(['ERROR: 0 failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
+        print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
         sys.exit(1)
+    try:
+        #DBcursor = DBdatabase.cursor()
+        DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
+    except pymysql.OperationalError:
+        print(['ERROR: could not get cursor for database.'])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
+        sys.exit(1)
+    return
 
 ####
 def returndbgen():
