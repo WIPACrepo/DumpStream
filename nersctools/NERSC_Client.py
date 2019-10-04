@@ -15,7 +15,7 @@ REPLACESTRING = '+++'
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
-FREECUT = 500
+FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 DEBUGLOCAL = True
@@ -261,7 +261,7 @@ def Phase1():
                 if sn in words[2]:
                     value2 = scales[sn]*float(words[2].split(sn)[0])
     freespace = int(value2-value1)
-    if freespace < FREECUT:
+    if freespace < FREECUTNERSC:
         NERSCErrorString = NERSCErrorString + 'Low Scratch Space '
         # This does not require us to quit, since we're draining the
         # scratch
