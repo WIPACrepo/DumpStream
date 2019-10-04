@@ -213,9 +213,10 @@ def Phase3():
     if 'FAILURE' in danswer:
         print(danswer)
         return
-    janswer = json.loads(singletodouble(danswer))
-    #print(len(janswer), janswer)
-    for js in janswer:
+    print(danswer)
+    jdiranswer = json.loads(singletodouble(danswer))
+    #print(len(jdiranswer), janswer)
+    for js in jdiranswer:
         dirs = js['treetop']
         command = ['/bin/find', dirs, '-type', 'f']
         outp, erro, code =  getoutputerrorsimplecommand(command, 30)
@@ -261,12 +262,27 @@ def Phase3():
     getdbgen()
     cursor = returndbgen()
     #
+    # It seems reasonabl to think that a particular file will only
+    # exist once in the jade-lta-db.  Unique UUID and all..
     for filex in nomatch:
         mybasename = os.path.basename(filex)
         reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
         print(reply[0]['size'], reply[0]['checksum'])
+        #
+        for js in jdiranswer:
+            dirs = js['treetop']
+            nc = filex.split(dirs)
+            if len(nc) == 2:
+                insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + nc[1] + '\', \'size\' : \'' + str(reply[0]['size'])
+                insdict = insdict + '\', \'checksum\' : \'' + str(reply[0]['checksum']) + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
+                insdict = insdict + ' \'useCount\' : \'1\', \'status\' : \'Untouched\'\}'
+                #print(mangle(str(insdict)))
+                posturl = copy.deepcopy(basicposturl)
+                posturl.append(targetaddbundle + mangle(str(insdict)))
+                answer = getoutputsimplecommandtimeout(posturl, 1)
+                print(answer)
     # Can I fetch this info from the jade-lta database w/o hassles?
     # If not I have a potentially tedious sha512sum to run, and I'm
     # not keen on that

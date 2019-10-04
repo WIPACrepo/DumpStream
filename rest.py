@@ -514,10 +514,10 @@ def getspecified(estring):
         # sanity checking?
         return stuff[0]
     unstring = kludgequote(unmangle(estring))
-    print(unstring)
+    #print(unstring)
     qstring = 'SELECT * FROM BundleStatus WHERE {}'.format(unstring)
     try:
-        print(qstring)
+        #print(qstring)
         stuff = query_db_final(qstring)
         if len(stuff) > 0:
             return str(stuff)
@@ -545,28 +545,29 @@ def updatebundle(estring):
         return ""
 
 ### Insertion methods for bundles.  These aren't updates, but new bundles
-# This needs some debugging yet.  IT DOES NOT HAVE THE DB INSERTION CODE YET
+# This needs some debugging yet.
 @app.route("/addbundle/<estring>", methods=["POST"])
 def addbundle(estring):
-    backagain = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
+    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    #print(backagain)
     try:
         fjson = (json.loads(backagain))
     except:
         print(backagain)
         return "Not valid json"
-    #try:
-    #    for x in fjson:
-    #        print("{} had {}".format(x, fjson[x]))
-    #except:
-    #    return "Problem with extraction of json"
-
+    #
+    #print(type(fjson))
+    #print(fjson)
+    #for x in fjson:
+    #    print(x)
     try:
         lname = fjson['localName']
     except:
         return "json does not include localName"
     # Init if not done already--this is a global
     if len(BUNDLESTATUSCOLUMNS) == 0:
-        schem = open('./BundleStatus.schema', 'r')
+        #schem = open('./BundleStatus.schema', 'r')
+        schem = open('/opt/testing/rest/BundleStatus.schema', 'r')
         for line in schem:
             words = line.split()
             if len(words) <= 1:
@@ -579,7 +580,7 @@ def addbundle(estring):
     qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
     try:
         stuff = query_db(qstring)
-        print(stuff)
+        #print(stuff)
     except:
         print("Some kind of error")
         return "Not OK"
@@ -596,9 +597,13 @@ def addbundle(estring):
     idealName = '/data/exp' + str(fjson['localName']).split('data/exp')[1]
     initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
     initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
-    print(initialstring)
-    print("WAS NOT INSERTED BECAUSE I HAVE NOT IMPLEMENTED IT YET")
-    return "OK done"
+    #print(initialstring)
+    stuff = insert_db_final(initialstring)
+    if len(stuff) > 1:
+        #What went wrong?
+        print(str(stuff))
+        return 'FAILURE? ' + str(stuff)
+    return 'OK done'
 
 # Get info about which data warehouse trees to search
 @app.route("/tree/<estring>", methods=["GET"])
