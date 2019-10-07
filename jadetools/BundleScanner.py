@@ -7,6 +7,7 @@ import urllib.parse
 import subprocess
 import copy
 import os
+import uuid
 # IMPORT_db.py 
 # Assumes we have "import sys" as well
 import pymysql
@@ -95,10 +96,10 @@ scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
 snames = ['KiB', 'MiB', 'GiB', 'TiB']
 
 GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
-GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
-GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror-old'
-GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror-problem-files'
+GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror_cache'
+GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror_queue'
+GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror_old'
+GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
@@ -235,6 +236,30 @@ def massage(answer):
         except:
             relaxed = answer
     return relaxed
+
+
+def globusjson(uuid, localdir, remotesystem, idealdir): 
+    outputinfo='{\n'
+    outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
+    outputinfo = outputinfo + '  \"version\": 1,\n'
+    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
+    outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
+    outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
+    outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
+    outputinfo = outputinfo + '  \"dstLocation\": \"{}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"dstDir\": \"{}\",\n'.format(idealdir)
+    outputinfo = outputinfo + '  \"label\": \"Jade-LTA mirror lustre to {}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"notifyOnSucceeded\": false,\n'
+    outputinfo = outputinfo + '  \"notifyOnFailed\": true,\n'
+    outputinfo = outputinfo + '  \"notifyOnInactive\": true,\n'
+    outputinfo = outputinfo + '  \"encryptData\": false,\n'
+    outputinfo = outputinfo + '  \"syncLevel\": 1,\n'
+    outputinfo = outputinfo + '  \"verifyChecksum\": false,\n'
+    outputinfo = outputinfo + '  \"preserveTimestamp\": false,\n'
+    outputinfo = outputinfo + '  \"deleteDestinationExtra\": false,\n'
+    outputinfo = outputinfo + '  \"persistent\": true\n'
+    outputinfo = outputinfo + '}'
+    return outputinfo
 ######################################################
 ######
 # DB connection established
@@ -397,8 +422,6 @@ def Phase0():
 #targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 #targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
 #targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
-GLOBUS_PROBLEM_SPACE = '/opt/testing/rest/test'
-GLOBUS_PROBLEM_HOLDING = '/opt/testing/rest/test'
 # 
 # Phase 1	Look for problem files
 # ls /mnt/data/jade/problem_files/globus-mirror
@@ -537,13 +560,6 @@ def Phase2():
     return
 
 
-GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
-GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
-GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror-old'
-GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror-problem-files'
-GLOBUS_INFLIGHT_LIMIT = 3
-
 # Phase 3	Look for new local files
 # Get list of local bundle tree locations relevant to NERSC transfers
 def Phase3():
@@ -654,22 +670,66 @@ def Phase4():
     # I know a priori there is only one return line
     status = janswer['status']
     if status != 'Run':
+        print('No run')
         return		# Don't load more in the globus pipeline
     geturl = copy.deepcopy(basicgeturl)
     #geturl.append(targetuntouchedall)
     geturl.append(targetuntouchedall)
-    print(geturl)
+    #print(geturl)
     answer = massage(getoutputsimplecommandtimeout(geturl, 1))
-    print(answer)
+    #print(answer)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
+        print('Error in answer')
         return
     # There may be multiple entries here
     #print(answer)
     jjanswer = json.loads(singletodouble(answer))
     numwaiting = len(jjanswer)
+    print(numwaiting)
     if numwaiting <= 0:
+        print('None waiting')
         return		# Nothing to do
-    
+    command = ['/bin/ls', GLOBUS_RUN_SPACE]
+    answerlsb, errorls, codels = getoutputerrorsimplecommand(command, 1)
+    print('code=', str(codels))
+    if int(codels) != 0:
+        print('Cannot ls the', GLOBUS_RUN_SPACE)
+        return		# Something went wrong, try later
+    answerls = massage(answerlsb)
+    if 'TIMEOUT' in answerls:
+        print('ls timed out')
+        return		# Something went wrong, try later
+    lines = answerls.splitlines()
+    if len(lines) >= GLOBUS_INFLIGHT_LIMIT:
+        print('Too busy')
+        return		# Too busy for more
+    limit = GLOBUS_INFLIGHT_LIMIT - len(lines)
+    if limit > numwaiting:
+        limit = numwaiting
+    print('limit=', str(limit), str(len(lines)), str(numwaiting))
+    for countup in range(0, limit):
+        try:
+            js = jjanswer[countup]
+            bundle_id = js['bundleStatus_id']
+            localName = js['localName']
+            idealName = js['idealName']
+        except:
+            print('Failure in unpacking json info for #', str(countup))
+            return
+        jadeuuid = str(uuid.uuid4())
+        localDir = os.path.dirname(localName)
+        idealDir = os.path.dirname(idealName)
+        remotesystem = 'NERSC'
+        jsonContents = globusjson(jadeuuid, localDir, remotesystem, idealDir)
+        jsonName = jadeuuid + '.json'
+        try:
+            fileout = open(GLOBUS_RUN_SPACE + '/' + jsonName, 'w')
+            fileout.write(jsonContents)
+            fileout.close()
+        except:
+            print('Failed to open/write/close ' + jsonName)
+            return	# Try again later
+        continue
     return
 # Check CandC for go/nogo
 # If Error or Halt or Drain, done w/ phase 4

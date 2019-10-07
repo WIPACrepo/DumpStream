@@ -82,10 +82,10 @@ scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
 snames = ['KiB', 'MiB', 'GiB', 'TiB']
 
 GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror-cache'
-GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror-queue'
-GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror-old'
-GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror-problem-files'
+GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror_cache'
+GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror_queue'
+GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror_old'
+GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
@@ -222,3 +222,27 @@ def massage(answer):
         except:
             relaxed = answer
     return relaxed
+
+
+def globusjson(uuid, localdir, remotesystem, idealdir): 
+    outputinfo='{\n'
+    outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
+    outputinfo = outputinfo + '  \"version\": 1,\n'
+    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
+    outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
+    outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
+    outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
+    outputinfo = outputinfo + '  \"dstLocation\": \"{}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"dstDir\": \"{}\",\n'.format(idealdir)
+    outputinfo = outputinfo + '  \"label\": \"Jade-LTA mirror lustre to {}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"notifyOnSucceeded\": false,\n'
+    outputinfo = outputinfo + '  \"notifyOnFailed\": true,\n'
+    outputinfo = outputinfo + '  \"notifyOnInactive\": true,\n'
+    outputinfo = outputinfo + '  \"encryptData\": false,\n'
+    outputinfo = outputinfo + '  \"syncLevel\": 1,\n'
+    outputinfo = outputinfo + '  \"verifyChecksum\": false,\n'
+    outputinfo = outputinfo + '  \"preserveTimestamp\": false,\n'
+    outputinfo = outputinfo + '  \"deleteDestinationExtra\": false,\n'
+    outputinfo = outputinfo + '  \"persistent\": true\n'
+    outputinfo = outputinfo + '}'
+    return outputinfo
