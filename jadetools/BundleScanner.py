@@ -311,27 +311,6 @@ def doCommitDB():
         sys.exit(1)
 
 
-# Save an old example
-#############################################
-#######
-#def getURLPathFailures(lid):
-#  s0 = "SELECT URLPath from SDSTReadyPool WHERE LogicalTapeID=" + str(lid) + " AND Flag=3"
-#  carray = []
-#  try:
-#    DBcursor.execute(s0)
-#    expectedtuple = DBcursor.fetchall()
-#    for val in expectedtuple:
-#     temp = val[0]
-#     carray.append(temp)
-#    return carray
-#  except pymysql.OperationalError:
-#    print(['ERROR: getURLPathFailures could not connect to MySQL IceProd SDSTReadyPool database.', s0])
-#    sys.exit(1)
-#  except Exception:
-#    print(['ERROR: getURLPathFailures undefined failure to connect to MySQL IceProd SDSTReadyPool database.', sys.exc_info()[0], s0])
-#    sys.exit(1)
-#  return []
-
 
 ############################################
 ######  Execute a command.  Crash if it fails, otherwise return silently
@@ -670,7 +649,7 @@ def Phase4():
     # I know a priori there is only one return line
     status = janswer['status']
     if status != 'Run':
-        print('No run')
+        #print('No run')
         return		# Don't load more in the globus pipeline
     geturl = copy.deepcopy(basicgeturl)
     #geturl.append(targetuntouchedall)
@@ -685,13 +664,13 @@ def Phase4():
     #print(answer)
     jjanswer = json.loads(singletodouble(answer))
     numwaiting = len(jjanswer)
-    print(numwaiting)
+    #print(numwaiting)
     if numwaiting <= 0:
-        print('None waiting')
+        #print('None waiting')
         return		# Nothing to do
     command = ['/bin/ls', GLOBUS_RUN_SPACE]
     answerlsb, errorls, codels = getoutputerrorsimplecommand(command, 1)
-    print('code=', str(codels))
+    #print('code=', str(codels))
     if int(codels) != 0:
         print('Cannot ls the', GLOBUS_RUN_SPACE)
         return		# Something went wrong, try later
@@ -701,12 +680,12 @@ def Phase4():
         return		# Something went wrong, try later
     lines = answerls.splitlines()
     if len(lines) >= GLOBUS_INFLIGHT_LIMIT:
-        print('Too busy')
+        #print('Too busy')
         return		# Too busy for more
     limit = GLOBUS_INFLIGHT_LIMIT - len(lines)
     if limit > numwaiting:
         limit = numwaiting
-    print('limit=', str(limit), str(len(lines)), str(numwaiting))
+    #print('limit=', str(limit), str(len(lines)), str(numwaiting))
     for countup in range(0, limit):
         try:
             js = jjanswer[countup]
@@ -749,4 +728,8 @@ def Phase4():
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JSONMade' 
+Phase0()
+Phase1()
+Phase2()
+Phase3()
 Phase4()

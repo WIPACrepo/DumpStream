@@ -1,0 +1,93 @@
+import sys
+#SUPERIMPORT IMPORT_utils.py
+
+#SUPERIMPORT CODE_utils.py
+
+########################################################
+# Main
+
+
+####
+# NERSC status   
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetnerscinfo)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure'
+else:
+    #print(outp)
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    nstats = (my_json['status'] + ' | ' + my_json['nerscError'] + ' | '
+              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime']))
+logit('NERSCStatus= ', nstats)
+
+
+####
+# NERSC token status
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targettokeninfo)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure'
+else:
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    tname = 'NULL'
+    if my_json['hostname'] != '':
+        tname = my_json['hostname']
+    nstats = tname + ' at ' + str(my_json['lastChangeTime'])
+logit('NERSCToken= ', nstats)
+
+####
+# NERSC heartbeats
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetheartbeatinfo)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure'
+else:
+    trialbunch = stringtodict(str(outp))
+    #print(trialbunch)
+    nstats = 'Beats: '
+    for chunk in trialbunch:
+        #print(chunk)
+        my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
+        nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
+logit('NERSCHeartbeats= ', nstats)
+
+
+####
+# local status   
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetdumpinfo)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure'
+else:
+    #print(outp)
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
+              + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
+logit('LocalStatus= ', nstats)
+
+
+####
+# How many bundles have each status?
+# I will probably get fancier later.  For now, just this.
+nstats = ''
+for opt in BundleStatusOptions:
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetupdatebundle + mangle('SELECT COUNT(*) FROM BundleStatus where status = \"' + opt + '\"'))
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    #print(outp)
+    if int(code) != 0:
+        nstats = nstats + 'DB Failure'
+    else:
+        my_json = json.loads(singletodouble(outp.decode('utf-8')))
+        print(my_json)
+        js = my_json[0]
+        nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
+logit('BundleStatusCounts= ', nstats)

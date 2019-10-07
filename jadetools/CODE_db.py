@@ -49,27 +49,6 @@ def doCommitDB():
         sys.exit(1)
 
 
-# Save an old example
-#############################################
-#######
-#def getURLPathFailures(lid):
-#  s0 = "SELECT URLPath from SDSTReadyPool WHERE LogicalTapeID=" + str(lid) + " AND Flag=3"
-#  carray = []
-#  try:
-#    DBcursor.execute(s0)
-#    expectedtuple = DBcursor.fetchall()
-#    for val in expectedtuple:
-#     temp = val[0]
-#     carray.append(temp)
-#    return carray
-#  except pymysql.OperationalError:
-#    print(['ERROR: getURLPathFailures could not connect to MySQL IceProd SDSTReadyPool database.', s0])
-#    sys.exit(1)
-#  except Exception:
-#    print(['ERROR: getURLPathFailures undefined failure to connect to MySQL IceProd SDSTReadyPool database.', sys.exc_info()[0], s0])
-#    sys.exit(1)
-#  return []
-
 
 ############################################
 ######  Execute a command.  Crash if it fails, otherwise return silently
