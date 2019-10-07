@@ -87,7 +87,6 @@ for opt in BundleStatusOptions:
         nstats = nstats + 'DB Failure'
     else:
         my_json = json.loads(singletodouble(outp.decode('utf-8')))
-        print(my_json)
         js = my_json[0]
         nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
