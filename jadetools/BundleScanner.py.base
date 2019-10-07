@@ -345,8 +345,8 @@ def Phase4():
             print('Failure in unpacking json info for #', str(countup))
             return
         jadeuuid = str(uuid.uuid4())
-        localDir = os.path.dirname(localName)
-        idealDir = os.path.dirname(idealName)
+        localDir = os.path.dirname(localName) + '/'
+        idealDir = os.path.dirname(idealName) + '/'
         remotesystem = 'NERSC'
         jsonContents = globusjson(jadeuuid, localDir, remotesystem, idealDir)
         jsonName = jadeuuid + '.json'
@@ -357,6 +357,13 @@ def Phase4():
         except:
             print('Failed to open/write/close ' + jsonName)
             return	# Try again later
+        # Now update the BundleStatus
+        posturl = copy.deepcopy(basicposturl)
+        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE BundleStatus_id=' + str(bundle_id)
+        print(trysql)
+        posturl.append(targetupdatebundle + mangle(trysql))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        # Not checking answer is probably a bad thing hereJNB
         continue
     return
 # Check CandC for go/nogo
