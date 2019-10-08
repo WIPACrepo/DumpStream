@@ -23,6 +23,7 @@ import urllib.parse
 
 DATABASE = '/opt/testing/rest/db.test'
 REPLACESTRING = '+++'
+REPLACENOT = '==='
 DUMPSTATI = ['Run', 'Halt', 'Drain', 'Error']
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 BUNDLESTATUSCOLUMNS = []
@@ -31,20 +32,20 @@ DEBUGDB = False
 
 # String manipulation stuff
 def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
+    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
+    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes

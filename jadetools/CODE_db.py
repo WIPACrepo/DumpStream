@@ -73,7 +73,7 @@ def doOperationDBWarn(dbcursor, command, string):
     except pymysql.OperationalError:
         print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
         sys.exit(1)
-    except IntegrityError:
+    except pymysql.IntegrityError:
         print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
         return False
     except Exception:

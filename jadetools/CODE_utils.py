@@ -2,6 +2,7 @@
 #####
 # Define some constants
 REPLACESTRING = '+++'
+REPLACENOT = '==='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 DEBUGPROCESS = False
@@ -10,7 +11,7 @@ FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
-DEBUGLOCAL = True
+DEBUGLOCAL = False
 if DEBUGLOCAL:
     sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
     rm = '/home/jbellinger/archivecontrol/nersctools/rm'
@@ -93,20 +94,20 @@ BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERS
 
 # String manipulation stuff
 def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
+    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
+    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangls(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -225,7 +226,7 @@ def massage(answer):
 
 
 def globusjson(uuid, localdir, remotesystem, idealdir): 
-    outputinfo='{\n'
+    outputinfo = '{\n'
     outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
     outputinfo = outputinfo + '  \"version\": 1,\n'
     outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)

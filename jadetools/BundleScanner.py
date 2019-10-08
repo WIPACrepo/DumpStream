@@ -16,6 +16,7 @@ import pymysql
 #####
 # Define some constants
 REPLACESTRING = '+++'
+REPLACENOT = '==='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 DEBUGPROCESS = False
@@ -24,7 +25,7 @@ FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
-DEBUGLOCAL = True
+DEBUGLOCAL = False
 if DEBUGLOCAL:
     sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
     rm = '/home/jbellinger/archivecontrol/nersctools/rm'
@@ -107,20 +108,20 @@ BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERS
 
 # String manipulation stuff
 def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
+    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
+    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangls(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -239,7 +240,7 @@ def massage(answer):
 
 
 def globusjson(uuid, localdir, remotesystem, idealdir): 
-    outputinfo='{\n'
+    outputinfo = '{\n'
     outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
     outputinfo = outputinfo + '  \"version\": 1,\n'
     outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
@@ -335,7 +336,7 @@ def doOperationDBWarn(dbcursor, command, string):
     except pymysql.OperationalError:
         print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
         sys.exit(1)
-    except IntegrityError:
+    except pymysql.IntegrityError:
         print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
         return False
     except Exception:
@@ -365,8 +366,9 @@ def doOperationDBTuple(dbcursor, command, string):
 # Log the space usage and date
 # Done w/ phase 0
 def Phase0():
-    #command = ['/bin/df', '/mnt/lfss']
-    command = ['/bin/df', '-BG', '/var/log']
+    #storageArea = '/var/log'
+    storageArea = '/mnt/lfss'
+    command = ['/bin/df', '-BG', storageArea]
     ErrorString = ''
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
@@ -375,7 +377,7 @@ def Phase0():
         lines = outp.decode("utf-8").splitlines()
         size = -1
         for line in lines:
-            if '/var/log' in str(line):
+            if storageArea in str(line):
                 words = line.split()
                 try:
                     sizeword = words[len(words)-3]
@@ -391,7 +393,9 @@ def Phase0():
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetsetdumppoolsize + str(size))
     answer = getoutputsimplecommandtimeout(posturl, 1)
-    if answer != 'OK':
+    danswer = massage(answer)
+    if 'OK' not in danswer:
+        print(answer)
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle('Failed to set poolsize'))
         answer = getoutputsimplecommandtimeout(posturl, 1)
@@ -416,7 +420,7 @@ def Phase1():
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
         posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBAL_PROBLEM_SPACE))
+        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_PROBLEM_SPACE))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         return
     # If here, ls worked ok.
@@ -482,7 +486,7 @@ def Phase2():
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
         posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBAL_DONE_SPACE))
+        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_DONE_SPACE))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         return
     # If here, ls worked ok.
@@ -555,13 +559,13 @@ def Phase3():
     if 'FAILURE' in danswer:
         print(danswer)
         return
-    print(danswer)
+    #print(danswer)
     jdiranswer = json.loads(singletodouble(danswer))
     #print(len(jdiranswer), janswer)
     for js in jdiranswer:
         dirs = js['treetop']
         command = ['/bin/find', dirs, '-type', 'f']
-        outp, erro, code =  getoutputerrorsimplecommand(command, 30)
+        outp, erro, code = getoutputerrorsimplecommand(command, 30)
         if int(code) != 0:
             print(' Failed to find/search ' + str(dirs))
             ErrorString = ErrorString + ' Failed to find/search ' + str(dirs)
@@ -574,29 +578,77 @@ def Phase3():
                 candidateList.append(t.decode("utf-8"))
     if len(candidateList) <= 0:
         return
-    bigquery = 'status!=\"Abort\" AND localName IN ('
-    for p in candidateList:
-        bigquery = bigquery + '\"' + p + '\",'
-    # replace the last comma with a right parenthesis
-    bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
-    #print(bigq)
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle(bigq))
-    answer = getoutputsimplecommandtimeout(geturl, 3)
-    danswer = massage(answer)
-    jjanswer = json.loads(singletodouble(danswer))
+    # OK, found a curious limit with sqlite3.  I cannot use
+    #  more than 25 string entries in the localName IN () query
+    # So, I have to break it up into multiple queries
+    inchunkCount = 0
+    jsonList = []
     nomatch = []
-    #print('# Candidates=', len(candidateList))
     for p in candidateList:
-        mfound = False
-        for js in jjanswer:
-            if p == js['localName']:
-                mfound = True
-                break
-        if not mfound:
+        if inchunkCount == 0:
+            bigquery = 'status!=\"Abort\" AND localName IN ('
+        bigquery = bigquery + '\"' + p + '\",'
+        inchunkCount = inchunkCount + 1
+        if inchunkCount > 24:	# Avoid count limit
+            inchunkCount = 0
+            # replace the last comma with a right parenthesis
+            bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+            #print('bigq=', bigq)
+            geturl = copy.deepcopy(basicgeturl)
+            geturl.append(targetfindbundles + mangle(bigq))
+            answer = getoutputsimplecommandtimeout(geturl, 3)
+            danswer = massage(answer)
+            if len(danswer) < 1:
+                continue
+            if 'Not Found' in danswer:
+                print('Not Found', danswer)
+                #print(bigq)
+                continue
+            else:
+                try:
+                    jjanswer = json.loads(singletodouble(danswer))
+                except:
+                    print('Failed to translate json code', danswer)
+                    return
+                for js in jjanswer:
+                    jsonList.append(js)
+        #
+    if inchunkCount > 0:
+        bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+        #print('bigq=', bigq)
+        geturl = copy.deepcopy(basicgeturl)
+        geturl.append(targetfindbundles + mangle(bigq))
+        answer = getoutputsimplecommandtimeout(geturl, 3)
+        danswer = massage(answer)
+        #print('danswer length=', len(danswer))
+        if len(danswer) > 1:
+            if 'Not Found' in danswer:
+                print('Not Found', danswer)
+                #print('bigq=', bigq)
+                return
+            else:
+                try:
+                    jjanswer = json.loads(singletodouble(danswer))
+                except:
+                    print('Failed to translate json code', danswer)
+                    return
+                for js in jjanswer:
+                    jsonList.append(js)
+
+    if len(jsonList) == 0:
+        for p in candidateList:
             nomatch.append(p)
+    else:
+        for p in candidateList:
+            mfound = False
+            for js in jsonList:
+                if p == js['localName']:
+                    mfound = True
+                    break
+            if not mfound:
+                nomatch.append(p)
     if len(nomatch) == 0:
-        print(len(nomatch), 'No matches found')
+        #print(len(nomatch), 'No matches found')
         return		# All present and accounted for
     #
     # OK, now check that the info is in the database.  Connect to
@@ -611,7 +663,7 @@ def Phase3():
         reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
-        print(reply[0]['size'], reply[0]['checksum'])
+        #print(reply[0]['size'], reply[0]['checksum'])
         #
         for js in jdiranswer:
             dirs = js['treetop']
@@ -625,7 +677,7 @@ def Phase3():
                 posturl.append(targetaddbundle + mangle(str(insdict)))
                 answer = getoutputsimplecommandtimeout(posturl, 1)
                 if 'OK' not in str(answer):
-                    print(answer)
+                    print(str(insdict), answer)
                 continue
     return
 # Foreach tree
@@ -711,7 +763,7 @@ def Phase4():
         # Now update the BundleStatus
         posturl = copy.deepcopy(basicposturl)
         trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE BundleStatus_id=' + str(bundle_id)
-        print(trysql)
+        #print(trysql)
         posturl.append(targetupdatebundle + mangle(trysql))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         # Not checking answer is probably a bad thing hereJNB
