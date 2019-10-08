@@ -1,20 +1,28 @@
 import sys
+# IMPORT_utils.py
+# Assumes "import sys"
 import site
-import os
 import json
 import urllib.parse
-#import datetime
 import subprocess
-import socket
-#import string
 import copy
+import os
+import uuid
+import socket
 
+DEBUGIT = True
+
+#####
+# IMPORT CODE_utils.py
 #####
 # Define some constants
 REPLACESTRING = '+++'
+REPLACENOT = '==='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
+LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
+FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
@@ -32,6 +40,7 @@ if DEBUGLOCAL:
     SCRATCHROOT = '/home/jbellinger/archivecontrol/nersctools/scratch'
     HSIROOT = '/home/jbellinger/archivecontrol/nersctools/hsi'
     hsibase = []
+    BUNDLETREE = '/home/jbellinger/archivecontrol/jadetools/BUNDLE'
 else:
     sbatch = '/usr/bin/sbatch'
     rm = '/usr/bin/rm'
@@ -45,6 +54,7 @@ else:
     SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
     HSIROOT = '/home/projects/icecube'
     hsibase = ['/usr/common/mss/bin/hsi', '-q']
+    BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
 
 curlcommand = '/usr/bin/curl'
 curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
@@ -67,8 +77,19 @@ targetfindbundles = curltargethost + 'bundles/specified/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
+targetnerscinfo = curltargethost + 'nersccontrol/info/'
+targetdumpinfo = curltargethost + 'dumpcontrol/info'
+targetbundleinfo = curltargethost + 'bundles/specified/'
+targettokeninfo = curltargethost + 'nersctokeninfo'
+targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
+targetaddbundle = curltargethost + 'addbundle/'
+targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
+targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
+targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
+targettree = curltargethost + '/tree/'
+targetuntouchedall = curltargethost + '/bundles/alluntouched/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -76,23 +97,32 @@ basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:applicatio
 scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
 snames = ['KiB', 'MiB', 'GiB', 'TiB']
 
+GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
+GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror_cache'
+GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror_queue'
+GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror_old'
+GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
+GLOBUS_INFLIGHT_LIMIT = 3
+
+BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
+        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'Abort', 'Retry']
 
 # String manipulation stuff
 def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
+    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
+    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangls(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -118,7 +148,7 @@ def getoutputsimplecommand(cmd):
             print(error)
             print("===")
         if len(error) != 0:
-            print('ErrorA:::', cmd)
+            print('ErrorA:::', cmd, '::::', error)
             return ""
         else:
             return output
@@ -138,7 +168,7 @@ def getoutputsimplecommandtimeout(cmd, Timeout):
         #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
         if len(error) != 0:
-            print('ErrorA:::', cmd)
+            print('ErrorA:::', cmd, '::-::', error)
             return ""
         else:
             return output
@@ -169,7 +199,69 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         print(cmd, " Unknown error", sys.exc_info()[0])
         return "", error, 1
 
+######
+# Write out information.  Utility in case I want to do
+# something other than simply print
+def logit(string1, string2):
+    print(string1 + '  ' + string2)
+    return
 
+
+####
+# Test parse byte-stream of list of dicts back into a list of strings
+# each of which can be unpacked later into a dict
+def stringtodict(instring):
+    if len(instring) <= 1:
+        return []
+    countflag = 0
+    initial = -1
+    final = -1
+    basic = []
+    for num, character in enumerate(instring):
+        if character == '{':
+            countflag = countflag + 1
+            if countflag == 1:
+                initial = num
+        if character == '}':
+            countflag = countflag - 1
+            if countflag == 0:
+                basic.append(instring[initial:num+1])
+    return basic
+
+
+def massage(answer):
+    try:
+        relaxed = str(answer.decode("utf-8"))
+    except:
+        try:
+            relaxed = str(answer)
+        except:
+            relaxed = answer
+    return relaxed
+
+
+def globusjson(uuid, localdir, remotesystem, idealdir): 
+    outputinfo = '{\n'
+    outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
+    outputinfo = outputinfo + '  \"version\": 1,\n'
+    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
+    outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
+    outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
+    outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
+    outputinfo = outputinfo + '  \"dstLocation\": \"{}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"dstDir\": \"{}\",\n'.format(idealdir)
+    outputinfo = outputinfo + '  \"label\": \"Jade-LTA mirror lustre to {}\",\n'.format(remotesystem)
+    outputinfo = outputinfo + '  \"notifyOnSucceeded\": false,\n'
+    outputinfo = outputinfo + '  \"notifyOnFailed\": true,\n'
+    outputinfo = outputinfo + '  \"notifyOnInactive\": true,\n'
+    outputinfo = outputinfo + '  \"encryptData\": false,\n'
+    outputinfo = outputinfo + '  \"syncLevel\": 1,\n'
+    outputinfo = outputinfo + '  \"verifyChecksum\": false,\n'
+    outputinfo = outputinfo + '  \"preserveTimestamp\": false,\n'
+    outputinfo = outputinfo + '  \"deleteDestinationExtra\": false,\n'
+    outputinfo = outputinfo + '  \"persistent\": true\n'
+    outputinfo = outputinfo + '}'
+    return outputinfo
 
 def myhostname():
     return socket.gethostname().split('.')[0]
@@ -211,6 +303,8 @@ def Phase0():
     # Ask for a 30-second timeout, in case of network issues
     answer = getoutputsimplecommandtimeout(posturl, 30)
     if answer != 'OK':
+        if DEBUGIT:
+            print('Failed to get token')
         sys.exit(0)
 
 # Check for errors
@@ -248,6 +342,8 @@ def Phase1():
     # Now check the quota
     command = [myquota]
     outp, erro, code = getoutputerrorsimplecommand(command, 15)
+    if DEBUGIT:
+        print('myquota', outp)
     cases = outp.splitlines()
     for p in cases:
         q = str(p)
@@ -273,6 +369,8 @@ def Phase1():
         AbortFlag = True
     #
     if AbortFlag:
+        if DEBUGIT:
+            print(NERSCErrorString)
         abandon()
 
 
@@ -292,6 +390,8 @@ def Phase2():
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
     my_json = json.loads(singletodouble(outp.decode("utf-8")))
+    if DEBUGIT:
+        print(my_json)
     if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
         if my_json['status'] == 'Drain':
             return	# Go on to next phase
@@ -311,6 +411,8 @@ def Phase2():
     bundleJobJson = json.loads(singletodouble(outp.decode("utf-8")))
     numberJobs = len(bundleJobJson)
     if numberJobs == 0:
+        if DEBUGIT:
+            print('No jobs to do')
         return		# skip to the next phase
     #
     #
@@ -327,6 +429,8 @@ def Phase2():
     if len(lines) >= numberJobs:
         return		# Everything is still running, nothing finished
     #
+    if DEBUGIT:
+        print(len(bundleJobJson))
     for bjson in bundleJobJson:
         # Check that either:
         #   a) the bundle name is in the slurm list

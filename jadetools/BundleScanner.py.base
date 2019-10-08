@@ -410,7 +410,7 @@ def Phase4():
             return	# Try again later
         # Now update the BundleStatus
         posturl = copy.deepcopy(basicposturl)
-        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE BundleStatus_id=' + str(bundle_id)
+        trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE BundleStatus_id='.format(jadeuuid) + str(bundle_id)
         #print(trysql)
         posturl.append(targetupdatebundle + mangle(trysql))
         answer = getoutputsimplecommandtimeout(posturl, 1)
@@ -427,7 +427,7 @@ def Phase4():
 # foreach bundle in the bundlelist
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
-#   update the BundleStatus for this bundle to 'JSONMade' 
+#   update the BundleStatus for this bundle to 'JsonMade' 
 Phase0()
 Phase1()
 Phase2()

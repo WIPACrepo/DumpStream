@@ -1,175 +1,11 @@
 import sys
-import site
-import os
-import json
-import urllib.parse
-#import datetime
-import subprocess
+#SUPERIMPORT IMPORT_utils.py
 import socket
-#import string
-import copy
+
+DEBUGIT = True
 
 #####
-# Define some constants
-REPLACESTRING = '+++'
-NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
-DEBUGPROCESS = False
-# WARN if free scratch space is low
-FREECUTNERSC = 500
-# How many slurm jobs can go at once?
-SLURMCUT = 14
-DEBUGLOCAL = True
-if DEBUGLOCAL:
-    sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
-    rm = '/home/jbellinger/archivecontrol/nersctools/rm'
-    hpss_avail = '/home/jbellinger/archivecontrol/nersctools/hpss_avail'
-    df = '/home/jbellinger/archivecontrol/nersctools/df'
-    mv = '/home/jbellinger/archivecontrol/nersctools/mv'
-    squeue = '/home/jbellinger/archivecontrol/nersctools/squeue'
-    myquota = '/home/jbellinger/archivecontrol/nersctools/myquota'
-    logdir = '/home/jbellinger/archivecontrol/nersctools/SLURMLOGS'
-    logdirold = '/home/jbellinger/archivecontrol/nersctools/SLURMLOGS/OLD'
-    SCRATCHROOT = '/home/jbellinger/archivecontrol/nersctools/scratch'
-    HSIROOT = '/home/jbellinger/archivecontrol/nersctools/hsi'
-    hsibase = []
-else:
-    sbatch = '/usr/bin/sbatch'
-    rm = '/usr/bin/rm'
-    hpss_avail = '/usr/common/mss/bin/hpss_avail'
-    df = '/usr/bin/df'
-    mv = '/usr/bin/mv'
-    squeue = '/usr/bin/squeue'
-    myquota = '/usr/bin/myquota'
-    logdir = '/global/homes/i/icecubed/SLURMLOGS'
-    logdirold = '/global/homes/i/icecubed/SLURMLOGS/OLD'
-    SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
-    HSIROOT = '/home/projects/icecube'
-    hsibase = ['/usr/common/mss/bin/hsi', '-q']
-
-curlcommand = '/usr/bin/curl'
-curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
-
-# I will have to figure out how to pack these in a command,
-#  but for the moment here they are.  I drop 2 defaults,
-#  the Partition and the #Nodes, since I don't care about
-#  those.  I don't need the %.8u option either,
-#  since I already know whose jobs they are.
-# I can't be sure that mine will be the only icecubed jobs,
-#  so I retain the %.8j for the job name
-# The -h option means no headers printed, which should
-#  simplify parsing.
-SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
-# This will be associated with a sbatch option which I will
-#  use as sbatchoption = SBATCHOPTIONS.format(filename, logdir, filename)
-SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
-
-targetfindbundles = curltargethost + 'bundles/specified/'
-targettaketoken = curltargethost + 'nersctokentake/'
-targetreleasetoken = curltargethost + 'nersctokenrelease/'
-targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
-targetupdatebundle = curltargethost + 'updatebundle/'
-targetnerscinfo = curltargethost + 'nersccontrol/info/'
-
-basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
-basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
-
-scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
-snames = ['KiB', 'MiB', 'GiB', 'TiB']
-
-
-# String manipulation stuff
-def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
-
-def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
-
-def unmangls(strFromPost):
-    # dummy for now.  Final thing has to fix missing spaces,
-    # quotation marks, commas, slashes, and so on.
-    #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
-
-def mangle(strFromPost):
-    # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
-
-def tojsonquotes(strFromPost):
-    # Turn single into double quotes
-    return strFromPost.replace("\'", "\"")
-
-def fromjsonquotes(strFromPost):
-    # Turn double into single quotes.  Won't use it much
-    # here, but the remote jobs that feed this will
-    return strFromPost.replace("\"", "\'")
-
-def singletodouble(stringTo):
-    return stringTo.replace('\'', '\"')
-
-def getoutputsimplecommand(cmd):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate()
-        if DEBUGPROCESS:
-            print("===")
-            print(output)
-            print("===")
-            print(error)
-            print("===")
-        if len(error) != 0:
-            print('ErrorA:::', cmd)
-            return ""
-        else:
-            return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
-# timeout is in seconds
-def getoutputsimplecommandtimeout(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        if len(error) != 0:
-            print('ErrorA:::', cmd)
-            return ""
-        else:
-            return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT"
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
-
-def getoutputerrorsimplecommand(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        returncode = proc.returncode
-        return output, error, returncode
-    except subprocess.CalledProcessError:
-        print(cmd, " Failed to spawn")
-        return "", "", 1
-    except subprocess.TimeoutExpired:
-        return 'TIMEOUT', 'TIMEOUT', 1
-    except Exception:
-        print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", error, 1
-
-
+#SUPERIMPORT CODE_utils.py
 
 def myhostname():
     return socket.gethostname().split('.')[0]
@@ -211,6 +47,8 @@ def Phase0():
     # Ask for a 30-second timeout, in case of network issues
     answer = getoutputsimplecommandtimeout(posturl, 30)
     if answer != 'OK':
+        if DEBUGIT:
+            print('Failed to get token')
         sys.exit(0)
 
 # Check for errors
@@ -248,6 +86,8 @@ def Phase1():
     # Now check the quota
     command = [myquota]
     outp, erro, code = getoutputerrorsimplecommand(command, 15)
+    if DEBUGIT:
+        print('myquota', outp)
     cases = outp.splitlines()
     for p in cases:
         q = str(p)
@@ -273,6 +113,8 @@ def Phase1():
         AbortFlag = True
     #
     if AbortFlag:
+        if DEBUGIT:
+            print(NERSCErrorString)
         abandon()
 
 
@@ -292,6 +134,8 @@ def Phase2():
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
     my_json = json.loads(singletodouble(outp.decode("utf-8")))
+    if DEBUGIT:
+        print(my_json)
     if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
         if my_json['status'] == 'Drain':
             return	# Go on to next phase
@@ -311,6 +155,8 @@ def Phase2():
     bundleJobJson = json.loads(singletodouble(outp.decode("utf-8")))
     numberJobs = len(bundleJobJson)
     if numberJobs == 0:
+        if DEBUGIT:
+            print('No jobs to do')
         return		# skip to the next phase
     #
     #
@@ -327,6 +173,8 @@ def Phase2():
     if len(lines) >= numberJobs:
         return		# Everything is still running, nothing finished
     #
+    if DEBUGIT:
+        print(len(bundleJobJson))
     for bjson in bundleJobJson:
         # Check that either:
         #   a) the bundle name is in the slurm list
