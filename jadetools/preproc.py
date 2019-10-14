@@ -32,7 +32,7 @@ for line in wholeinput:
     try:
         newin = open(words[1], 'r')
     except:
-        print('Cannot open imported file', newin)
+        print('Cannot open imported file', words)
         sys.exit(1)
     newincl = newin.readlines()
     newin.close()

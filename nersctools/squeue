@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "CLUSTER: escori\n JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)"
+exit 0

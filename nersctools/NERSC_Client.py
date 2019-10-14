@@ -26,7 +26,7 @@ FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
-DEBUGLOCAL = True
+DEBUGLOCAL = False
 if DEBUGLOCAL:
     sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
     rm = '/home/jbellinger/archivecontrol/nersctools/rm'
@@ -83,6 +83,7 @@ targetbundleinfo = curltargethost + 'bundles/specified/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetupdatebundleerr = curltargethost + 'updatebundleerr/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
@@ -197,7 +198,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         return 'TIMEOUT', 'TIMEOUT', 1
     except Exception:
         print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", error, 1
+        return "", "", 1
 
 ######
 # Write out information.  Utility in case I want to do
@@ -274,9 +275,21 @@ def abandon():
     # Ask for a 30-second timeout, in case of network issues
     answer = getoutputsimplecommandtimeout(posturl, 30)
     # If this fails, I can't update anything anyway
-    if answer != 'OK':
-        print(str(answer))
+    print(str(answer))
+    if 'OK' not in str(answer):
+        print('abandon fails with', str(answer))
     sys.exit(1)
+
+def release():
+    posturl = copy.deepcopy(basicposturl)
+    posturl.append(targetreleasetoken)
+    # Ask for a 30-second timeout, in case of network issues
+    answer = getoutputsimplecommandtimeout(posturl, 30)
+    # If this fails, I can't update anything anyway
+    if 'OK' not in str(answer):
+        print('abandon fails with', str(answer))
+    sys.exit(1)
+
 
 
 # I will do this enough to demand a utility for it
@@ -285,6 +298,7 @@ def flagBundleError(key):
     comstring = mangle('UPDATE BundleStatus SET status=\'NERSCProblem\' WHERE bundle_status_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    # Set NERSC status to Error also
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetupdateerror + mangle('Error'))
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
@@ -302,8 +316,9 @@ def Phase0():
     posturl.append(command)
     # Ask for a 30-second timeout, in case of network issues
     answer = getoutputsimplecommandtimeout(posturl, 30)
-    if answer != 'OK':
+    if 'OK' not in str(answer):
         if DEBUGIT:
+            print(answer)
             print('Failed to get token')
         sys.exit(0)
 
@@ -342,11 +357,15 @@ def Phase1():
     # Now check the quota
     command = [myquota]
     outp, erro, code = getoutputerrorsimplecommand(command, 15)
-    if DEBUGIT:
-        print('myquota', outp)
+    #if DEBUGIT:
+    #    print('myquota', outp)
     cases = outp.splitlines()
+    #if DEBUGIT:
+    #    print(cases[1])
     for p in cases:
         q = str(p)
+        #if DEBUGIT:
+        #    print('q',q)
         if q.find('cscratch1') > 0:
             words = q.split()
             value1 = 0.
@@ -356,21 +375,29 @@ def Phase1():
                     value1 = scales[sn]*float(words[1].split(sn)[0])
                 if sn in words[2]:
                     value2 = scales[sn]*float(words[2].split(sn)[0])
-    freespace = int(value2-value1)
+    freespace = 0
+    try:
+        freespace = int(value2-value1)
+    except:
+        print('value1, value2', value1, value2)
     if freespace < FREECUTNERSC:
         NERSCErrorString = NERSCErrorString + 'Low Scratch Space '
         # This does not require us to quit, since we're draining the
         # scratch
-    nerscerror = mangle(NERSCErrorString)
     posturl = copy.deepcopy(basicposturl)
-    posturl.append(targetupdateerror + nerscerror)
+    if len(NERSCErrorString) > 0:
+        posturl.append(targetupdateerror + mangle(NERSCErrorString))
+    else:
+        posturl.append(targetupdateerror + 'clear')
     answer = getoutputsimplecommandtimeout(posturl, 30)
-    if answer != 'OK':
+    if 'OK' not in str(answer):
+        print('Not OK somehow', str(answer))
         AbortFlag = True
+
     #
     if AbortFlag:
         if DEBUGIT:
-            print(NERSCErrorString)
+            print('NERSCErrorString=', NERSCErrorString)
         abandon()
 
 
@@ -483,6 +510,7 @@ def Phase2():
             # Try again
             outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
             if str(code) != 0:
+                print('code failure for ', bjson['bundleStatus_id'])
                 flagBundleError(bjson['bundleStatus_id'])
                 return      # Something is puzzlingly wrong
         if str(outp) == 'OK':
@@ -501,6 +529,7 @@ def Phase2():
                     print('Cannot rm ', SCRATCHROOT + bjson['idealName'])
                     continue
         else:   # if str(outp) is not OK
+            print(str(outp))
             # We had a communication error?
             outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
             if str(outp) != 'OK':
@@ -574,18 +603,20 @@ def Phase3():
         size = int(bundle['size'])
         key = bundle['bundleStatus_id']
         scratchname = SCRATCHROOT + idealName
+        print(scratchname)
         command = ['ls', '-go', scratchname]
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
         badFlag = False
         if int(code) != 0:
             badFlag = True
         else:
-            ssize = (str(outp).split()[2])
+            ssize = int(outp.split()[2])
             if ssize != size:
                 badFlag = True
         if badFlag:
+            print('badFlag for', str(key))
             flagBundleError(key)
-            return	# Last phase, so no need to abandon()
+            abandon()
         command = [sbatch, '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname,
                    '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out']        
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
@@ -593,16 +624,24 @@ def Phase3():
             badFlag = True
         # I may check the code in more detail later
         if badFlag:
+            print('badFlag2 for', str(key))
             flagBundleError(key)
-            return	# Last phase, so no need to abandon()
+            abandon()
+        activeSlurm = activeSlurm + 1
+        if activeSlurm >= SLURMCUT:
+            return	# Cannot launch any more
     #
     return
 
 ############
 # MAIN PROGRAM
-
+print('Starting')
 Phase0()
+print('done w/ 0')
 Phase1()
+print('done w/ 1')
 Phase2()
+print('done w/ 2')
 Phase3()
-abandon()
+print('done w/ 3')
+release()

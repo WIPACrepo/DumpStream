@@ -68,6 +68,7 @@ targetbundleinfo = curltargethost + 'bundles/specified/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetupdatebundleerr = curltargethost + 'updatebundleerr/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
@@ -182,7 +183,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         return 'TIMEOUT', 'TIMEOUT', 1
     except Exception:
         print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", error, 1
+        return "", "", 1
 
 ######
 # Write out information.  Utility in case I want to do

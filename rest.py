@@ -59,6 +59,8 @@ def fromjsonquotes(strFromPost):
 def kludgequote(strFromPost):
     return strFromPost.replace("\\\"", "\"")
 
+def singletodouble(stringTo):
+    return stringTo.replace('\'', '\"')
 ####
 # dummy for now
 def securityCheck():
@@ -385,6 +387,23 @@ def updatenerscerror(estring):
     # Put in sanity checking
     return 'OK'
 
+# Insert a row to clear the NERSC loader control error message.  Changes the
+# status if appropriate
+@app.route("/nersccontrol/update/nerscerror/clear", methods=["POST"])
+def resetnerscerror():
+    #
+    getallstr = 'SELECT nerscSize,localError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    stuff = query_db(getallstr)
+    berror = stuff[0]['status']   # If clearing it, leave the status the same
+    newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
+    newstr = newstr + ' VALUES (\'\',\'' + stuff[0]['localError'] + '\','
+    newstr = newstr + str(stuff[0]['nerscSize']) + ','
+    newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
+    print(newstr)
+    stuff = insert_db_final(newstr)
+    print(stuff)
+    # Put in sanity checking
+    return 'OK'
 # Insert a row updating the "localerror" for NERSC control.  This is
 # probably going to refer to the globus transfer errors, if it is used
 # at all.  I'm wavering on it.
@@ -449,7 +468,10 @@ def nersctake(estring):
     else:
         # 2 Cases:  Case 1, the string is blank.  Set it (take token), return OK
         #  Case 2, the string is not blank.  Return BUSY
-        if str(answer[0]) == '':
+        #fjson = json.loads(unmangle(answer[0]).unquote_plus(estring))
+        fjson = answer[0]  #json.loads(singletodouble(answer[0]))
+        #if str(answer[0]) == '':
+        if fjson['hostname'] == '':
             string = 'UPDATE Token SET hostname=\"{}\",lastChangeTime=datetime(\'now\',\'localtime\')'.format(estring)
             stuff = insert_db_final(string)
             if len(stuff) > 1:
@@ -460,6 +482,7 @@ def nersctake(estring):
         else:
             # Somebody else (maybe another process on the same system?)
             # has the token
+            #print('Token reply=', str(answer))
             return "BUSY"
 
 # Release the token
@@ -549,7 +572,7 @@ def updatebundle(estring):
     # of horrors are possible
     unstring = kludgequote(unmangle(estring))
     try:
-        print(unstring)
+        print('updatebundle with', unstring)
         stuff = insert_db_final(unstring)
         if len(stuff) > 0:
             return str(stuff)
