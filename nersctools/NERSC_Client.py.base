@@ -38,7 +38,7 @@ def release():
 # I will do this enough to demand a utility for it
 def flagBundleError(key):
     posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCProblem\' WHERE bundle_status_id={}'.format(key))
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCProblem\' WHERE bundleStatus_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     # Set NERSC status to Error also
@@ -49,7 +49,7 @@ def flagBundleError(key):
 # Announce that it is running
 def flagBundleRunning(key):
     posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCRunning\' WHERE bundle_status_id={}'.format(key))
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCRunning\' WHERE bundleStatus_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     if 'OK' not in str(outp):
@@ -57,9 +57,9 @@ def flagBundleRunning(key):
     return
 
 # Announce that it is done
-def flagBundleRunning(key):
+def flagBundleDone(key):
     posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundle_status_id={}'.format(key))
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundleStatus_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     if 'OK' not in str(outp):
@@ -183,19 +183,19 @@ def Phase2():
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
     my_json = json.loads(singletodouble(outp.decode("utf-8")))
-    if DEBUGIT:
-        print(my_json)
     if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
-        if my_json['status'] == 'Drain':
-            return	# Go on to next phase
-        else:
-            abandon()	# Too risky to continue
+        abandon()	# Bail, there may be a good reason for the status
+    if my_json['status'] == 'Drain':
+        return	# Go on to next phase
     #
     # Look for outstanding jobs: status= NERSCRunning, count=NC
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('status=\"NERSCRunning\"'))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
-    if str(code) != 0:
+    if int(code) != 0:
+        print('Nrun check', str(outp))
+        print(str(erro))
+        print(str(code))
         return
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
@@ -210,41 +210,47 @@ def Phase2():
     #
     #
     #  slurm query for running jobs
-    command = [squeue, '-h', '-o', '\"%.18i %.8j %.2t %.10M %.42k %R\"', 'icecubed']
+    command = [squeue, '-h', '-o', '\"%.18i %.8j %.2t %.10M %.42k %R\"', '-M', 'escori', '-u', 'icecubed']
     outp, erro, code = getoutputerrorsimplecommand(command, 2)
-    if str(code) != 0:
+    if int(code) != 0:
+        print('Step 3', str(outp), str(erro), str(code))
         return		# Why didn't we get an answer?  Try again later
     #
     lines = str(outp).splitlines()
     # WARNING:  If the new rucio interface submits jobs under icecubed too, I'll need
     #  to count just _my_ jobs and not rely on the total number.
     #   if count of running jobs is equal to NC, return
-    if len(lines) >= numberJobs:
+    # Note:  There is a header line saying "CLUSTER: escori" so we always get N+1 lines
+    if len(lines) > numberJobs:
+        print('Step 5: # lines=', len(lines))
         return		# Everything is still running, nothing finished
     #
     if DEBUGIT:
-        print(len(bundleJobJson))
     for bjson in bundleJobJson:
         # Check that either:
         #   a) the bundle name is in the slurm list
         #   b) the bundle name is in a completed log file
+        # THIS ASSUMES THAT THE LOG FILE INCLUDES THE BUNDLE NAME!
         logfiles, logerr, logstat = getoutputerrorsimplecommand(['ls', logdir], 1)
-        if str(logstat) != 0:
+        if int(logstat) != 0:
             print(logdir + ' access timed out')
             return	# Why didn't we get an answer, since filesystem is there?
+        loglines = logfiles.decode("utf-8").splitlines()
+        #
         foundfile = ''
         barename = bjson['idealName'].split('/')[-1]
-        for line in lines:
+        for aline in loglines:
+            line = str(aline)
             if barename in line:
                 foundfile = line
         # ??? No log file ???
         if foundfile == '':
-            print(bjson['idealName'])	# log this in email
+            print('No log file found for ', bjson['idealName'])	# log this in email
             flagBundleError(bjson['bundleStatus_id'])
             return	# Something is gravely wrong
         # OK, open the log file
         try:
-            filepointer = open(foundfile, 'r')
+            filepointer = open(logdir + '/' + foundfile, 'r')
             filelines = filepointer.readlines()
             filepointer.close()
         except:
@@ -256,9 +262,16 @@ def Phase2():
         # Parse the log file for the size of the file in HPSS
         foundsize = -1
         for fline in filelines:
-            if barename in fline:
+            if barename in fline and ' icecubed ' in fline:
                 fwords = fline.split()
-                foundsize = int(fwords[4])
+                if len(fwords) < 5:
+                    print('Wrong line in file', fline)
+                else:
+                    try:
+                        foundsize = int(fwords[4])
+                    except:
+                        print('Failed to get 5th word as int', fwords)
+                        abandon()
         if foundsize != int(bjson['size']):
             print(bjson['idealName'], foundsize, 'is not ', str(bjson['size']))
             flagBundleError(bjson['bundleStatus_id'])
@@ -269,37 +282,39 @@ def Phase2():
         #  move the old slurm log file to OLD
         #  nextfile
         posturl = copy.deepcopy(basicposturl)
-        sqlcom = 'SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
+        sqlcom = 'UPDATE BundleStatus SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
         posturl.append(targetupdatebundle + mangle(sqlcom))
         outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-        if str(code) != 0:
+        if int(code) != 0:
             # Try again
+            print('First try', str(outp), str(erro), str(code))
             outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-            if str(code) != 0:
+            if int(code) != 0:
                 print('code failure for ', bjson['bundleStatus_id'])
                 flagBundleError(bjson['bundleStatus_id'])
                 return      # Something is puzzlingly wrong
-        if str(outp) == 'OK':
-            command = [mv, foundfile, logdir + '/OLD/']
+        if len(outp) == 0:
+            command = [mv, logdir + '/' + foundfile, logdir + '/OLD/']
             noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
-            if str(ncode) != 0:
+            if int(ncode) != 0:
                 noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
-                if str(ncode) != 0:
+                if int(ncode) != 0:
                     print('Cannot move ', foundfile)
                     continue
             command = [rm, SCRATCHROOT + bjson['idealName']]
             noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
-            if str(ncode) != 0:
+            if int(ncode) != 0:
                 noutp, nerro, ncode = getoutputerrorsimplecommand(command, 1)
-                if str(ncode) != 0:
+                if int(ncode) != 0:
                     print('Cannot rm ', SCRATCHROOT + bjson['idealName'])
                     continue
         else:   # if str(outp) is not OK
-            print(str(outp))
+            print('Not OK??', str(outp))
             # We had a communication error?
             outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
             if str(outp) != 'OK':
                 cerr = 'Problem executing ' + posturl[-1]
+                print(cerr)
                 posturl = copy.deepcopy(basicposturl).append(targetupdateerror + mangle(cerr))
                 outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
                 # If I'm getting communication errors on this too, nothing to do
@@ -387,9 +402,10 @@ def Phase3():
             print('badFlag for', str(key))
             flagBundleError(key)
             abandon()
+        barename = scratchname.split('/')[-1]
         command = [sbatch, 
                    '--comment=\"' + scratchname + '\"',
-                   '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out',
+                   '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-' + barename + '-%j.out',
                    '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname]        
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
         if int(code) != 0:

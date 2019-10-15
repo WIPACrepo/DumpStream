@@ -381,9 +381,11 @@ def updatenerscerror(estring):
     newstr = newstr + ' VALUES (\'' + revisedstring + '\',\'' + stuff[0]['localError'] + '\','
     newstr = newstr + str(stuff[0]['nerscSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
-    print(newstr)
+    if DEBUGDB:
+        print(newstr)
     stuff = insert_db_final(newstr)
-    print(stuff)
+    if DEBUGDB:
+        print(stuff)
     # Put in sanity checking
     return 'OK'
 
@@ -399,9 +401,11 @@ def resetnerscerror():
     newstr = newstr + ' VALUES (\'\',\'' + stuff[0]['localError'] + '\','
     newstr = newstr + str(stuff[0]['nerscSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
-    print(newstr)
+    if DEBUGDB:
+        print(newstr)
     stuff = insert_db_final(newstr)
-    print(stuff)
+    if DEBUGDB:
+        print(stuff)
     # Put in sanity checking
     return 'OK'
 # Insert a row updating the "localerror" for NERSC control.  This is
@@ -489,9 +493,10 @@ def nersctake(estring):
 #@app.route("/nersctokenrelease", methods=["POST"])
 @app.route("/nersctokenrelease/", methods=["POST"])
 def nerscrelease():
-    answer = query_db_final('UPDATE Token SET hostname=\'\',lastChangeTime=datetime(\'now\',\'localtime\')')
+    answer = insert_db_final('UPDATE Token SET hostname=\'\',lastChangeTime=datetime(\'now\',\'localtime\')')
     if len(answer) > 1:
-        print(len(answer), str(answer), 'DID IT RELEASE?')
+        if DEBUGIT:
+            print(len(answer), str(answer), 'DID IT RELEASE?')
         return "BUSY"
     return "OK"
 
@@ -547,17 +552,17 @@ def getalluntouched():
 @app.route("/bundles/specified/<estring>", methods=["GET"])
 def getspecified(estring):
     if not estring:
+        print('getspecified, no estring')
         qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC LIMIT 1'
         stuff = query_db_final(qstring)
         # sanity checking?
         return stuff[0]
     unstring = kludgequote(unmangle(estring))
-    #print(unstring)
+    print('getspecified', unstring)
     qstring = 'SELECT * FROM BundleStatus WHERE {}'.format(unstring)
     try:
-        #print(qstring)
         stuff = query_db_final(qstring)
-        if len(stuff) > 0:
+        if len(str(stuff)) > 0:
             return str(stuff)
         else:
             return ""
@@ -591,7 +596,7 @@ def addbundle(estring):
     try:
         fjson = (json.loads(backagain))
     except:
-        print(backagain)
+        print('addbundle', backagain)
         return "Not valid json"
     #
     #print(type(fjson))
@@ -620,11 +625,11 @@ def addbundle(estring):
         stuff = query_db(qstring)
         #print(stuff)
     except:
-        print("Some kind of error")
+        print("addbundle: Some kind of error")
         return "Not OK"
     if len(stuff) > 1:
         if stuff[0]['bundleStatus_id']:
-            print("No already existing")
+            print("addbundle: No already existing")
             return "already exists, insert forbidden"
     initialstring = "INSERT INTO BundleStatus (localName,idealName,size,checksum,UUIDJade,UUIDGlobus,useCount,status) VALUES"
     # Sanity check
@@ -639,7 +644,7 @@ def addbundle(estring):
     stuff = insert_db_final(initialstring)
     if len(stuff) > 1:
         #What went wrong?
-        print(str(stuff))
+        print('addbundle', str(stuff))
         return 'FAILURE? ' + str(stuff)
     return 'OK done'
 
@@ -652,7 +657,7 @@ def gettree(estring):
     try:
         stuff = query_db_final(initialstring)
     except:
-        print("Failed to query")
+        print("gettree: Failed to query")
         stuff = ''
     return str(stuff)
 
@@ -667,29 +672,29 @@ def fiddling(estring):
     try:
         fjson = (json.loads(backagain))
     except:
-        print(backagain)
+        print('fiddling', backagain)
         return "Problem with json.loads"
     try:
         for x in fjson:
-            print("{} had {}".format(x, fjson[x]))
+            print("fiddling: {} had {}".format(x, fjson[x]))
         #return "OK"
     except:
         return "Problem with extraction of json"
     lname = fjson['localName']
     qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
-    print(qstring)
+    print('fiddling', qstring)
     try:
         stuff = query_db(qstring)
-        print(stuff)
+        print('fiddling returns:', stuff)
     except:
-        print("Some kind of error")
+        print("fiddling: Some kind of error")
         return "Not OK"
     #
     qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
     stuff = query_db(qstring)
     for indb in stuff[0]:
         if stuff[0][indb] != fjson[indb]:
-            print(indb, stuff[0][indb], fjson[indb])
+            print('fiddling', indb, stuff[0][indb], fjson[indb])
     return "OK done"
 
 #####
