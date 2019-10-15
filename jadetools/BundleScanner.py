@@ -788,7 +788,7 @@ def Phase4():
 #   check if local file exists
 #     if yes, execute a delete
 #     reset the status to LocalDeleted
-Phase5()
+def Phase5():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpinfo)
     answer = massage(getoutputsimplecommandtimeout(geturl, 1))
@@ -804,7 +804,7 @@ Phase5()
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)
         return
-    if len(answer) = 0:
+    if len(answer) == 0:
         return	# Nothing to do
     jjanswer = json.loads(singletodouble(answer))
     numwaiting = len(jjanswer)
@@ -830,7 +830,7 @@ Phase5()
             continue
         key = js['bundleStatus_id']
         posturl = copy.deepcopy(basicposturl)
-        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}.format(key)
+        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
         posturl.append(targetupdatebundle + mangle(comd))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         if len(answer) > 0:
@@ -847,5 +847,7 @@ Phase3()
 print('Done w/3 checking for new local files to transfer')
 Phase4()
 print('Done w/4 submitting new files to jade')
-Phase5()
+#Phase5()
+# Phase5 does not work unless we have write access to the bundles'
+#  scratch filesystem, and jade-lta does not.
 print('Done w/5 deleting local copies of successful transfers')
