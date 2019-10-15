@@ -558,7 +558,7 @@ def getspecified(estring):
         # sanity checking?
         return stuff[0]
     unstring = kludgequote(unmangle(estring))
-    print('getspecified', unstring)
+    #print('getspecified', unstring)
     qstring = 'SELECT * FROM BundleStatus WHERE {}'.format(unstring)
     try:
         stuff = query_db_final(qstring)
@@ -567,7 +567,7 @@ def getspecified(estring):
         else:
             return ""
     except:
-        print('getspecified', qstring, str(stuff))
+        print('getspecified problem:', qstring, str(stuff))
         return ""
 
 # Update the specified bundle.  Wants the bundleStatus_id
@@ -577,14 +577,13 @@ def updatebundle(estring):
     # of horrors are possible
     unstring = kludgequote(unmangle(estring))
     try:
-        print('updatebundle with', unstring)
         stuff = insert_db_final(unstring)
         if len(stuff) > 0:
             return str(stuff)
         else:
             return ""
     except:
-        print("Failed with", unstring)
+        print("updatebundle Failed with", unstring)
         return ""
 
 ### Insertion methods for bundles.  These aren't updates, but new bundles

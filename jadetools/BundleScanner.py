@@ -1,3 +1,4 @@
+# BundleScanner.py (.base)
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
@@ -78,10 +79,10 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetbundleinfo = curltargethost + 'bundles/specified/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetupdatebundleerr = curltargethost + 'updatebundleerr/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
@@ -196,7 +197,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         return 'TIMEOUT', 'TIMEOUT', 1
     except Exception:
         print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", error, 1
+        return "", "", 1
 
 ######
 # Write out information.  Utility in case I want to do
@@ -780,8 +781,71 @@ def Phase4():
 #   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 #   Create a .json file for this bundle in GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JsonMade' 
+#
+# Check CandC for Run or Drain
+# Get list of files with NERSCClean set
+# foreach file in that list
+#   check if local file exists
+#     if yes, execute a delete
+#     reset the status to LocalDeleted
+Phase5()
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpinfo)
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    janswer = json.loads(singletodouble(answer))
+    # I know a priori there is only one return line
+    status = janswer['status']
+    if status != 'Run' and status != 'Drain':
+        return		# Don't load more in the globus pipeline
+    #
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetfindbundles + mangle('status=\"NERSCClean\"'))
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
+        print('Phase 5 failure with', geturl)
+        return
+    if len(answer) = 0:
+        return	# Nothing to do
+    jjanswer = json.loads(singletodouble(answer))
+    numwaiting = len(jjanswer)
+    # Sanity check
+    if numwaiting <= 0:
+        # This should not happen, but maybe the json isn't understood
+        print('Phase 5 json is empty', str(answer))
+        return
+    for js in jjanswer:
+        try:
+            localname = js['localName']
+        except:
+            print('Phase 5: problem with getting info from', js)
+            continue
+        try:
+            command = [ls, localname]
+            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            if int(code) == 0:
+                command = [rm, localname]
+                outp, erro, code = getoutputerrorsimplecommand(command, 1)
+        except:
+            print('Phase 5: I do not see the file, or else deleting it fails', localname)
+            continue
+        key = js['bundleStatus_id']
+        posturl = copy.deepcopy(basicposturl)
+        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}.format(key)
+        posturl.append(targetupdatebundle + mangle(comd))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        if len(answer) > 0:
+            print('Phase 5: failed to set status=LocalDeleted for', localname)
+            continue 
+    return
 Phase0()
+print('Done w/0, checking space usage')
 Phase1()
+print('Done w/1, checking for jade failed transfers')
 Phase2()
+print('Done w/2 checking for jade completed transfers')
 Phase3()
+print('Done w/3 checking for new local files to transfer')
 Phase4()
+print('Done w/4 submitting new files to jade')
+Phase5()
+print('Done w/5 deleting local copies of successful transfers')
