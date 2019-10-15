@@ -80,7 +80,6 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetbundleinfo = curltargethost + 'bundles/specified/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
@@ -309,7 +308,7 @@ def flagBundleRunning(key):
     comstring = mangle('UPDATE BundleStatus SET status=\'NERSCRunning\' WHERE bundleStatus_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    if 'OK' not in str(outp):
+    if len(outp) > 0:
         print('Failure in updating BundleStatus to NERSCRunning for', str(key))
     return
 
@@ -319,7 +318,7 @@ def flagBundleDone(key):
     comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundleStatus_id={}'.format(key))
     posturl.append(targetupdatebundle + comstring)
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    if 'OK' not in str(outp):
+    if len(outp) > 0:
         print('Failure in updating BundleStatus to NERSCDone for', str(key))
     return
 
@@ -482,7 +481,6 @@ def Phase2():
         print('Step 5: # lines=', len(lines))
         return		# Everything is still running, nothing finished
     #
-    if DEBUGIT:
     for bjson in bundleJobJson:
         # Check that either:
         #   a) the bundle name is in the slurm list
@@ -661,7 +659,7 @@ def Phase3():
             abandon()
         barename = scratchname.split('/')[-1]
         command = [sbatch, 
-                   '--comment=\"' + scratchname + '\"',
+                   '--comment=\"' + barename + '\"',
                    '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-' + barename + '-%j.out',
                    '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname]        
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
