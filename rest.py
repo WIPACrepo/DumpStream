@@ -486,10 +486,10 @@ def nersctake(estring):
             return "BUSY"
 
 # Release the token
-@app.route("/nersctokenrelease", methods=["POST"])
+#@app.route("/nersctokenrelease", methods=["POST"])
 @app.route("/nersctokenrelease/", methods=["POST"])
 def nerscrelease():
-    answer = query_db('UPDATE Token SET hostname=\"\",lastChangeTime=datetime(\'now\',\'localtime\')')
+    answer = query_db_final('UPDATE Token SET hostname=\'\',lastChangeTime=datetime(\'now\',\'localtime\')')
     if len(answer) > 1:
         print(len(answer), str(answer), 'DID IT RELEASE?')
         return "BUSY"
@@ -519,7 +519,7 @@ def senseheartbeats():
 ### Bundle methods
 
 # Get the oldest untouched bundle.  I.E. -- the next one to start processing
-@app.route("/bundles/oldestuntouched", methods=["GET"])
+#@app.route("/bundles/oldestuntouched", methods=["GET"])
 @app.route("/bundles/oldestuntouched/", methods=["GET"])
 def getoldestuntouched():
     qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC LIMIT 1'
@@ -531,7 +531,7 @@ def getoldestuntouched():
 
 
 # Get the untouched bundles, in order of decreasing age
-@app.route("/bundles/alluntouched", methods=["GET"])
+#@app.route("/bundles/alluntouched", methods=["GET"])
 @app.route("/bundles/alluntouched/", methods=["GET"])
 def getalluntouched():
     qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC'
@@ -562,7 +562,7 @@ def getspecified(estring):
         else:
             return ""
     except:
-        print(str(stuff))
+        print('getspecified', qstring, str(stuff))
         return ""
 
 # Update the specified bundle.  Wants the bundleStatus_id

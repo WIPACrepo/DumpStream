@@ -1,3 +1,4 @@
+# NERSC_Client.py.base => NERSC_Client.py
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
@@ -275,7 +276,6 @@ def abandon():
     # Ask for a 30-second timeout, in case of network issues
     answer = getoutputsimplecommandtimeout(posturl, 30)
     # If this fails, I can't update anything anyway
-    print(str(answer))
     if 'OK' not in str(answer):
         print('abandon fails with', str(answer))
     sys.exit(1)
@@ -287,7 +287,7 @@ def release():
     answer = getoutputsimplecommandtimeout(posturl, 30)
     # If this fails, I can't update anything anyway
     if 'OK' not in str(answer):
-        print('abandon fails with', str(answer))
+        print('release fails with', str(answer))
     sys.exit(1)
 
 
@@ -303,6 +303,25 @@ def flagBundleError(key):
     posturl.append(targetupdateerror + mangle('Error'))
     outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     return 
+# Announce that it is running
+def flagBundleRunning(key):
+    posturl = copy.deepcopy(basicposturl)
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCRunning\' WHERE bundle_status_id={}'.format(key))
+    posturl.append(targetupdatebundle + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    if 'OK' not in str(outp):
+        print('Failure in updating BundleStatus to NERSCRunning for', str(key))
+    return
+
+# Announce that it is done
+def flagBundleRunning(key):
+    posturl = copy.deepcopy(basicposturl)
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundle_status_id={}'.format(key))
+    posturl.append(targetupdatebundle + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    if 'OK' not in str(outp):
+        print('Failure in updating BundleStatus to NERSCDone for', str(key))
+    return
 
 ########################################################
 #
@@ -412,7 +431,11 @@ def Phase2():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetnerscinfo)
     outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
-    if str(code) != 0:
+    if int(code) != 0:
+        if DEBUGIT:
+            print('Phase2-output=', str(outp))
+            print(str(erro))
+            print(str(code))
         return
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
@@ -548,7 +571,7 @@ def Phase3():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('status = \"PushDone\"'))
     listofbundles = getoutputsimplecommandtimeout(geturl, 30)
-    if listofbundles == "":
+    if len(listofbundles) == 0:
         return		# Nothing to do
     #
     # count the slurm jobs active and log files open
@@ -597,7 +620,11 @@ def Phase3():
     ##           update bundle info with new status
     ##           if count >= SLURMCOUNT
     ##               DONE with this phase
-    my_json = json.loads(singletodouble(listofbundles.decode("utf-8")))
+    try:
+        my_json = json.loads(singletodouble(listofbundles.decode("utf-8")))
+    except:
+        print('Phase3 json fail', listofbundles)
+        abandon()
     for bundle in my_json:
         idealName = bundle['idealName']
         size = int(bundle['size'])
@@ -617,8 +644,10 @@ def Phase3():
             print('badFlag for', str(key))
             flagBundleError(key)
             abandon()
-        command = [sbatch, '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname,
-                   '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out']        
+        command = [sbatch, 
+                   '--comment=\"' + scratchname + '\"',
+                   '-o', '/global/homes/i/icecubed/SLURMLOGS/slurm-%j.out',
+                   '/global/homes/i/icecubed/SLURMLOGS/xfer_put.sh', scratchname]        
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
         if int(code) != 0:
             badFlag = True
@@ -627,6 +656,7 @@ def Phase3():
             print('badFlag2 for', str(key))
             flagBundleError(key)
             abandon()
+        flagBundleRunning(key)
         activeSlurm = activeSlurm + 1
         if activeSlurm >= SLURMCUT:
             return	# Cannot launch any more
@@ -637,11 +667,11 @@ def Phase3():
 # MAIN PROGRAM
 print('Starting')
 Phase0()
-print('done w/ 0')
+print('done w/ 0: Token negotiation')
 Phase1()
-print('done w/ 1')
+print('done w/ 1:  Checking for problems')
 Phase2()
-print('done w/ 2')
+print('done w/ 2:  Checking for complete copy to HPSS')
 Phase3()
-print('done w/ 3')
+print('done w/ 3:  Checking for files to be copied')
 release()
