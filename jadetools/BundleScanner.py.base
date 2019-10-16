@@ -6,7 +6,7 @@ import sys
 #SUPERIMPORT CODE_utils.py
 #SUPERIMPORT CODE_db.py
 
-
+DEBUGIT = False
 ########################################################
 # Define Phases for Main
 
@@ -486,16 +486,21 @@ def Phase5():
             continue 
     return
 Phase0()
-print('Done w/0, checking space usage')
+if DEBUGIT:
+    print('Done w/0, checking space usage')
 Phase1()
-print('Done w/1, checking for jade failed transfers')
+if DEBUGIT:
+    print('Done w/1, checking for jade failed transfers')
 Phase2()
-print('Done w/2 checking for jade completed transfers')
+if DEBUGIT:
+    print('Done w/2 checking for jade completed transfers')
 Phase3()
-print('Done w/3 checking for new local files to transfer')
+if DEBUGIT:
+    print('Done w/3 checking for new local files to transfer')
 Phase4()
-print('Done w/4 submitting new files to jade')
+if DEBUGIT:
+    print('Done w/4 submitting new files to jade')
 #Phase5()
 # Phase5 does not work unless we have write access to the bundles'
 #  scratch filesystem, and jade-lta does not.
-print('Done w/5 deleting local copies of successful transfers')
+#print('Done w/5 deleting local copies of successful transfers')

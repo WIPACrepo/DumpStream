@@ -1,7 +1,18 @@
 import sys
+import datetime
 #SUPERIMPORT IMPORT_utils.py
 
 #SUPERIMPORT CODE_utils.py
+
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 
 ########################################################
 # Main
@@ -19,7 +30,8 @@ else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
     nstats = (my_json['status'] + ' | ' + my_json['nerscError'] + ' | '
-              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime']))
+              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
+              + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
 logit('NERSCStatus= ', nstats)
 
 
@@ -37,6 +49,7 @@ else:
     if my_json['hostname'] != '':
         tname = my_json['hostname']
     nstats = tname + ' at ' + str(my_json['lastChangeTime'])
+    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('NERSCToken= ', nstats)
 
 ####
@@ -55,6 +68,7 @@ else:
         #print(chunk)
         my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
         nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
+        nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('NERSCHeartbeats= ', nstats)
 
 
@@ -71,6 +85,7 @@ else:
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
     nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
               + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
+    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('LocalStatus= ', nstats)
 
 

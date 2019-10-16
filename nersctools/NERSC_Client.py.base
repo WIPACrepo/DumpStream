@@ -3,7 +3,7 @@ import sys
 #SUPERIMPORT IMPORT_utils.py
 import socket
 
-DEBUGIT = True
+DEBUGIT = False
 
 #####
 #SUPERIMPORT CODE_utils.py.shift
@@ -124,14 +124,14 @@ def Phase1():
     cases = outp.splitlines()
     #if DEBUGIT:
     #    print(cases[1])
+    value1 = 0.
+    value2 = 0.
     for p in cases:
         q = str(p)
         #if DEBUGIT:
         #    print('q',q)
         if q.find('cscratch1') > 0:
             words = q.split()
-            value1 = 0.
-            value2 = 0.
             for sn in snames:
                 if sn in words[1]:
                     value1 = scales[sn]*float(words[1].split(sn)[0])
@@ -204,8 +204,8 @@ def Phase2():
     bundleJobJson = json.loads(singletodouble(outp.decode("utf-8")))
     numberJobs = len(bundleJobJson)
     if numberJobs == 0:
-        if DEBUGIT:
-            print('No jobs to do')
+        #if DEBUGIT:
+        #    print('No jobs to do')
         return		# skip to the next phase
     #
     #
@@ -222,12 +222,20 @@ def Phase2():
     #   if count of running jobs is equal to NC, return
     # Note:  There is a header line saying "CLUSTER: escori" so we always get N+1 lines
     if len(lines) > numberJobs:
-        print('Step 5: # lines=', len(lines))
+        if DEBUGIT:
+            print('Step 5: # lines=', len(lines))
         return		# Everything is still running, nothing finished
     #
     for bjson in bundleJobJson:
+        barename = bjson['idealName'].split('/')[-1]
         # Check that either:
         #   a) the bundle name is in the slurm list
+        inProcess = False
+        for qline in lines:
+            if barename in str(qline):
+                inProcess = True
+        if inProcess:
+            continue	# Don't bother with this yet
         #   b) the bundle name is in a completed log file
         # THIS ASSUMES THAT THE LOG FILE INCLUDES THE BUNDLE NAME!
         logfiles, logerr, logstat = getoutputerrorsimplecommand(['ls', logdir], 1)
@@ -237,7 +245,6 @@ def Phase2():
         loglines = logfiles.decode("utf-8").splitlines()
         #
         foundfile = ''
-        barename = bjson['idealName'].split('/')[-1]
         for aline in loglines:
             line = str(aline)
             if barename in line:
@@ -353,17 +360,6 @@ def Phase3():
     if activeSlurm >= SLURMCUT:
         return		# #copy jobs is bottleneck.  Wait till something ends
     #
-    # Check the log files, just in case ?
-    # command = [logdir + 'summary']
-    # outp, erro, code = getoutputsimplecommandtimeout(command, 2)
-    # try:
-    #     logcount = int(str(outp).split()[0])
-    #     donecount = int(str(outp).split()[1])
-    # except:
-    #     print("Failed to get log info")
-    # if logcount - donecount > activeSlurm:
-    #     print("unfinished jobs > active jobs", str(logcount), str(donecount))
-    #
     ####
     ## foreach file
     ##    create scratch file name
@@ -387,7 +383,7 @@ def Phase3():
         size = int(bundle['size'])
         key = bundle['bundleStatus_id']
         scratchname = SCRATCHROOT + idealName
-        print(scratchname)
+        #print(scratchname)
         command = ['ls', '-go', scratchname]
         outp, erro, code = getoutputerrorsimplecommand(command, 5)
         badFlag = False
@@ -423,13 +419,18 @@ def Phase3():
 
 ############
 # MAIN PROGRAM
-print('Starting')
+if DEBUGIT:
+    print('Starting')
 Phase0()
-print('done w/ 0: Token negotiation')
+if DEBUGIT:
+    print('done w/ 0: Token negotiation')
 Phase1()
-print('done w/ 1:  Checking for problems')
+if DEBUGIT:
+    print('done w/ 1:  Checking for problems')
 Phase2()
-print('done w/ 2:  Checking for complete copy to HPSS')
+if DEBUGIT:
+    print('done w/ 2:  Checking for complete copy to HPSS')
 Phase3()
-print('done w/ 3:  Checking for files to be copied')
+if DEBUGIT:
+    print('done w/ 3:  Checking for files to be copied')
 release()

@@ -1,4 +1,5 @@
 import sys
+import datetime
 # IMPORT_utils.py
 # Assumes "import sys"
 import site
@@ -13,6 +14,7 @@ import uuid
 #####
 # Define some constants
 REPLACESTRING = '+++'
+REPLACENOT = '==='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 DEBUGPROCESS = False
@@ -21,7 +23,7 @@ FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
-DEBUGLOCAL = True
+DEBUGLOCAL = False
 if DEBUGLOCAL:
     sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
     rm = '/home/jbellinger/archivecontrol/nersctools/rm'
@@ -74,10 +76,10 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetbundleinfo = curltargethost + 'bundles/specified/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetupdatebundleerr = curltargethost + 'updatebundleerr/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
@@ -104,20 +106,20 @@ BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERS
 
 # String manipulation stuff
 def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING)
+    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/')
+    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangls(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@')
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -192,7 +194,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         return 'TIMEOUT', 'TIMEOUT', 1
     except Exception:
         print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", error, 1
+        return "", "", 1
 
 ######
 # Write out information.  Utility in case I want to do
@@ -236,7 +238,7 @@ def massage(answer):
 
 
 def globusjson(uuid, localdir, remotesystem, idealdir): 
-    outputinfo='{\n'
+    outputinfo = '{\n'
     outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
     outputinfo = outputinfo + '  \"version\": 1,\n'
     outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
@@ -258,6 +260,16 @@ def globusjson(uuid, localdir, remotesystem, idealdir):
     outputinfo = outputinfo + '}'
     return outputinfo
 
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
+
 ########################################################
 # Main
 
@@ -274,7 +286,8 @@ else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
     nstats = (my_json['status'] + ' | ' + my_json['nerscError'] + ' | '
-              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime']))
+              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
+              + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
 logit('NERSCStatus= ', nstats)
 
 
@@ -292,6 +305,7 @@ else:
     if my_json['hostname'] != '':
         tname = my_json['hostname']
     nstats = tname + ' at ' + str(my_json['lastChangeTime'])
+    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('NERSCToken= ', nstats)
 
 ####
@@ -310,6 +324,7 @@ else:
         #print(chunk)
         my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
         nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
+        nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('NERSCHeartbeats= ', nstats)
 
 
@@ -326,6 +341,7 @@ else:
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
     nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
               + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
+    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('LocalStatus= ', nstats)
 
 
