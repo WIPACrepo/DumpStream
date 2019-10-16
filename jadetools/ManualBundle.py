@@ -391,7 +391,7 @@ def Phase5():
             print('Phase 5: problem with getting info from', js)
             continue
         print('Candidate for removal', localname)
-    shortanswer = input('OK to remove the above? y/Y').lower()
+    shortanswer = input('OK to remove the above? y/Y ').lower()
     if len(shortanswer) <= 0:
         return			# Don't do anything
     if shortanswer[0] != 'y':
