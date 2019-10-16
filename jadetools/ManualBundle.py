@@ -404,21 +404,21 @@ def Phase5():
             print('Phase 5: problem with getting info from', js)
             continue
         try:
-            command = [ls, localname]
+            command = ['/usr/bin/ls', localname]
             outp, erro, code = getoutputerrorsimplecommand(command, 1)
             if int(code) == 0:
-                command = [rm, localname]
+                command = ['/usr/bin/rm', localname]
                 outp, erro, code = getoutputerrorsimplecommand(command, 1)
         except:
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
         posturl = copy.deepcopy(basicposturl)
-        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
+        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE bundleStatus_id={}'.format(key)
         posturl.append(targetupdatebundle + mangle(comd))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         if len(answer) > 0:
-            print('Phase 5: failed to set status=LocalDeleted for', localname)
+            print('Phase 5: failed to set status=LocalDeleted for', localname, answer)
             continue 
     return
 

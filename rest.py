@@ -513,7 +513,7 @@ def tokenusage():
 @app.route("/heartbeatinfo/", methods=["GET"])
 def senseheartbeats():
     answer = query_db('SELECT hostname,lastChangeTime FROM Heartbeats')
-    print(answer)
+    #print(answer)
     if len(answer) < 1:
         return ""
     return str(answer)
