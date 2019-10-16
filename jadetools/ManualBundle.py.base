@@ -1,0 +1,78 @@
+# ManualBundle.py (.base)
+import sys
+#SUPERIMPORT IMPORT_utils.py
+#SUPERIMPORT IMPORT_db.py
+
+#SUPERIMPORT CODE_utils.py
+#SUPERIMPORT CODE_db.py
+
+DEBUGIT = False
+########################################################
+# Define Phases for Main.  In this case, only the last phase
+#  is relevant--the rest can be done on jade-lta.  This can
+#  be done on a cobalt (~jbellinger/archivemonitor)
+# This is NOT invoked automatically by cron, so some safety
+#  features can be omitted:  e.g. whether the status is Run
+#  or Halt or Drain.
+
+def Phase5():
+    #
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetfindbundles + mangle('status=\"NERSCClean\"'))
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
+        print('Phase 5 failure with', geturl)
+        return
+    if len(answer) == 0:
+        return	# Nothing to do
+    jjanswer = json.loads(singletodouble(answer))
+    numwaiting = len(jjanswer)
+    # Sanity check
+    if numwaiting <= 0:
+        # This should not happen, but maybe the json isn't understood
+        print('Phase 5 json is empty', str(answer))
+        return
+    for js in jjanswer:
+        try:
+            localname = js['localName']
+        except:
+            print('Phase 5: problem with getting info from', js)
+            continue
+        print('Candidate for removal', localname)
+    shortanswer = input('OK to remove the above? y/Y').lower()
+    if len(shortanswer) <= 0:
+        return			# Don't do anything
+    if shortanswer[0] != 'y':
+        return			# Don't do anything
+    #
+    for js in jjanswer:
+        try:
+            localname = js['localName']
+        except:
+            print('Phase 5: problem with getting info from', js)
+            continue
+        try:
+            command = [ls, localname]
+            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            if int(code) == 0:
+                command = [rm, localname]
+                outp, erro, code = getoutputerrorsimplecommand(command, 1)
+        except:
+            print('Phase 5: I do not see the file, or else deleting it fails', localname)
+            continue
+        key = js['bundleStatus_id']
+        posturl = copy.deepcopy(basicposturl)
+        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
+        posturl.append(targetupdatebundle + mangle(comd))
+        answer = getoutputsimplecommandtimeout(posturl, 1)
+        if len(answer) > 0:
+            print('Phase 5: failed to set status=LocalDeleted for', localname)
+            continue 
+    return
+
+###############
+# Main
+
+Phase5()
+# Phase5 does not work unless we have write access to the bundles'
+#  scratch filesystem, and jade-lta does not.
