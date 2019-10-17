@@ -373,7 +373,7 @@ def Phase1():
         AbortFlag = True
         NERSCErrorString = NERSCErrorString + 'SLURM Not Working '
     # Now check the quota
-    command = [myquota]
+    command = ['/usr/bin/myquota', '-G', '/global/cscratch1/sd/icecubed']
     outp, erro, code = getoutputerrorsimplecommand(command, 15)
     #if DEBUGIT:
     #    print('myquota', outp)
@@ -399,7 +399,7 @@ def Phase1():
     except:
         print('value1, value2', value1, value2)
     if freespace < FREECUTNERSC:
-        NERSCErrorString = NERSCErrorString + 'Low Scratch Space '
+        NERSCErrorString = NERSCErrorString + 'Low Scratch Space ' + str(freespace) + ' '
         # This does not require us to quit, since we're draining the
         # scratch
     posturl = copy.deepcopy(basicposturl)
@@ -411,7 +411,12 @@ def Phase1():
     if 'OK' not in str(answer):
         print('Not OK somehow', str(answer))
         AbortFlag = True
-
+    posturl = copy.deepcopy(basicposturl)
+    posturl.append(targetnerscpool + mangle(str(freespace)))
+    answer = getoutputsimplecommandtimeout(posturl, 30)
+    if 'OK' not in str(answer):
+        print('Not OK somehow', str(answer))
+        AbortFlag = True
     #
     if AbortFlag:
         if DEBUGIT:

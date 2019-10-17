@@ -4,6 +4,8 @@ import datetime
 
 #SUPERIMPORT CODE_utils.py
 
+USEHEARTBEATS = False
+
 def deltaT(oldtimestring):
     current = datetime.datetime.now()
     try:
@@ -54,22 +56,23 @@ logit('NERSCToken= ', nstats)
 
 ####
 # NERSC heartbeats
-geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetheartbeatinfo)
-outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-nstats = ''
-if int(code) != 0:
-    nstats = 'DB Failure'
-else:
-    trialbunch = stringtodict(str(outp))
-    #print(trialbunch)
-    nstats = 'Beats: '
-    for chunk in trialbunch:
-        #print(chunk)
-        my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
-        nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
-        nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
-logit('NERSCHeartbeats= ', nstats)
+if USEHEARTBEATS:
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetheartbeatinfo)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    nstats = ''
+    if int(code) != 0:
+        nstats = 'DB Failure'
+    else:
+        trialbunch = stringtodict(str(outp))
+        #print(trialbunch)
+        nstats = 'Beats: '
+        for chunk in trialbunch:
+            #print(chunk)
+            my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
+            nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
+            nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
+    logit('NERSCHeartbeats= ', nstats)
 
 
 ####
