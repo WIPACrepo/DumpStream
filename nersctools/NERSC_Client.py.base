@@ -6,7 +6,7 @@ import socket
 DEBUGIT = False
 
 #####
-#SUPERIMPORT CODE_utils.py.shift
+#SUPERIMPORT CODE_utils.py
 
 def myhostname():
     return socket.gethostname().split('.')[0]
