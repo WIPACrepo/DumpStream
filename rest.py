@@ -295,23 +295,26 @@ def updatedumpreset():
 # This is a debugging entry.  Delete at leisure
 @app.route("/dumpcontrol/<listostuff>", methods=["GET", "POST"])
 def dumpcontrol(listostuff):
-    print('dumpcontrol/', listostuff + '===')
-    for i in request.args:
-        print(i)
-    newlistostuff = reslash(listostuff)
-    if len(newlistostuff) > 0:
-        print(newlistostuff)
+    if DEBUGDB:
+        print('dumpcontrol/', listostuff + '===')
+        for i in request.args:
+            print(i)
+        newlistostuff = reslash(listostuff)
+        if len(newlistostuff) > 0:
+            print(newlistostuff)
+        else:
+            print("listostuff was empty")
+        curdb = get_db()
+        try:
+            poolsize = int(newlistostuff)
+            stuff = query_db('SELECT * from DumpCandC WHERE bundlePoolSize> ' + newlistostuff + ' order by dumpCandC_id DESC limit 1')
+        except:
+            stuff = query_db('SELECT status,bundlePoolSize from DumpCandC order by dumpCandC_id DESC limit 1')
+        if len(stuff) <= 0:
+            return ''
+        return stuff[0]
     else:
-        print("listostuff was empty")
-    curdb = get_db()
-    try:
-        poolsize = int(newlistostuff)
-        stuff = query_db('SELECT * from DumpCandC WHERE bundlePoolSize> ' + newlistostuff + ' order by dumpCandC_id DESC limit 1')
-    except:
-        stuff = query_db('SELECT status,bundlePoolSize from DumpCandC order by dumpCandC_id DESC limit 1')
-    if len(stuff) <= 0:
         return ''
-    return stuff[0]
 
 
 ##############
@@ -348,7 +351,7 @@ def updatenerscstatus(estring):
 @app.route("/nersccontrol/update/poolsize/<estring>", methods=["POST"])
 def updatenerscpoolsize(estring):
     #
-    print('update/poolsize/', estring)
+    #print('update/poolsize/', estring)
     securityCheck()
     try:
         newint = int(estring)
@@ -554,13 +557,15 @@ def getalluntouched():
 @app.route("/bundles/specified/<estring>", methods=["GET"])
 def getspecified(estring):
     if not estring:
-        print('getspecified, no estring')
+        if DEBUGDB:
+            print('getspecified, no estring')
         qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC LIMIT 1'
         stuff = query_db_final(qstring)
         # sanity checking?
         return stuff[0]
     unstring = kludgequote(unmangle(estring))
-    #print('getspecified', unstring)
+    if DEBUGDB:
+        print('getspecified', unstring)
     qstring = 'SELECT * FROM BundleStatus WHERE {}'.format(unstring)
     try:
         stuff = query_db_final(qstring)
@@ -666,37 +671,40 @@ def gettree(estring):
 # IT DOES NOT HAVE DB INSERTION CODE
 @app.route("/debugging/<estring>", methods=["GET", "POST"])
 def fiddling(estring):
-    #print(estring)
-    #print(reslash(estring))
-    backagain = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
-    #print(backagain)
-    try:
-        fjson = (json.loads(backagain))
-    except:
-        print('fiddling', backagain)
-        return "Problem with json.loads"
-    try:
-        for x in fjson:
-            print("fiddling: {} had {}".format(x, fjson[x]))
-        #return "OK"
-    except:
-        return "Problem with extraction of json"
-    lname = fjson['localName']
-    qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
-    print('fiddling', qstring)
-    try:
+    if DEBUGDB:
+        print(estring)
+        print(reslash(estring))
+        backagain = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
+        print(backagain)
+        try:
+            fjson = (json.loads(backagain))
+        except:
+            print('fiddling', backagain)
+            return "Problem with json.loads"
+        try:
+            for x in fjson:
+                print("fiddling: {} had {}".format(x, fjson[x]))
+            #return "OK"
+        except:
+            return "Problem with extraction of json"
+        lname = fjson['localName']
+        qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
+        print('fiddling', qstring)
+        try:
+            stuff = query_db(qstring)
+            print('fiddling returns:', stuff)
+        except:
+            print("fiddling: Some kind of error")
+            return "Not OK"
+        #
+        qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
         stuff = query_db(qstring)
-        print('fiddling returns:', stuff)
-    except:
-        print("fiddling: Some kind of error")
-        return "Not OK"
-    #
-    qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
-    stuff = query_db(qstring)
-    for indb in stuff[0]:
-        if stuff[0][indb] != fjson[indb]:
-            print('fiddling', indb, stuff[0][indb], fjson[indb])
-    return "OK done"
+        for indb in stuff[0]:
+            if stuff[0][indb] != fjson[indb]:
+                print('fiddling', indb, stuff[0][indb], fjson[indb])
+        return "OK done"
+    else:
+        return 'OK done'
 
 #####
 # OK, now the main code
