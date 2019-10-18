@@ -542,6 +542,8 @@ def getalluntouched():
     qstring = 'SELECT * FROM BundleStatus WHERE status=\"Untouched\" ORDER BY bundleStatus_id ASC'
     stuff = query_db_final(qstring)
     # sanity checking?
+    if len(stuff) <= 0:
+        return ''
     if 'DOCTYPE HTML PUBLIC' in stuff[0]:
         return ['FAILURE']
     return str(stuff)

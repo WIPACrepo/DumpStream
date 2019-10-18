@@ -363,6 +363,8 @@ def Phase4():
         return
     # There may be multiple entries here
     #print(answer)
+    if len(answer) <= 0:
+        return	# silence
     jjanswer = json.loads(singletodouble(answer))
     numwaiting = len(jjanswer)
     #print(numwaiting)

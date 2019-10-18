@@ -77,13 +77,14 @@ targetfindbundles = curltargethost + 'bundles/specified/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
+targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
-targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targettokeninfo = curltargethost + 'nersctokeninfo'
+targetdumpinfo = curltargethost + 'dumpcontrol/info'
+targetbundleinfo = curltargethost + 'bundles/specified/'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
 targetupdatebundleerr = curltargethost + 'updatebundleerr/'
-targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
 targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
@@ -715,6 +716,8 @@ def Phase4():
         return
     # There may be multiple entries here
     #print(answer)
+    if len(answer) <= 0:
+        return	# silence
     jjanswer = json.loads(singletodouble(answer))
     numwaiting = len(jjanswer)
     #print(numwaiting)
