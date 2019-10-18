@@ -1,5 +1,5 @@
 #!/bin/bash
-# /opt/i3admin/dumpscripts/dumpone
+#/opt/i3admin/dumpscripts/dumpone
 
 if [[ -f /bin/head ]]; then HEAD='/bin/head'; else HEAD='/usr/bin/head'; fi
 
@@ -14,10 +14,11 @@ if [[ ${nextup} == "" ]]; then /bin/rm /opt/i3admin/dumpscripts/WORKING; exit 0;
 #
 slotspotunbiased=`/bin/echo ${nextup} | /bin/awk '{print $2;}' | /bin/sed 's/\/$//'`
 slotspotinternal=`/bin/echo ${slotspotunbiased} | /bin/sed 's/unbiased/internal-system/'`
+slotspot=`/bin/echo ${slotspotunbiased} | /bin/awk '{split($1,a,"IceCube");print a[1];}' | /bin/sed 's/^.//'`
 sdate=`/bin/date +%s`
 #
 # FIX THIS IF WE USE A DIFFERENT WAREHOUSE
-warehousetarget=`/bin/echo ${slotspotunbiased} | /bin/sed 's/\/unbiased.$//' | /bin/awk '{print "/mnt/lfs7"$1;}'`
+warehousetarget=`/bin/echo ${slotspotunbiased} | /bin/sed 's@/unbiased.$@@' | /bin/sed "s@${slotspot}@mnt/lfs7/exp/@"`
 # FIX THE ABOVE IF WE USE A DIFFERENT WAREHOUSE
 #
 sudo rsync -av ${slotspotunbiased} ${warehousetarget} >& /tmp/unbiased.${sdate}
