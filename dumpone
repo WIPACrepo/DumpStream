@@ -1,0 +1,34 @@
+#!/bin/bash
+# /opt/i3admin/dumpscripts/dumpone
+
+if [[ -f /bin/head ]]; then HEAD='/bin/head'; else HEAD='/usr/bin/head'; fi
+
+cd /opt/i3admin/dumpscripts
+if [[ -f /opt/i3admin/dumpscripts/WORKING ]]; then echo "working"; exit 0; fi
+/bin/touch /opt/i3admin/dumpscripts/WORKING
+#
+nextup=`/bin/grep NOTDONE /opt/i3admin/dumpscripts/INHAND | ${HEAD} -n1`
+echo $nextup
+# Check if we are done.
+if [[ ${nextup} == "" ]]; then /bin/rm /opt/i3admin/dumpscripts/WORKING; exit 0; fi
+#
+slotspotunbiased=`/bin/echo ${nextup} | /bin/awk '{print $2;}' | /bin/sed 's/\/$//'`
+slotspotinternal=`/bin/echo ${slotspotunbiased} | /bin/sed 's/unbiased/internal-system/'`
+sdate=`/bin/date +%s`
+#
+# FIX THIS IF WE USE A DIFFERENT WAREHOUSE
+warehousetarget=`/bin/echo ${slotspotunbiased} | /bin/sed 's/\/unbiased.$//' | /bin/awk '{print "/mnt/lfs7"$1;}'`
+# FIX THE ABOVE IF WE USE A DIFFERENT WAREHOUSE
+#
+sudo rsync -av ${slotspotunbiased} ${warehousetarget} >& /tmp/unbiased.${sdate}
+# If we hit an error, don't continue--or restart without manual intervention
+if [[ $? != 0 ]]; then echo "Failure to dump all of ${slotspotunbiased}.  Bailing"; exit 1; fi
+#
+sudo rsync -av ${slotspotinternal} ${warehousetarget} >& /tmp/internal.${sdate}
+# If we hit an error, don't continue--or restart without manual intervention
+if [[ $? != 0 ]]; then echo "Failure to dump all of ${slotspotinternal}.  Bailing"; exit 1; fi
+#
+/bin/awk -v vloc=${slotspotunbiased} '{if(index($0,vloc)>0){print "DONE",$2;}else{print $0;}}' /opt/i3admin/dumpscripts/INHAND > /opt/i3admin/dumpscripts/TEMP
+/bin/mv /opt/i3admin/dumpscripts/TEMP /opt/i3admin/dumpscripts/INHAND
+/bin/rm /opt/i3admin/dumpscripts/WORKING
+exit 0
