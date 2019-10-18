@@ -1,0 +1,5 @@
+#!/bin/bash
+cd /opt/i3admin/dumpscripts
+sdate=`/bin/date +%s`
+/opt/i3admin/dumpscripts/dumpone >& dumpone.${sdate} &
+exit 0
