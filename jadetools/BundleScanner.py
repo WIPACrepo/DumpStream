@@ -81,7 +81,6 @@ targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetbundleinfo = curltargethost + 'bundles/specified/'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
 targetupdatebundleerr = curltargethost + 'updatebundleerr/'
@@ -591,7 +590,7 @@ def Phase3():
             bigquery = 'status!=\"Abort\" AND localName IN ('
         bigquery = bigquery + '\"' + p + '\",'
         inchunkCount = inchunkCount + 1
-        if inchunkCount > 24:	# Avoid count limit
+        if inchunkCount > 15:	# Avoid count limit
             inchunkCount = 0
             # replace the last comma with a right parenthesis
             bigq = bigquery[::-1].replace(',', ')', 1)[::-1]

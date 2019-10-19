@@ -212,6 +212,8 @@ def index():
 @app.route("/dumpcontrol/info", methods=["GET", "POST"])
 def dumpcontrolinfo():
     stuff = query_db_final('SELECT * FROM DumpCandC ORDER BY dumpCandC_id DESC LIMIT 1')
+    if len(stuff) <= 0:
+        return ''
     return stuff[0]
 
 # "Update" methods
@@ -237,17 +239,17 @@ def updatedumpstatus(estring):
 
 ####
 # Insert a row updating the local pool size (should be quite large).
-#  Also serves as heartbean for the local scanning system.
+#  Also serves as heartbeat for the local scanning system.
 @app.route("/dumpcontrol/update/poolsize/<estring>", methods=["POST"])
 def updatedumppoolsize(estring):
     try:
-        newint = int(estring)
+        newint = int(estring)	# This sanitizes the input for me
     except:
         return 'Not an integer'
     getallstr = 'SELECT bundleError,status FROM DumpCandC ORDER BY dumpCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + stuff[0]['bundleError'] + '\',' + estring
+    newstr = newstr + ' VALUES (\'' + stuff[0]['bundleError'] + '\',' + str(newint)
     newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + stuff[0]['status'] + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
@@ -272,10 +274,13 @@ def updatedumpbundleerror(estring):
         berror = 'Error'
     else:
         berror = stuff[0]['status']   # If clearing it, leave the status the same
-    newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + revisedstring + '\',' + str(stuff[0]['bundlePoolSize']) + ','
-    newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
-    stuff = insert_db_final(newstr)
+    #newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
+    #newstr = newstr + ' VALUES (\'' + revisedstring + '\',' + str(stuff[0]['bundlePoolSize']) + ','
+    #newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
+    nnewstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)' + ' VALUES(?, ?, datetime(\'now\',\'localtime\'), ?)'
+    params = (revisedstring, str(stuff[0]['bundlePoolSize']), berror)
+    #stuff = insert_db_final(newstr)
+    stuff = insert_db_final(nnewstr, params)
     # Put in sanity checking
     return 'OK'
 
@@ -289,11 +294,11 @@ def updatedumpreset():
     updatestring = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status) \
         VALUES ("",' + bps + ',datetime(\'now\',\'localtime\'),"Run")'
     stuff = insert_db_final(updatestring)
-    # Put in sanity checking
+    # No outside input strings, so we should be ok
     return 'OK'
 
 # This is a debugging entry.  Delete at leisure
-@app.route("/dumpcontrol/<listostuff>", methods=["GET", "POST"])
+@app.route("/dumpcontrol/<listostuff>", methods=["GET"])
 def dumpcontrol(listostuff):
     if DEBUGDB:
         print('dumpcontrol/', listostuff + '===')
@@ -327,6 +332,8 @@ def dumpcontrol(listostuff):
 @app.route("/nersccontrol/info/", methods=["GET", "POST"])
 def nersccontrolinfo():
     stuff = query_db('SELECT * FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1')
+    if len(stuff) <= 0:
+        return ''
     return stuff[0]
 
 # Update methods
@@ -336,14 +343,15 @@ def nersccontrolinfo():
 def updatenerscstatus(estring):
     #
     if estring not in NERSCSTATI:
-        return 'Must be one of ' + str(NERSCSTATI)
+        return 'Must be one of ' + str(NERSCSTATI)	# This sanitizes the input for me
+    #
     getallstr = 'SELECT nerscSize,localError FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO NERSCandC (localError,nerscSize,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'' + stuff[0]['localError'] + '\',' + str(stuff[0]['nerscSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + estring + '\')'
     stuff = insert_db_final(newstr)
-    # Put in sanity checking
+    # Put in sanity checking?
     return 'OK'
 
 # Insert a row to update the NERSC pool size.  This also serves as a heartbeat
@@ -354,14 +362,14 @@ def updatenerscpoolsize(estring):
     #print('update/poolsize/', estring)
     securityCheck()
     try:
-        newint = int(estring)
+        newint = int(estring)	# This sanitizes the input for me
     except:
         return 'Not an integer'
     getallstr = 'SELECT localError,nerscError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'' + stuff[0]['localError'] + '\',\'' + stuff[0]['nerscError'] + '\','
-    newstr = newstr + estring
+    newstr = newstr + str(newint)
     newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + stuff[0]['status'] + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
@@ -380,13 +388,16 @@ def updatenerscerror(estring):
         berror = 'Error'
     else:
         berror = stuff[0]['status']   # If clearing it, leave the status the same
-    newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + revisedstring + '\',\'' + stuff[0]['localError'] + '\','
-    newstr = newstr + str(stuff[0]['nerscSize']) + ','
-    newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
+    #newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
+    #newstr = newstr + ' VALUES (\'' + revisedstring + '\',\'' + stuff[0]['localError'] + '\','
+    #newstr = newstr + str(stuff[0]['nerscSize']) + ','
+    #newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
+    nnewstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)' + ' VALUES(?, ?, ?, datetime(\'now\',\'localtime\'), ?)'
+    params = (revisedstring, stuff[0]['localError'], str(stuff[0]['nerscSize']), berror)
     if DEBUGDB:
         print(newstr)
-    stuff = insert_db_final(newstr)
+    #stuff = insert_db_final(newstr)
+    stuff = insert_db_final(nnewstr, params)
     if DEBUGDB:
         print(stuff)
     # Put in sanity checking
@@ -396,7 +407,7 @@ def updatenerscerror(estring):
 # status if appropriate
 @app.route("/nersccontrol/update/nerscerror/clear", methods=["POST"])
 def resetnerscerror():
-    #
+    #  All internal, so should be safe
     getallstr = 'SELECT nerscSize,localError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     berror = stuff[0]['status']   # If clearing it, leave the status the same
@@ -411,6 +422,7 @@ def resetnerscerror():
         print(stuff)
     # Put in sanity checking
     return 'OK'
+
 # Insert a row updating the "localerror" for NERSC control.  This is
 # probably going to refer to the globus transfer errors, if it is used
 # at all.  I'm wavering on it.
