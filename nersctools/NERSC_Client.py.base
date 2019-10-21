@@ -232,7 +232,7 @@ def Phase2():
         return		# Everything is still running, nothing finished
     #
     for bjson in bundleJobJson:
-        barename = bjson['idealName'].split('/')[-1]
+        barename = str(bjson['idealName']).split('/')[-1]
         # Check that either:
         #   a) the bundle name is in the slurm list
         inProcess = False

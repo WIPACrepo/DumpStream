@@ -326,7 +326,7 @@ if USEHEARTBEATS:
         for chunk in trialbunch:
             #print(chunk)
             my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
-            nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
+            nstats = nstats + '| ' + str(my_json['hostname']) + '::' + str(my_json['lastChangeTime'])
             nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
     logit('NERSCHeartbeats= ', nstats)
 
@@ -342,7 +342,7 @@ if int(code) != 0:
 else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
+    nstats = (str(my_json['status']) + ' | ' + str(my_json['bundleError']) + ' | '
               + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
     nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('LocalStatus= ', nstats)
