@@ -412,7 +412,7 @@ def resetnerscerror():
     stuff = query_db(getallstr)
     berror = stuff[0]['status']   # If clearing it, leave the status the same
     newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'\',\'' + stuff[0]['localError'] + '\','
+    newstr = newstr + ' VALUES (\'\',\'' + str(stuff[0]['localError']) + '\','
     newstr = newstr + str(stuff[0]['nerscSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
     if DEBUGDB:

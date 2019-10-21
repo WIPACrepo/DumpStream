@@ -287,7 +287,7 @@ if int(code) != 0:
 else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (my_json['status'] + ' | ' + my_json['nerscError'] + ' | '
+    nstats = (str(my_json['status']) + ' | ' + str(my_json['nerscError']) + ' | '
               + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
               + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
 logit('NERSCStatus= ', nstats)
