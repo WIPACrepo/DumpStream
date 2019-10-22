@@ -399,7 +399,7 @@ def Phase3():
             if ssize != size:
                 badFlag = True
         if badFlag:
-            print('badFlag for', str(key))
+            print('badFlag for', str(key), size, str(outp))
             flagBundleError(key)
             abandon()
         barename = scratchname.split('/')[-1]
@@ -412,7 +412,7 @@ def Phase3():
             badFlag = True
         # I may check the code in more detail later
         if badFlag:
-            print('badFlag2 for', str(key))
+            print('badFlag2 for', str(key), size, str(outp))
             flagBundleError(key)
             abandon()
         flagBundleRunning(key)

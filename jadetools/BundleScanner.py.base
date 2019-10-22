@@ -107,7 +107,7 @@ def Phase1():
             #print(type(janswer[0]),janswer[0])
             bsid = janswer[0]['bundleStatus_id']
             posturl = copy.deepcopy(basicposturl)
-            trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE BundleStatus_id=' + str(bsid)
+            trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE bundleStatus_id=' + str(bsid)
             #print(trysql)
             posturl.append(targetupdatebundle + mangle(trysql))
             answer = getoutputsimplecommandtimeout(posturl, 1)
@@ -174,7 +174,7 @@ def Phase2():
         #print(type(janswer[0]),janswer[0])
         bsid = janswer[0]['bundleStatus_id']
         posturl = copy.deepcopy(basicposturl)
-        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE BundleStatus_id=' + str(bsid)
+        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE bundleStatus_id=' + str(bsid)
         #print(trysql)
         posturl.append(targetupdatebundle + mangle(trysql))
         answer = getoutputsimplecommandtimeout(posturl, 1)
@@ -413,7 +413,7 @@ def Phase4():
             return	# Try again later
         # Now update the BundleStatus
         posturl = copy.deepcopy(basicposturl)
-        trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE BundleStatus_id='.format(jadeuuid) + str(bundle_id)
+        trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE bundleStatus_id='.format(jadeuuid) + str(bundle_id)
         #print(trysql)
         posturl.append(targetupdatebundle + mangle(trysql))
         answer = getoutputsimplecommandtimeout(posturl, 1)

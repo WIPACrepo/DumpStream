@@ -74,13 +74,13 @@ targetfindbundles = curltargethost + 'bundles/specified/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
+targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
-targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targettokeninfo = curltargethost + 'nersctokeninfo'
+targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
 targetupdatebundleerr = curltargethost + 'updatebundleerr/'
-targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
 targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
@@ -287,7 +287,7 @@ if int(code) != 0:
 else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (str(my_json['status']) + ' | ' + str(my_json['nerscError']) + ' | '
+    nstats = (my_json['status'] + ' | ' + my_json['nerscError'] + ' | '
               + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
               + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
 logit('NERSCStatus= ', nstats)
@@ -326,7 +326,7 @@ if USEHEARTBEATS:
         for chunk in trialbunch:
             #print(chunk)
             my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
-            nstats = nstats + '| ' + str(my_json['hostname']) + '::' + str(my_json['lastChangeTime'])
+            nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
             nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
     logit('NERSCHeartbeats= ', nstats)
 
@@ -342,7 +342,7 @@ if int(code) != 0:
 else:
     #print(outp)
     my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (str(my_json['status']) + ' | ' + str(my_json['bundleError']) + ' | '
+    nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
               + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
     nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('LocalStatus= ', nstats)
@@ -364,3 +364,31 @@ for opt in BundleStatusOptions:
         js = my_json[0]
         nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
+
+####
+# Do we have duplicate entries?
+
+doubles = -1
+ndoubles = ''
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetupdatebundle + mangle('SELECT status,localName,bundleStatus_id FROM BundleStatus where status not in (\"Abort\",\"LocalDeleted\")'))
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+if int(code) != 0:
+    ndoubles = 'DB Failure'
+else:
+    doubles = 0
+    bunch = []
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    for js in my_json:
+        bunch.append([os.path.basename(js['localName']), str(js['status']), str(js['bundleStatus_id'])])
+    for b in bunch:
+        ln = b[0]
+        for c in bunch:
+            if c != b:
+                if ln == c[0]:
+                    doubles = doubles + 1
+    doubles = doubles / 2
+    ndoubles = str(doubles)
+# do I want to log this at all if there's no problem?
+if doubles != 0:
+    logit('Duplicate bundle transfers=', ndoubles)

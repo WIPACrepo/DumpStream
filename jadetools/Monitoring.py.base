@@ -108,3 +108,31 @@ for opt in BundleStatusOptions:
         js = my_json[0]
         nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
+
+####
+# Do we have duplicate entries?
+
+doubles = -1
+ndoubles = ''
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetupdatebundle + mangle('SELECT status,localName,bundleStatus_id FROM BundleStatus where status not in (\"Abort\",\"LocalDeleted\")'))
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+if int(code) != 0:
+    ndoubles = 'DB Failure'
+else:
+    doubles = 0
+    bunch = []
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    for js in my_json:
+        bunch.append([os.path.basename(js['localName']), str(js['status']), str(js['bundleStatus_id'])])
+    for b in bunch:
+        ln = b[0]
+        for c in bunch:
+            if c != b:
+                if ln == c[0]:
+                    doubles = doubles + 1
+    doubles = doubles / 2
+    ndoubles = str(doubles)
+# do I want to log this at all if there's no problem?
+if doubles != 0:
+    logit('Duplicate bundle transfers=', ndoubles)
