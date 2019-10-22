@@ -82,7 +82,6 @@ targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetbundleinfo = curltargethost + 'bundles/specified/'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
 targetupdatebundleerr = curltargethost + 'updatebundleerr/'
@@ -314,6 +313,8 @@ def flagBundleRunning(key):
     return
 
 # Announce that it is done
+# I don't use this yet.  It is for the fall-between-the-cracks jobs;
+# but maybe just failing is better
 def flagBundleDone(key):
     posturl = copy.deepcopy(basicposturl)
     comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundleStatus_id={}'.format(key))
@@ -323,6 +324,16 @@ def flagBundleDone(key):
         print('Failure in updating BundleStatus to NERSCDone for', str(key))
     return
 
+
+# Announce that it is cleaned up
+def flagBundleClean(key):
+    posturl = copy.deepcopy(basicposturl)
+    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCClean\' WHERE bundleStatus_id={}'.format(key))
+    posturl.append(targetupdatebundle + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    if len(outp) > 0:
+        print('Failure in updating BundleStatus to NERSCClean for', str(key))
+    return
 ########################################################
 #
 # Separate the operation into different phases
@@ -489,7 +500,7 @@ def Phase2():
         return		# Everything is still running, nothing finished
     #
     for bjson in bundleJobJson:
-        barename = bjson['idealName'].split('/')[-1]
+        barename = str(bjson['idealName']).split('/')[-1]
         # Check that either:
         #   a) the bundle name is in the slurm list
         inProcess = False
@@ -656,7 +667,7 @@ def Phase3():
             if ssize != size:
                 badFlag = True
         if badFlag:
-            print('badFlag for', str(key))
+            print('badFlag for', str(key), size, str(outp))
             flagBundleError(key)
             abandon()
         barename = scratchname.split('/')[-1]
@@ -669,7 +680,7 @@ def Phase3():
             badFlag = True
         # I may check the code in more detail later
         if badFlag:
-            print('badFlag2 for', str(key))
+            print('badFlag2 for', str(key), size, str(outp))
             flagBundleError(key)
             abandon()
         flagBundleRunning(key)

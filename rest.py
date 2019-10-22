@@ -1,3 +1,4 @@
+# rest.py
 import sys
 import site
 python_home = '/opt/testing/rest/venv'
@@ -249,8 +250,8 @@ def updatedumppoolsize(estring):
     getallstr = 'SELECT bundleError,status FROM DumpCandC ORDER BY dumpCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + stuff[0]['bundleError'] + '\',' + str(newint)
-    newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + stuff[0]['status'] + '\')'
+    newstr = newstr + ' VALUES (\'' + str(stuff[0]['bundleError']) + '\',' + str(newint)
+    newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + str(stuff[0]['status']) + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
     return 'OK'
@@ -273,7 +274,7 @@ def updatedumpbundleerror(estring):
         # Error--change status automatically
         berror = 'Error'
     else:
-        berror = stuff[0]['status']   # If clearing it, leave the status the same
+        berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
     #newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
     #newstr = newstr + ' VALUES (\'' + revisedstring + '\',' + str(stuff[0]['bundlePoolSize']) + ','
     #newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
@@ -290,7 +291,7 @@ def updatedumpbundleerror(estring):
 def updatedumpreset():
     #
     stuff = query_db('SELECT bundlePoolSize from DumpCandC order by dumpCandC_id DESC LIMIT 1')
-    bps = stuff[0]['bundlePoolSize']
+    bps = str(stuff[0]['bundlePoolSize'])
     updatestring = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status) \
         VALUES ("",' + bps + ',datetime(\'now\',\'localtime\'),"Run")'
     stuff = insert_db_final(updatestring)
@@ -300,26 +301,7 @@ def updatedumpreset():
 # This is a debugging entry.  Delete at leisure
 @app.route("/dumpcontrol/<listostuff>", methods=["GET"])
 def dumpcontrol(listostuff):
-    if DEBUGDB:
-        print('dumpcontrol/', listostuff + '===')
-        for i in request.args:
-            print(i)
-        newlistostuff = reslash(listostuff)
-        if len(newlistostuff) > 0:
-            print(newlistostuff)
-        else:
-            print("listostuff was empty")
-        curdb = get_db()
-        try:
-            poolsize = int(newlistostuff)
-            stuff = query_db('SELECT * from DumpCandC WHERE bundlePoolSize> ' + newlistostuff + ' order by dumpCandC_id DESC limit 1')
-        except:
-            stuff = query_db('SELECT status,bundlePoolSize from DumpCandC order by dumpCandC_id DESC limit 1')
-        if len(stuff) <= 0:
-            return ''
-        return stuff[0]
-    else:
-        return ''
+    return ''
 
 
 ##############
@@ -348,7 +330,7 @@ def updatenerscstatus(estring):
     getallstr = 'SELECT nerscSize,localError FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO NERSCandC (localError,nerscSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + stuff[0]['localError'] + '\',' + str(stuff[0]['nerscSize']) + ','
+    newstr = newstr + ' VALUES (\'' + str(stuff[0]['localError']) + '\',' + str(stuff[0]['nerscSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + estring + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking?
@@ -368,9 +350,9 @@ def updatenerscpoolsize(estring):
     getallstr = 'SELECT localError,nerscError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + stuff[0]['localError'] + '\',\'' + stuff[0]['nerscError'] + '\','
+    newstr = newstr + ' VALUES (\'' + str(stuff[0]['localError']) + '\',\'' + stuff[0]['nerscError'] + '\','
     newstr = newstr + str(newint)
-    newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + stuff[0]['status'] + '\')'
+    newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + str(stuff[0]['status']) + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
     return 'OK'
@@ -387,16 +369,12 @@ def updatenerscerror(estring):
         # Error--change status automatically
         berror = 'Error'
     else:
-        berror = stuff[0]['status']   # If clearing it, leave the status the same
-    #newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
-    #newstr = newstr + ' VALUES (\'' + revisedstring + '\',\'' + stuff[0]['localError'] + '\','
-    #newstr = newstr + str(stuff[0]['nerscSize']) + ','
-    #newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
+        berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
     nnewstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)' + ' VALUES(?, ?, ?, datetime(\'now\',\'localtime\'), ?)'
-    params = (revisedstring, stuff[0]['localError'], str(stuff[0]['nerscSize']), berror)
+    params = (revisedstring, str(stuff[0]['localError']), str(stuff[0]['nerscSize']), berror)
     if DEBUGDB:
-        print(newstr)
-    #stuff = insert_db_final(newstr)
+        print(nnewstr)
+    #stuff = insert_db_final(nnewstr)
     stuff = insert_db_final(nnewstr, params)
     if DEBUGDB:
         print(stuff)
@@ -410,7 +388,7 @@ def resetnerscerror():
     #  All internal, so should be safe
     getallstr = 'SELECT nerscSize,localError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
-    berror = stuff[0]['status']   # If clearing it, leave the status the same
+    berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
     newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'\',\'' + str(stuff[0]['localError']) + '\','
     newstr = newstr + str(stuff[0]['nerscSize']) + ','
@@ -436,9 +414,9 @@ def updatenersclocalerror(estring):
         # Error--change status automatically
         berror = 'Error'
     else:
-        berror = stuff[0]['status']   # If clearing it, leave the status the same
+        berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
     newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)\
-        VALUES (\'{}\',\'{}\',{},datetime(\'now\',\'localtime\'),\'{}\')'.format(revisedstring, stuff[0]['nerscError'], str(stuff[0]['nerscSize']), berror)
+        VALUES (\'{}\',\'{}\',{},datetime(\'now\',\'localtime\'),\'{}\')'.format(revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
     stuff = insert_db_final(newstr)
     # Put in sanity checking
     return 'OK'
@@ -448,7 +426,7 @@ def updatenersclocalerror(estring):
 def updatenerscreset():
     #
     stuff = query_db('SELECT nerscSize from NERSCandC order by nerscCandC_id DESC LIMIT 1')
-    bps = stuff[0]['nerscSize']
+    bps = str(stuff[0]['nerscSize'])
     updatestring = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status) \
         VALUES ("","",{},datetime(\'now\',\'localtime\'),"Run")'.format(bps)
     stuff = insert_db_final(updatestring)
@@ -483,7 +461,7 @@ def nersctake(estring):
     if len(answer) > 1:
         print(len(answer), str(answer), 'BAD ERROR')
         # THIS IS A BAD ERROR, SHOULD NEVER HAPPEN
-        return "BUSY"
+        status = "BUSY"
     else:
         # 2 Cases:  Case 1, the string is blank.  Set it (take token), return OK
         #  Case 2, the string is not blank.  Return BUSY
@@ -496,13 +474,15 @@ def nersctake(estring):
             if len(stuff) > 1:
                 # What went wrong?
                 print(str(stuff))
-                return "BUSY"
-            return "OK"
+                status = "BUSY"
+            else:
+                status = "OK"
         else:
             # Somebody else (maybe another process on the same system?)
             # has the token
             #print('Token reply=', str(answer))
-            return "BUSY"
+            status = "BUSY"
+    return status
 
 # Release the token
 #@app.route("/nersctokenrelease", methods=["POST"])
@@ -510,7 +490,7 @@ def nersctake(estring):
 def nerscrelease():
     answer = insert_db_final('UPDATE Token SET hostname=\'\',lastChangeTime=datetime(\'now\',\'localtime\')')
     if len(answer) > 1:
-        if DEBUGIT:
+        if DEBUGDB:
             print(len(answer), str(answer), 'DID IT RELEASE?')
         return "BUSY"
     return "OK"
@@ -622,7 +602,7 @@ def addbundle(estring):
     #for x in fjson:
     #    print(x)
     try:
-        lname = fjson['localName']
+        lname = str(fjson['localName'])
     except:
         return "json does not include localName"
     # Init if not done already--this is a global
@@ -637,7 +617,7 @@ def addbundle(estring):
                 continue
             BUNDLESTATUSCOLUMNS.append(words[0])
         schem.close()
-    # 
+    #
     qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
     try:
         stuff = query_db(qstring)
@@ -646,15 +626,20 @@ def addbundle(estring):
         print("addbundle: Some kind of error")
         return "Not OK"
     if len(stuff) > 1:
-        if stuff[0]['bundleStatus_id']:
-            print("addbundle: No already existing")
+        try:
+            testid = stuff[0]['bundleStatus_id']
+            nogo = True
+        except:
+            nogo = False
+        if nogo:
+            print("addbundle: No: Already exists")
             return "already exists, insert forbidden"
     initialstring = "INSERT INTO BundleStatus (localName,idealName,size,checksum,UUIDJade,UUIDGlobus,useCount,status) VALUES"
     # Sanity check
     for inargs in fjson:
         if inargs not in BUNDLESTATUSCOLUMNS:
             return inargs + " is not a valid database column for BundleStatus"
-    initialstring = initialstring + "(\"" + fjson['localName'] + "\",\""
+    initialstring = initialstring + "(\"" + str(fjson['localName']) + "\",\""
     idealName = '/data/exp' + str(fjson['localName']).split('data/exp')[1]
     initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
     initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
