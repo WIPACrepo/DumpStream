@@ -253,14 +253,13 @@ def Phase3():
                 print('Not Found', danswer)
                 #print(bigq)
                 continue
-            else:
-                try:
-                    jjanswer = json.loads(singletodouble(danswer))
-                except:
-                    print('Failed to translate json code', danswer)
-                    return
-                for js in jjanswer:
-                    jsonList.append(js)
+            try:
+                jjanswer = json.loads(singletodouble(danswer))
+            except:
+                print('Failed to translate json code', danswer)
+                return
+            for js in jjanswer:
+                jsonList.append(js)
         #
     if inchunkCount > 0:
         bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
@@ -275,14 +274,13 @@ def Phase3():
                 print('Not Found', danswer)
                 #print('bigq=', bigq)
                 return
-            else:
-                try:
-                    jjanswer = json.loads(singletodouble(danswer))
-                except:
-                    print('Failed to translate json code', danswer)
-                    return
-                for js in jjanswer:
-                    jsonList.append(js)
+            try:
+                jjanswer = json.loads(singletodouble(danswer))
+            except:
+                print('Failed to translate json code', danswer)
+                return
+            for js in jjanswer:
+                jsonList.append(js)
 
     if len(jsonList) == 0:
         for p in candidateList:
@@ -445,7 +443,7 @@ def Phase5():
     janswer = json.loads(singletodouble(answer))
     # I know a priori there is only one return line
     status = janswer['status']
-    if status != 'Run' and status != 'Drain':
+    if status not in ('Run', 'Drain'):
         return		# Don't load more in the globus pipeline
     #
     geturl = copy.deepcopy(basicgeturl)

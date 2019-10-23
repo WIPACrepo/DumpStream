@@ -258,19 +258,21 @@ def flagBundleStatus(key, newstatus):
     posturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
     posturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorssimplecommand(posturl, 15)
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     if len(outp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
 #
+DBdatabase = None
+DBcursor = None
 ######################################################
 ######
 # DB connection established
 def getdbgen():
+    global DBdatabase
+    global DBcursor
     try:
-        global DBdatabase
-        global DBcursor
         # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
         DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
     except pymysql.OperationalError:

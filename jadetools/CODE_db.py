@@ -1,10 +1,12 @@
+DBdatabase = None
+DBcursor = None
 ######################################################
 ######
 # DB connection established
 def getdbgen():
+    global DBdatabase
+    global DBcursor
     try:
-        global DBdatabase
-        global DBcursor
         # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
         DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
     except pymysql.OperationalError:

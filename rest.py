@@ -563,8 +563,7 @@ def getspecified(estring):
         stuff = query_db_final(qstring)
         if len(str(stuff)) > 0:
             return str(stuff)
-        else:
-            return ""
+        return ""
     except:
         print('getspecified problem:', qstring, str(stuff))
         return ""
@@ -579,8 +578,7 @@ def updatebundle(estring):
         stuff = insert_db_final(unstring)
         if len(stuff) > 0:
             return str(stuff)
-        else:
-            return ""
+        return ""
     except:
         print("updatebundle Failed with", unstring)
         return ""
@@ -599,8 +597,7 @@ def updatebundlestatus(estring):
         stuff = insert_db_final(qstring, qparams)
         if len(stuff) > 0:
             return str(stuff)
-        else:
-            return ''
+        return ''
     except:
         print('updatebundlestatus Failed with', qstring, qparams)
         return 'FAILURE'
@@ -720,8 +717,7 @@ def fiddling(estring):
             if stuff[0][indb] != fjson[indb]:
                 print('fiddling', indb, stuff[0][indb], fjson[indb])
         return "OK done"
-    else:
-        return 'OK done'
+    return 'OK done'
 
 #####
 # OK, now the main code

@@ -121,31 +121,6 @@ def fromjsonquotes(strFromPost):
 def singletodouble(stringTo):
     return stringTo.replace('\'', '\"')
 
-def getoutputsimplecommand(cmd):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate()
-        if DEBUGPROCESS:
-            print("===")
-            print(output)
-            print("===")
-            print(error)
-            print("===")
-        if len(error) != 0:
-            print('ErrorA:::', cmd, '::::', error)
-            return ""
-        else:
-            return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
 # timeout is in seconds
 def getoutputsimplecommandtimeout(cmd, Timeout):
     try:
@@ -155,8 +130,7 @@ def getoutputsimplecommandtimeout(cmd, Timeout):
         if len(error) != 0:
             print('ErrorA:::', cmd, '::-::', error)
             return ""
-        else:
-            return output
+        return output
     except subprocess.CalledProcessError:
         if DEBUGPROCESS:
             print('ErrorB::::', cmd, " Failed to spawn")
@@ -200,7 +174,6 @@ def stringtodict(instring):
         return []
     countflag = 0
     initial = -1
-    final = -1
     basic = []
     for num, character in enumerate(instring):
         if character == '{':
@@ -225,11 +198,11 @@ def massage(answer):
     return relaxed
 
 
-def globusjson(uuid, localdir, remotesystem, idealdir): 
+def globusjson(localuuid, localdir, remotesystem, idealdir): 
     outputinfo = '{\n'
     outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
     outputinfo = outputinfo + '  \"version\": 1,\n'
-    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(uuid)
+    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(localuuid)
     outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
     outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
     outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
@@ -255,7 +228,7 @@ def flagBundleStatus(key, newstatus):
     posturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
     posturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorssimplecommand(posturl, 15)
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
     if len(outp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
