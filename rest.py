@@ -106,7 +106,7 @@ def init_db():
 @app.teardown_appcontext
 def close_connection(exception):
     if DEBUGDB:
-        print("Do close_connection")
+        print("Do close_connection", str(exception))
     db = getattr(Flask, '_database', None)
     if db is not None:
         if DEBUGDB:
@@ -584,6 +584,26 @@ def updatebundle(estring):
     except:
         print("updatebundle Failed with", unstring)
         return ""
+
+# Update the specified bundle's status.  Needs the bundle_status_id and the status
+@app.route("/updatebundle/status/<estring>", methods=["POST"])
+def updatebundlestatus(estring):
+    # estring format is 'newstatus key' separated by a space
+    unstring = kludgequote(unmangle(estring))
+    words = unstring.split()
+    if len(words) != 2:
+        return 'FAILURE: too many arguments'
+    qstring = 'UPDATE BundleStatus SET status=\"?\" WHERE bundleStatus_id=?'
+    qparams = (words[0], words[1])
+    try:
+        stuff = insert_db_final(qstring, qparams)
+        if len(stuff) > 0:
+            return str(stuff)
+        else:
+            return ''
+    except:
+        print('updatebundlestatus Failed with', qstring, qparams)
+        return 'FAILURE'
 
 ### Insertion methods for bundles.  These aren't updates, but new bundles
 # This needs some debugging yet.

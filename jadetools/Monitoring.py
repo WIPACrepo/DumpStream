@@ -17,41 +17,28 @@ REPLACESTRING = '+++'
 REPLACENOT = '==='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
+BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
+               'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
+               'LocalDeleted', 'Abort', 'Retry']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
 # How many slurm jobs can go at once?
 SLURMCUT = 14
-DEBUGLOCAL = False
-if DEBUGLOCAL:
-    sbatch = '/home/jbellinger/archivecontrol/nersctools/sbatch'
-    rm = '/home/jbellinger/archivecontrol/nersctools/rm'
-    hpss_avail = '/home/jbellinger/archivecontrol/nersctools/hpss_avail'
-    df = '/home/jbellinger/archivecontrol/nersctools/df'
-    mv = '/home/jbellinger/archivecontrol/nersctools/mv'
-    squeue = '/home/jbellinger/archivecontrol/nersctools/squeue'
-    myquota = '/home/jbellinger/archivecontrol/nersctools/myquota'
-    logdir = '/home/jbellinger/archivecontrol/nersctools/SLURMLOGS'
-    logdirold = '/home/jbellinger/archivecontrol/nersctools/SLURMLOGS/OLD'
-    SCRATCHROOT = '/home/jbellinger/archivecontrol/nersctools/scratch'
-    HSIROOT = '/home/jbellinger/archivecontrol/nersctools/hsi'
-    hsibase = []
-    BUNDLETREE = '/home/jbellinger/archivecontrol/jadetools/BUNDLE'
-else:
-    sbatch = '/usr/bin/sbatch'
-    rm = '/usr/bin/rm'
-    hpss_avail = '/usr/common/mss/bin/hpss_avail'
-    df = '/usr/bin/df'
-    mv = '/usr/bin/mv'
-    squeue = '/usr/bin/squeue'
-    myquota = '/usr/bin/myquota'
-    logdir = '/global/homes/i/icecubed/SLURMLOGS'
-    logdirold = '/global/homes/i/icecubed/SLURMLOGS/OLD'
-    SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
-    HSIROOT = '/home/projects/icecube'
-    hsibase = ['/usr/common/mss/bin/hsi', '-q']
-    BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
+sbatch = '/usr/bin/sbatch'
+rm = '/usr/bin/rm'
+hpss_avail = '/usr/common/mss/bin/hpss_avail'
+df = '/usr/bin/df'
+mv = '/usr/bin/mv'
+squeue = '/usr/bin/squeue'
+myquota = '/usr/bin/myquota'
+logdir = '/global/homes/i/icecubed/SLURMLOGS'
+logdirold = '/global/homes/i/icecubed/SLURMLOGS/OLD'
+SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
+HSIROOT = '/home/projects/icecube'
+hsibase = ['/usr/common/mss/bin/hsi', '-q']
+BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
 
 curlcommand = '/usr/bin/curl'
 curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
@@ -80,6 +67,7 @@ targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
 targetupdatebundle = curltargethost + 'updatebundle/'
+targetupdatebundlestatus = curltargethost + 'updatebundle/status/'
 targetupdatebundleerr = curltargethost + 'updatebundleerr/'
 targetaddbundle = curltargethost + 'addbundle/'
 targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
@@ -259,6 +247,20 @@ def globusjson(uuid, localdir, remotesystem, idealdir):
     outputinfo = outputinfo + '  \"persistent\": true\n'
     outputinfo = outputinfo + '}'
     return outputinfo
+
+# Set a bundle's status
+def flagBundleStatus(key, newstatus):
+    if str(newstatus) not in BUNDLESTATI:
+        return 'Failure', newstatus + ' is not allowed', '1'
+    posturl = copy.deepcopy(basicposturl)
+    comstring = mangle(str(newstatus) + ' ' + str(key))
+    posturl.append(targetupdatebundlestatus + comstring)
+    outp, erro, code = getoutputerrorssimplecommand(posturl, 15)
+    if len(outp) > 0:
+        print('Failure in updating Bundlestatus to ' + str(newstatus)
+              + 'for key ' + str(key) + ' : ' + str(outp))
+    return outp, erro, code
+#
 
 USEHEARTBEATS = False
 
