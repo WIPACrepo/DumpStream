@@ -1,0 +1,7 @@
+declare -i code
+cd /home/jbellinger/archivecontrol
+lastcopy=`/bin/ls -tr db.test.backup.* | /usr/bin/tail -n1`
+code=`/bin/echo ${lastcopy} | /bin/awk '{split($1,a,"db.test.backup.");print 1+int(a[2]);}'`
+if [[ ${code} -gt 9 ]]; then code=1; fi
+/bin/scp i3admin@archivecontrol:/opt/testing/rest/db.test ./db.test.backup.${code} >& /dev/null
+exit $?
