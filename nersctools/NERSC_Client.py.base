@@ -284,6 +284,17 @@ def Phase2():
             return      # Something is gravely wrong
         # Parse the log file for the size of the file in HPSS
         foundsize = -1
+        hpssFail = False
+        for fline in filelines:
+            # Check for failures first!
+            if 'Unable to authenticate'  in fline or 'HSI: error' in fline:
+                print(bjson['idealName'], 'Had HPSS error')
+                flagBundleStatus(bjson['bundleStatus_id'], 'PushDone')  # reset to try again
+                hpssFail = True
+                break
+        if hpssFail:
+            continue
+        #
         for fline in filelines:
             if barename in fline and ' icecubed ' in fline:
                 fwords = fline.split()
