@@ -12,6 +12,9 @@ DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
+# How long can we wait before halting if NERSC_Client isn't running?
+# For now, call it 2 hours
+WAITFORNERSCAFTER = 120
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 sbatch = '/usr/bin/sbatch'

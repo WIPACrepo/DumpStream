@@ -27,6 +27,9 @@ DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
+# How long can we wait before halting if NERSC_Client isn't running?
+# For now, call it 2 hours
+WAITFORNERSCAFTER = 120
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 sbatch = '/usr/bin/sbatch'
@@ -66,6 +69,7 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
+targetsetnerscstatus = curltargethost + '/nersccontrol/update/status/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
@@ -362,7 +366,26 @@ def Phase0():
                     size = int(sizeword[0:-1])  # remove trailing G
                 except:
                     ErrorString = ErrorString + ' Failed to df '
-    #print(size)
+    #
+    # Check NERSC: is the client running there?  If not, we've no idea
+    # how big the pool size is there and we should stop
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetnerscinfo)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0:
+        ErrorString = ErrorString + ' Failed to get NERSC info'
+    else:
+        try:
+            my_json = json.loads(singletodouble(outp.decode('utf-8')))
+            lastscan = deltaT(str(my_json['lastChangeTime']))
+            if lastscan > WAITFORNERSCAFTER:
+                ErrorString = ErrorString + ' No NERSC activity'
+            if str(my_json['status']) != 'Run':
+                ErrorString = ErrorString + ' NERSC not running'
+        except:
+            ErrorString = ErrorString + ' Failed to unpack NERSC info'
+    #
+    # Check for errors
     if len(ErrorString) > 0:
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(ErrorString))
@@ -378,7 +401,6 @@ def Phase0():
         posturl.append(targetsetdumperror + mangle('Failed to set poolsize'))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         return
-    return
 
 #targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 #targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
