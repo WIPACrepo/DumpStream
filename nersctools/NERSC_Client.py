@@ -28,6 +28,9 @@ DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
+# How long can we wait before halting if NERSC_Client isn't running?
+# For now, call it 2 hours
+WAITFORNERSCAFTER = 120
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 sbatch = '/usr/bin/sbatch'
@@ -67,6 +70,7 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
+targetsetnerscstatus = curltargethost + '/nersccontrol/update/status/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
@@ -332,7 +336,8 @@ def Phase1():
     NERSCErrorString = ''
     AbortFlag = False
     # First check hpss
-    command = [hpss_avail, 'hpss']
+    #command = [hpss_avail, 'hpss']
+    command = [hpss_avail, 'archive']
     outp, erro, code = getoutputerrorsimplecommand(command, 5)
     if int(code) != 0:
         AbortFlag = True

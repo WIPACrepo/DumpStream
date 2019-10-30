@@ -101,7 +101,8 @@ def Phase1():
     NERSCErrorString = ''
     AbortFlag = False
     # First check hpss
-    command = [hpss_avail, 'hpss']
+    #command = [hpss_avail, 'hpss']
+    command = [hpss_avail, 'archive']
     outp, erro, code = getoutputerrorsimplecommand(command, 5)
     if int(code) != 0:
         AbortFlag = True
