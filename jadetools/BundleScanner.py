@@ -2,6 +2,7 @@
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
+import datetime
 import site
 import json
 import urllib.parse
@@ -82,6 +83,10 @@ targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 targettree = curltargethost + '/tree/'
 targetuntouchedall = curltargethost + '/bundles/alluntouched/'
+targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
+targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
+targetbundlesworking = curltargethost + '/bundles/working'
+targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -240,6 +245,17 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
+#
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 #
 DBdatabase = None
 DBcursor = None
@@ -432,10 +448,11 @@ def Phase1():
             words = str(line).split('.json')
             filefragment = words[0]
             geturl = copy.deepcopy(basicgeturl)
-            trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
-            trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
-            #print(trysql)
-            geturl.append(targetupdatebundle + mangle(trysql))
+            #trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
+            #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
+            ##print(trysql)
+            #geturl.append(targetupdatebundle + mangle(trysql))
+            geturl.append(targetbundleinfobyjade + mangle('\"' + filefragment + '\" \"JsonMade\"'))
             answer = getoutputsimplecommandtimeout(geturl, 1)
             #danswer = answer.decode("utf-8")
             danswer = massage(answer)
@@ -457,11 +474,12 @@ def Phase1():
             #print(type(janswer),janswer)
             #print(type(janswer[0]),janswer[0])
             bsid = janswer[0]['bundleStatus_id']
-            posturl = copy.deepcopy(basicposturl)
-            trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE bundleStatus_id=' + str(bsid)
-            #print(trysql)
-            posturl.append(targetupdatebundle + mangle(trysql))
-            answer = getoutputsimplecommandtimeout(posturl, 1)
+            #posturl = copy.deepcopy(basicposturl)
+            #trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE bundleStatus_id=' + str(bsid)
+            ##print(trysql)
+            #posturl.append(targetupdatebundle + mangle(trysql))
+            #answer = getoutputsimplecommandtimeout(posturl, 1)
+            answer, erro, code = flagBundleStatus(str(bsid), 'PushProblem')
             #print(answer)
             command = ['/bin/mv', GLOBUS_PROBLEM_SPACE + '/' + str(line), GLOBUS_PROBLEM_HOLDING]
             outp, erro, code = getoutputerrorsimplecommand(command, 1)
@@ -499,10 +517,11 @@ def Phase2():
         words = str(line).split('.json')
         filefragment = words[0]
         geturl = copy.deepcopy(basicgeturl)
-        trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
-        trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
-        #print(trysql)
-        geturl.append(targetupdatebundle + mangle(trysql))
+        #trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
+        #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
+        ##print(trysql)
+        #geturl.append(targetupdatebundle + mangle(trysql))
+        geturl.append(targetbundleinfobyjade + mangle('\"' + filefragment + '\" \"JsonMade\"'))
         answer = getoutputsimplecommandtimeout(geturl, 1)
         #danswer = answer.decode("utf-8")
         danswer = massage(answer)
@@ -524,11 +543,12 @@ def Phase2():
         #print(type(janswer),janswer)
         #print(type(janswer[0]),janswer[0])
         bsid = janswer[0]['bundleStatus_id']
-        posturl = copy.deepcopy(basicposturl)
-        trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE bundleStatus_id=' + str(bsid)
-        #print(trysql)
-        posturl.append(targetupdatebundle + mangle(trysql))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        #posturl = copy.deepcopy(basicposturl)
+        #trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE bundleStatus_id=' + str(bsid)
+        ##print(trysql)
+        #posturl.append(targetupdatebundle + mangle(trysql))
+        #answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = flagBundleStatus(str(bsid), 'PushDone')
         #print(answer)
         command = ['/bin/mv', GLOBUS_DONE_SPACE + '/' + str(line), GLOBUS_DONE_HOLDING]
         outp, erro, code = getoutputerrorsimplecommand(command, 1)
@@ -762,9 +782,10 @@ def Phase4():
             return	# Try again later
         # Now update the BundleStatus
         posturl = copy.deepcopy(basicposturl)
-        trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE bundleStatus_id='.format(jadeuuid) + str(bundle_id)
-        #print(trysql)
-        posturl.append(targetupdatebundle + mangle(trysql))
+        #trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE bundleStatus_id='.format(jadeuuid) + str(bundle_id)
+        ##print(trysql)
+        #posturl.append(targetupdatebundle + mangle(trysql))
+        posturl.append(targetupdatebundlestatusuuid + mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
         answer = getoutputsimplecommandtimeout(posturl, 1)
         # Not checking answer is probably a bad thing hereJNB
         continue
@@ -828,10 +849,11 @@ def Phase5():
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
-        posturl = copy.deepcopy(basicposturl)
-        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
-        posturl.append(targetupdatebundle + mangle(comd))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        #posturl = copy.deepcopy(basicposturl)
+        answer, erro, code = flagBundleStatus(key, 'LocalDeleted')
+        #comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
+        #posturl.append(targetupdatebundle + mangle(comd))
+        #answer = getoutputsimplecommandtimeout(posturl, 1)
         if len(answer) > 0:
             print('Phase 5: failed to set status=LocalDeleted for', localname)
             continue 

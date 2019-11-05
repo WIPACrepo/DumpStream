@@ -2,6 +2,7 @@
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
+import datetime
 import site
 import json
 import urllib.parse
@@ -83,6 +84,10 @@ targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 targettree = curltargethost + '/tree/'
 targetuntouchedall = curltargethost + '/bundles/alluntouched/'
+targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
+targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
+targetbundlesworking = curltargethost + '/bundles/working'
+targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -241,6 +246,17 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
+#
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 #
 
 def myhostname():
@@ -270,49 +286,6 @@ def release():
 
 
 
-# I will do this enough to demand a utility for it
-def flagBundleError(key):
-    posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCProblem\' WHERE bundleStatus_id={}'.format(key))
-    posturl.append(targetupdatebundle + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    # Set NERSC status to Error also
-    posturl = copy.deepcopy(basicposturl)
-    posturl.append(targetupdateerror + mangle('Error'))
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    return 
-# Announce that it is running
-def flagBundleRunning(key):
-    posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCRunning\' WHERE bundleStatus_id={}'.format(key))
-    posturl.append(targetupdatebundle + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    if len(outp) > 0:
-        print('Failure in updating BundleStatus to NERSCRunning for', str(key))
-    return
-
-# Announce that it is done
-# I don't use this yet.  It is for the fall-between-the-cracks jobs;
-# but maybe just failing is better
-def flagBundleDone(key):
-    posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCDone\' WHERE bundleStatus_id={}'.format(key))
-    posturl.append(targetupdatebundle + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    if len(outp) > 0:
-        print('Failure in updating BundleStatus to NERSCDone for', str(key))
-    return
-
-
-# Announce that it is cleaned up
-def flagBundleClean(key):
-    posturl = copy.deepcopy(basicposturl)
-    comstring = mangle('UPDATE BundleStatus SET status=\'NERSCClean\' WHERE bundleStatus_id={}'.format(key))
-    posturl.append(targetupdatebundle + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
-    if len(outp) > 0:
-        print('Failure in updating BundleStatus to NERSCClean for', str(key))
-    return
 ########################################################
 #
 # Separate the operation into different phases
@@ -505,7 +478,7 @@ def Phase2():
         # ??? No log file ???
         if foundfile == '':
             print('No log file found for ', bjson['idealName'])	# log this in email
-            flagBundleError(bjson['bundleStatus_id'])
+            outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCProblem')
             return	# Something is gravely wrong
         # OK, open the log file
         try:
@@ -516,7 +489,7 @@ def Phase2():
             filelines = []
         if len(filelines) == 0:
             print(bjson['idealName'], foundfile, 'is empty')   # log this in email
-            flagBundleError(bjson['bundleStatus_id'])
+            outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCProblem')
             return      # Something is gravely wrong
         # Parse the log file for the size of the file in HPSS
         foundsize = -1
@@ -525,7 +498,7 @@ def Phase2():
             # Check for failures first!
             if 'Unable to authenticate'  in fline or 'HSI: error' in fline:
                 print(bjson['idealName'], 'Had HPSS error')
-                flagBundleStatus(bjson['bundleStatus_id'], 'PushDone')  # reset to try again
+                outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'PushDone')  # reset to try again
                 hpssFail = True
                 break
         if hpssFail:
@@ -544,24 +517,25 @@ def Phase2():
                         abandon()
         if foundsize != int(bjson['size']):
             print(bjson['idealName'], foundsize, 'is not ', str(bjson['size']))
-            flagBundleError(bjson['bundleStatus_id'])
+            outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCProblem')
             return      # Something is puzzlingly wrong
         # If here, the job is done and the hpss size matches the expected 
         #  log NERSCClean for this file
         #  delete the scratch file
         #  move the old slurm log file to OLD
         #  nextfile
-        posturl = copy.deepcopy(basicposturl)
-        sqlcom = 'UPDATE BundleStatus SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
-        posturl.append(targetupdatebundle + mangle(sqlcom))
-        outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+        #posturl = copy.deepcopy(basicposturl)
+        #sqlcom = 'UPDATE BundleStatus SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
+        #posturl.append(targetupdatebundle + mangle(sqlcom))
+        #outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+        outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCClean')
         if int(code) != 0:
             # Try again
             print('First try', str(outp), str(erro), str(code))
             outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
             if int(code) != 0:
                 print('code failure for ', bjson['bundleStatus_id'])
-                flagBundleError(bjson['bundleStatus_id'])
+                outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCProblem')
                 return      # Something is puzzlingly wrong
         if len(outp) == 0:
             command = [mv, logdir + '/' + foundfile, logdir + '/OLD/']
@@ -659,7 +633,7 @@ def Phase3():
                 badFlag = True
         if badFlag:
             print('badFlag for', str(key), size, str(outp))
-            flagBundleError(key)
+            outp, erro, code = flagBundleStatus(key, 'NERSCProblem')
             abandon()
         barename = scratchname.split('/')[-1]
         command = [sbatch, 
@@ -672,9 +646,9 @@ def Phase3():
         # I may check the code in more detail later
         if badFlag:
             print('badFlag2 for', str(key), size, str(outp))
-            flagBundleError(key)
+            outp, erro, code = flagBundleStatus(key, 'NERSCProblem')
             abandon()
-        flagBundleRunning(key)
+        outp, erro, code = flagBundleStatus(key, 'NERSCRunning')
         activeSlurm = activeSlurm + 1
         if activeSlurm >= SLURMCUT:
             return	# Cannot launch any more

@@ -1,20 +1,9 @@
 import sys
-import datetime
 #SUPERIMPORT IMPORT_utils.py
 
 #SUPERIMPORT CODE_utils.py
 
 USEHEARTBEATS = False
-
-def deltaT(oldtimestring):
-    current = datetime.datetime.now()
-    try:
-        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
-        difference = current - oldt
-        delta = int(difference.seconds/60 + difference.days*60*24)
-    except:
-        delta = -1
-    return delta
 
 ########################################################
 # Main
@@ -98,7 +87,7 @@ logit('LocalStatus= ', nstats)
 nstats = ''
 for opt in BundleStatusOptions:
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetupdatebundle + mangle('SELECT COUNT(*) FROM BundleStatus where status = \"' + opt + '\"'))
+    geturl.append(targetbundlestatuscount + mangle(opt))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
     #print(outp)
     if int(code) != 0:
@@ -115,7 +104,7 @@ logit('BundleStatusCounts= ', nstats)
 doubles = -1
 ndoubles = ''
 geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetupdatebundle + mangle('SELECT status,localName,bundleStatus_id FROM BundleStatus where status not in (\"Abort\",\"LocalDeleted\")'))
+geturl.append(targetbundlesworking)
 outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
 if int(code) != 0:
     ndoubles = 'DB Failure'

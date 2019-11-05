@@ -10,7 +10,7 @@ site_packages = python_home + '/lib/python%s/site-packages' % python_version
 #site.addsitedir(site_packages)
 
 # Remember original sys.path.
-if site_packages not in list(sys.path):
+if not site_packages in list(sys.path):
     site.addsitedir(site_packages)
 
 #############################3
@@ -27,6 +27,9 @@ REPLACESTRING = '+++'
 REPLACENOT = '==='
 DUMPSTATI = ['Run', 'Halt', 'Drain', 'Error']
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
+BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
+               'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
+               'LocalDeleted', 'Abort', 'Retry']
 BUNDLESTATUSCOLUMNS = []
 DEBUGDB = False
 
@@ -292,16 +295,14 @@ def updatedumpreset():
     #
     stuff = query_db('SELECT bundlePoolSize from DumpCandC order by dumpCandC_id DESC LIMIT 1')
     bps = str(stuff[0]['bundlePoolSize'])
+    #updatestring = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status) \
+    #    VALUES ("",' + bps + ',datetime(\'now\',\'localtime\'),"Run")'
     updatestring = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status) \
-        VALUES ("",' + bps + ',datetime(\'now\',\'localtime\'),"Run")'
-    stuff = insert_db_final(updatestring)
+        VALUES ("",?,datetime(\'now\',\'localtime\'),"Run")'
+    params = (bps, )
+    stuff = insert_db_final(updatestring, params)
     # No outside input strings, so we should be ok
     return 'OK'
-
-# This is a debugging entry.  Delete at leisure
-@app.route("/dumpcontrol/<listostuff>", methods=["GET"])
-def dumpcontrol(listostuff):
-    return ''
 
 
 ##############
@@ -374,7 +375,6 @@ def updatenerscerror(estring):
     params = (revisedstring, str(stuff[0]['localError']), str(stuff[0]['nerscSize']), berror)
     if DEBUGDB:
         print(nnewstr)
-    #stuff = insert_db_final(nnewstr)
     stuff = insert_db_final(nnewstr, params)
     if DEBUGDB:
         print(stuff)
@@ -415,9 +415,12 @@ def updatenersclocalerror(estring):
         berror = 'Error'
     else:
         berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
+    #newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)\
+    #    VALUES (\'{}\',\'{}\',{},datetime(\'now\',\'localtime\'),\'{}\')'.format(revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
     newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)\
-        VALUES (\'{}\',\'{}\',{},datetime(\'now\',\'localtime\'),\'{}\')'.format(revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
-    stuff = insert_db_final(newstr)
+        VALUES (?,?,?,datetime(\'now\',\'localtime\'),?)'
+    params = (revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
+    stuff = insert_db_final(newstr, params)
     # Put in sanity checking
     return 'OK'
 
@@ -426,10 +429,10 @@ def updatenersclocalerror(estring):
 def updatenerscreset():
     #
     stuff = query_db('SELECT nerscSize from NERSCandC order by nerscCandC_id DESC LIMIT 1')
-    bps = str(stuff[0]['nerscSize'])
     updatestring = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status) \
-        VALUES ("","",{},datetime(\'now\',\'localtime\'),"Run")'.format(bps)
-    stuff = insert_db_final(updatestring)
+        VALUES ("","",?,datetime(\'now\',\'localtime\'),"Run")'
+    params = (str(stuff[0]['nerscSize']),)
+    stuff = insert_db_final(updatestring, params)
     # Put in sanity checking
     return 'OK'
 
@@ -439,15 +442,16 @@ def updatenerscreset():
 
 @app.route("/nerscheartbeat/<estring>", methods=["GET", "POST"])
 def nerscheartbeat(estring):
+    params = (estring,)
     if request.method == 'GET':
-        sstring = 'SELECT * FROM Heartbeats where hostname=\"{}\"'.format(estring)
-        stuff = query_db_final(sstring)
+        sstring = 'SELECT * FROM Heartbeats where hostname=?'
+        stuff = query_db_final(sstring, params)
         #stuff = query_db('SELECT * FROM Heartbeats where hostname=\"' + estring + '\"')
         if len(stuff) == 0:
             return "404 Not Found"
         return stuff[0]    # Let the remote user figure it out.  Keep it simple
-    sstring = 'UPDATE Heartbeats set lastChangeTime=datetime(\'now\',\'localtime\') WHERE hostname=\"{}\"'.format(estring)
-    stuff = insert_db_final(sstring)
+    sstring = 'UPDATE Heartbeats set lastChangeTime=datetime(\'now\',\'localtime\') WHERE hostname=\"?\"'
+    stuff = insert_db_final(sstring, params)
     if len(stuff) == 0:
         return ""
     return stuff[0]
@@ -469,8 +473,9 @@ def nersctake(estring):
         fjson = answer[0]  #json.loads(singletodouble(answer[0]))
         #if str(answer[0]) == '':
         if fjson['hostname'] == '':
-            string = 'UPDATE Token SET hostname=\"{}\",lastChangeTime=datetime(\'now\',\'localtime\')'.format(estring)
-            stuff = insert_db_final(string)
+            params = (estring,)
+            string = 'UPDATE Token SET hostname=?,lastChangeTime=datetime(\'now\',\'localtime\')'
+            stuff = insert_db_final(string, params)
             if len(stuff) > 1:
                 # What went wrong?
                 print(str(stuff))
@@ -556,17 +561,89 @@ def getspecified(estring):
         # sanity checking?
         return stuff[0]
     unstring = kludgequote(unmangle(estring))
+    params = (unstring,)
     if DEBUGDB:
         print('getspecified', unstring)
-    qstring = 'SELECT * FROM BundleStatus WHERE {}'.format(unstring)
+    qstring = 'SELECT * FROM BundleStatus WHERE ?'
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('getspecified problem:', qstring, params, str(stuff))
+        return ""
+
+# Update the specified bundle with new status and jade uuid
+@app.route("/updatebundle/statusuuid/<estring>", methods=["POST"])
+def updatebundlestatusuuid(estring):
+    unstring = kludgequote(unmangle(estring))
+    words = unstring.split()
+    if len(words) != 3:
+        print('updatebundlestatusuuid got', words)
+        return 'FAILURE'
+    qstring = 'UPDATE BundleStatus SET status=?,UUIDJade=? WHERE bundleStatus_id=?'
+    params = (words[0], words[1], words[2])
+    try:
+        stuff = insert_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('updatebundlestatusuuid problem:', qstring, params, str(stuff))
+        return ""
+
+# Get information about the specified bundle, knowing the UUIDJade name
+@app.route("/bundles/infobyjade/<estring>", methods=["GET"])
+def getinfobyjade(estring):
+    unstring = kludgequote(unmangle(estring))
+    words = unstring.split()
+    if len(words) == 1:
+        qstring = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE UUIDJade=?'
+        params = (words[0],)
+    else:
+        qstring = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE UUIDJade=? AND status=?'
+        params = (words[0], words[1])
+    try:
+        stuff = insert_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('getinfobyjade problem:', qstring, params, str(stuff))
+        return ""
+
+
+# Get the count of the bundle status type specified
+@app.route("/bundles/statuscount/<estring>", methods=["GET"])
+def getstatuscount(estring):
+    unstring = kludgequote(unmangle(estring))
+    if not unstring in BUNDLESTATI:
+        return 'Invalid status: ' + unstring
+    qstring = 'SELECT COUNT(*) FROM BundleStatus WHERE bundleStatus_id=?'
+    params = (unstring,)
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('getstatuscount problem:', qstring, params, str(stuff))
+        return ""
+
+# Get partial info about all bundles not done or abandoned
+@app.route("/bundles/working", methods=["GET"])
+def getworking():
+    qstring = 'SELECT status,localName,bundleStatus_id FROM BundleStatus WHERE status NOT IN (\'Abort\',\'LocalDeleted\')'
     try:
         stuff = query_db_final(qstring)
         if len(str(stuff)) > 0:
             return str(stuff)
         return ""
     except:
-        print('getspecified problem:', qstring, str(stuff))
+        print('getworking problem:', qstring, str(stuff))
         return ""
+
 
 # Update the specified bundle.  Wants the bundleStatus_id
 @app.route("/updatebundle/<estring>", methods=["GET", "POST"])
@@ -591,7 +668,7 @@ def updatebundlestatus(estring):
     words = unstring.split()
     if len(words) != 2:
         return 'FAILURE: too many arguments'
-    qstring = 'UPDATE BundleStatus SET status=\"?\" WHERE bundleStatus_id=?'
+    qstring = 'UPDATE BundleStatus SET status=? WHERE bundleStatus_id=?'
     qparams = (words[0], words[1])
     try:
         stuff = insert_db_final(qstring, qparams)
@@ -635,9 +712,10 @@ def addbundle(estring):
             BUNDLESTATUSCOLUMNS.append(words[0])
         schem.close()
     #
-    qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
+    params = (lname,)
+    qstring = 'SELECT * FROM BundleStatus WHERE localName=?'
     try:
-        stuff = query_db(qstring)
+        stuff = query_db(qstring, params)
         #print(stuff)
     except:
         print("addbundle: Some kind of error")
@@ -654,14 +732,16 @@ def addbundle(estring):
     initialstring = "INSERT INTO BundleStatus (localName,idealName,size,checksum,UUIDJade,UUIDGlobus,useCount,status) VALUES"
     # Sanity check
     for inargs in fjson:
-        if inargs not in BUNDLESTATUSCOLUMNS:
+        if not inargs in BUNDLESTATUSCOLUMNS:
             return inargs + " is not a valid database column for BundleStatus"
-    initialstring = initialstring + "(\"" + str(fjson['localName']) + "\",\""
     idealName = '/data/exp' + str(fjson['localName']).split('data/exp')[1]
-    initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
-    initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
+    #initialstring = initialstring + "(\"" + str(fjson['localName']) + "\",\""
+    #initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
+    #initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
+    initialstring = initialstring + "(?,?,?,?,\"\",\"\",1,\"Untouched\")"
+    params = (str(fjson['localName']), idealName, str(fjson['size']), str(fjson['checksum']))
     #print(initialstring)
-    stuff = insert_db_final(initialstring)
+    stuff = insert_db_final(initialstring, params)
     if len(stuff) > 1:
         #What went wrong?
         print('addbundle', str(stuff))
@@ -672,10 +752,10 @@ def addbundle(estring):
 @app.route("/tree/<estring>", methods=["GET"])
 def gettree(estring):
     # Only load this database table manually
-    ultimate = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
-    initialstring = "SELECT treetop FROM Trees WHERE ultimate=" + ultimate
+    params = (urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'),)
+    initialstring = "SELECT treetop FROM Trees WHERE ultimate=?"
     try:
-        stuff = query_db_final(initialstring)
+        stuff = query_db_final(initialstring, params)
     except:
         print("gettree: Failed to query")
         stuff = ''
@@ -701,23 +781,24 @@ def fiddling(estring):
             #return "OK"
         except:
             return "Problem with extraction of json"
-        lname = fjson['localName']
-        qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
+        params = (fjson['localName'],)
+        qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=?'
         print('fiddling', qstring)
         try:
-            stuff = query_db(qstring)
+            stuff = query_db(qstring, params)
             print('fiddling returns:', stuff)
         except:
             print("fiddling: Some kind of error")
             return "Not OK"
         #
-        qstring = 'SELECT * FROM BundleStatus WHERE localName=\"{}\"'.format(lname)
-        stuff = query_db(qstring)
+        qstring = 'SELECT * FROM BundleStatus WHERE localName=?'
+        stuff = query_db(qstring, params)
         for indb in stuff[0]:
             if stuff[0][indb] != fjson[indb]:
                 print('fiddling', indb, stuff[0][indb], fjson[indb])
         return "OK done"
     return 'OK done'
+
 
 #####
 # OK, now the main code

@@ -1,7 +1,7 @@
 import sys
-import datetime
 # IMPORT_utils.py
 # Assumes "import sys"
+import datetime
 import site
 import json
 import urllib.parse
@@ -24,6 +24,9 @@ DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
+# How long can we wait before halting if NERSC_Client isn't running?
+# For now, call it 2 hours
+WAITFORNERSCAFTER = 120
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 sbatch = '/usr/bin/sbatch'
@@ -63,6 +66,7 @@ targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
 targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
 targetnerscinfo = curltargethost + 'nersccontrol/info/'
+targetsetnerscstatus = curltargethost + '/nersccontrol/update/status/'
 targettokeninfo = curltargethost + 'nersctokeninfo'
 targetdumpinfo = curltargethost + 'dumpcontrol/info'
 targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
@@ -75,6 +79,10 @@ targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 targettree = curltargethost + '/tree/'
 targetuntouchedall = curltargethost + '/bundles/alluntouched/'
+targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
+targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
+targetbundlesworking = curltargethost + '/bundles/working'
+targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -233,10 +241,8 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
 #
-
-USEHEARTBEATS = False
-
 def deltaT(oldtimestring):
     current = datetime.datetime.now()
     try:
@@ -246,6 +252,9 @@ def deltaT(oldtimestring):
     except:
         delta = -1
     return delta
+#
+
+USEHEARTBEATS = False
 
 ########################################################
 # Main
@@ -329,7 +338,7 @@ logit('LocalStatus= ', nstats)
 nstats = ''
 for opt in BundleStatusOptions:
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetupdatebundle + mangle('SELECT COUNT(*) FROM BundleStatus where status = \"' + opt + '\"'))
+    geturl.append(targetbundlestatuscount + mangle(opt))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
     #print(outp)
     if int(code) != 0:
@@ -346,7 +355,7 @@ logit('BundleStatusCounts= ', nstats)
 doubles = -1
 ndoubles = ''
 geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetupdatebundle + mangle('SELECT status,localName,bundleStatus_id FROM BundleStatus where status not in (\"Abort\",\"LocalDeleted\")'))
+geturl.append(targetbundlesworking)
 outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
 if int(code) != 0:
     ndoubles = 'DB Failure'

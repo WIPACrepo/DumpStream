@@ -67,6 +67,10 @@ targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 targettree = curltargethost + '/tree/'
 targetuntouchedall = curltargethost + '/bundles/alluntouched/'
+targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
+targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
+targetbundlesworking = curltargethost + '/bundles/working'
+targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -225,4 +229,15 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
+#
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 #
