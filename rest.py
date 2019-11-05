@@ -617,10 +617,10 @@ def getinfobyjade(estring):
 # Get the count of the bundle status type specified
 @app.route("/bundles/statuscount/<estring>", methods=["GET"])
 def getstatuscount(estring):
-    unstring = kludgequote(unmangle(estring))
+    unstring = str(kludgequote(unmangle(estring)))
     if not unstring in BUNDLESTATI:
         return 'Invalid status: ' + unstring
-    qstring = 'SELECT COUNT(*) FROM BundleStatus WHERE bundleStatus_id=?'
+    qstring = 'SELECT COUNT(*) FROM BundleStatus WHERE status=?'
     params = (unstring,)
     try:
         stuff = query_db_final(qstring, params)
