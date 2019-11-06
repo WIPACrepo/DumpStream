@@ -452,7 +452,7 @@ def Phase1():
             #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
             ##print(trysql)
             #geturl.append(targetupdatebundle + mangle(trysql))
-            geturl.append(targetbundleinfobyjade + mangle('\"' + filefragment + '\" \"JsonMade\"'))
+            geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
             answer = getoutputsimplecommandtimeout(geturl, 1)
             #danswer = answer.decode("utf-8")
             danswer = massage(answer)
@@ -466,7 +466,7 @@ def Phase1():
             #print(type(danswer),danswer)
             janswer = json.loads(singletodouble(danswer))
             if len(janswer) <= 0:
-                ErrorString = ErrorString + ' No DB info for ' + str(filefragment)
+                ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
                 break
             if len(janswer) > 1:
                 ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
@@ -521,7 +521,7 @@ def Phase2():
         #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
         ##print(trysql)
         #geturl.append(targetupdatebundle + mangle(trysql))
-        geturl.append(targetbundleinfobyjade + mangle('\"' + filefragment + '\" \"JsonMade\"'))
+        geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
         answer = getoutputsimplecommandtimeout(geturl, 1)
         #danswer = answer.decode("utf-8")
         danswer = massage(answer)
@@ -535,7 +535,7 @@ def Phase2():
         #print(type(danswer),danswer)
         janswer = json.loads(singletodouble(danswer))
         if len(janswer) <= 0:
-            ErrorString = ErrorString + ' No DB info for ' + str(filefragment)
+            ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
             break
         if len(janswer) > 1:
             ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
