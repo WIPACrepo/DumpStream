@@ -49,6 +49,7 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -95,7 +96,7 @@ def unslash(strWithSlashes):
 def reslash(strWithoutSlashes):
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
-def unmangls(strFromPost):
+def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')

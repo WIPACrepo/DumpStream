@@ -2,6 +2,7 @@
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
+import datetime
 import site
 import json
 import urllib.parse
@@ -24,6 +25,9 @@ DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
 FREECUTNERSC = 500
+# How long can we wait before halting if NERSC_Client isn't running?
+# For now, call it 2 hours
+WAITFORNERSCAFTER = 120
 # How many slurm jobs can go at once?
 SLURMCUT = 14
 sbatch = '/usr/bin/sbatch'
@@ -76,6 +80,10 @@ targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
 targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
 targettree = curltargethost + '/tree/'
 targetuntouchedall = curltargethost + '/bundles/alluntouched/'
+targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
+targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
+targetbundlesworking = curltargethost + '/bundles/working'
+targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -100,7 +108,7 @@ def unslash(strWithSlashes):
 def reslash(strWithoutSlashes):
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
-def unmangls(strFromPost):
+def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
@@ -234,6 +242,17 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
+#
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 #
 
 DEBUGIT = False

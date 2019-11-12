@@ -65,6 +65,7 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -111,7 +112,7 @@ def unslash(strWithSlashes):
 def reslash(strWithoutSlashes):
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
-def unmangls(strFromPost):
+def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
@@ -615,7 +616,7 @@ def Phase3():
             bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
             #print('bigq=', bigq)
             geturl = copy.deepcopy(basicgeturl)
-            geturl.append(targetfindbundles + mangle(bigq))
+            geturl.append(targetfindbundlesin + mangle(bigq))
             answer = getoutputsimplecommandtimeout(geturl, 3)
             danswer = massage(answer)
             if len(danswer) < 1:
@@ -636,7 +637,7 @@ def Phase3():
         bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
         #print('bigq=', bigq)
         geturl = copy.deepcopy(basicgeturl)
-        geturl.append(targetfindbundles + mangle(bigq))
+        geturl.append(targetfindbundlesin + mangle(bigq))
         answer = getoutputsimplecommandtimeout(geturl, 3)
         danswer = massage(answer)
         #print('danswer length=', len(danswer))
@@ -819,7 +820,7 @@ def Phase5():
         return		# Don't load more in the globus pipeline
     #
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('status=\"NERSCClean\"'))
+    geturl.append(targetfindbundles + mangle('NERSCClean'))
     answer = massage(getoutputsimplecommandtimeout(geturl, 1))
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)

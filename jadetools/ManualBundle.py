@@ -2,6 +2,7 @@
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
+import datetime
 import site
 import json
 import urllib.parse
@@ -64,6 +65,7 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -110,7 +112,7 @@ def unslash(strWithSlashes):
 def reslash(strWithoutSlashes):
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
-def unmangls(strFromPost):
+def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
@@ -244,6 +246,17 @@ def flagBundleStatus(key, newstatus):
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
     return outp, erro, code
+
+#
+def deltaT(oldtimestring):
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
 #
 DBdatabase = None
 DBcursor = None
@@ -355,7 +368,7 @@ DEBUGIT = False
 def Phase5():
     #
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('status=\"NERSCClean\"'))
+    geturl.append(targetfindbundles + mangle('NERSCClean'))
     answer = massage(getoutputsimplecommandtimeout(geturl, 1))
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)

@@ -18,7 +18,7 @@ DEBUGIT = False
 def Phase5():
     #
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('status=\"NERSCClean\"'))
+    geturl.append(targetfindbundles + mangle('NERSCClean'))
     answer = massage(getoutputsimplecommandtimeout(geturl, 1))
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)

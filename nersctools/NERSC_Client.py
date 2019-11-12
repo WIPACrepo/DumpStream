@@ -66,6 +66,7 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -112,7 +113,7 @@ def unslash(strWithSlashes):
 def reslash(strWithoutSlashes):
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
-def unmangls(strFromPost):
+def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
@@ -416,7 +417,7 @@ def Phase2():
     #
     # Look for outstanding jobs: status= NERSCRunning, count=NC
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('status=\"NERSCRunning\"'))
+    geturl.append(targetfindbundles + mangle('NERSCRunning'))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 5)
     if int(code) != 0:
         print('Nrun check', str(outp))
@@ -571,7 +572,7 @@ def Phase3():
     #
     # Look for files with PushDone as the status, pull all info
     geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('status = \"PushDone\"'))
+    geturl.append(targetfindbundles + mangle('PushDone'))
     listofbundles = getoutputsimplecommandtimeout(geturl, 30)
     if len(listofbundles) == 0:
         return		# Nothing to do

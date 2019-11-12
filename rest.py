@@ -564,7 +564,33 @@ def getspecified(estring):
     params = (unstring,)
     if DEBUGDB:
         print('getspecified', unstring)
-    qstring = 'SELECT * FROM BundleStatus WHERE ?'
+    qstring = 'SELECT * FROM BundleStatus WHERE status = ?'
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('getspecified problem:', qstring, params, str(stuff))
+        return ""
+
+
+@app.route("/bundles/specifiedin/<estring>", methods=["GET"])
+def getspecifiedin(estring):
+    if  not estring:
+        return []
+    unstring = kludgequote(unmangle(estring))
+    words = unstring.split(',')
+    if len(words) == 1:
+        params = (unstring,)
+    else:
+        params = (words)
+    if DEBUGDB:
+        print('getspecified', unstring)
+    qstring = 'SELECT * FROM BundleStatus WHERE status!=\"Abort\" AND localname IN ('
+    for i in len(words):
+        qstring = qstring + '? '
+    qstring = qstring + ')'
     try:
         stuff = query_db_final(qstring, params)
         if len(str(stuff)) > 0:
