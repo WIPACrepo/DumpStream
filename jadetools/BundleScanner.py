@@ -568,7 +568,7 @@ def Phase2():
 # Get list of local bundle tree locations relevant to NERSC transfers
 def Phase3():
     geturl = copy.deepcopy(basicgeturl)
-    ultimate = '\"NERSC\"'
+    ultimate = 'NERSC'
     geturl.append(targettree + mangle(ultimate))
     answer = getoutputsimplecommandtimeout(geturl, 1)
     danswer = massage(answer)
@@ -607,13 +607,16 @@ def Phase3():
     nomatch = []
     for p in candidateList:
         if inchunkCount == 0:
-            bigquery = 'status!=\"Abort\" AND localName IN ('
-        bigquery = bigquery + '\"' + p + '\",'
+            #bigquery = 'status!=\"Abort\" AND localName IN ('
+            bigquery = ''
+        #bigquery = bigquery + '\"' + p + '\",'
+        bigquery = bigquery + p + ','
         inchunkCount = inchunkCount + 1
         if inchunkCount > 15:	# Avoid count limit
             inchunkCount = 0
             # replace the last comma with a right parenthesis
-            bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+            #bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+            bigq = bigquery[::-1].replace(',', '', 1)[::-1]
             #print('bigq=', bigq)
             geturl = copy.deepcopy(basicgeturl)
             geturl.append(targetfindbundlesin + mangle(bigq))
@@ -628,13 +631,14 @@ def Phase3():
             try:
                 jjanswer = json.loads(singletodouble(danswer))
             except:
-                print('Failed to translate json code', danswer)
+                print('Failed to translate json code A', danswer, geturl)
                 return
             for js in jjanswer:
                 jsonList.append(js)
         #
     if inchunkCount > 0:
-        bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+        #bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
+        bigq = bigquery[::-1].replace(',', '', 1)[::-1]
         #print('bigq=', bigq)
         geturl = copy.deepcopy(basicgeturl)
         geturl.append(targetfindbundlesin + mangle(bigq))
@@ -649,7 +653,7 @@ def Phase3():
             try:
                 jjanswer = json.loads(singletodouble(danswer))
             except:
-                print('Failed to translate json code', danswer)
+                print('Failed to translate json code B', danswer, geturl)
                 return
             for js in jjanswer:
                 jsonList.append(js)

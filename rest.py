@@ -588,11 +588,11 @@ def getspecifiedin(estring):
     if DEBUGDB:
         print('getspecified', unstring)
     qstring = 'SELECT * FROM BundleStatus WHERE status!=\"Abort\" AND localname IN ('
-    for i in len(words):
-        qstring = qstring + '? '
-    qstring = qstring + ')'
+    for i in range(len(words)):
+        qstring = qstring + '?,'
+    qqstring = qstring[::-1].replace(',', ')', 1)[::-1]
     try:
-        stuff = query_db_final(qstring, params)
+        stuff = query_db_final(qqstring, params)
         if len(str(stuff)) > 0:
             return str(stuff)
         return ""
@@ -727,7 +727,6 @@ def addbundle(estring):
         return "json does not include localName"
     # Init if not done already--this is a global
     if len(BUNDLESTATUSCOLUMNS) == 0:
-        #schem = open('./BundleStatus.schema', 'r')
         schem = open('/opt/testing/rest/BundleStatus.schema', 'r')
         for line in schem:
             words = line.split()
@@ -745,7 +744,7 @@ def addbundle(estring):
         #print(stuff)
     except:
         print("addbundle: Some kind of error")
-        return "Not OK"
+        return "BAD"
     if len(stuff) > 1:
         try:
             testid = stuff[0]['bundleStatus_id']
@@ -815,7 +814,7 @@ def fiddling(estring):
             print('fiddling returns:', stuff)
         except:
             print("fiddling: Some kind of error")
-            return "Not OK"
+            return "BAD"
         #
         qstring = 'SELECT * FROM BundleStatus WHERE localName=?'
         stuff = query_db(qstring, params)
