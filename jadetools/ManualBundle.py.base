@@ -61,12 +61,9 @@ def Phase5():
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
-        posturl = copy.deepcopy(basicposturl)
-        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE bundleStatus_id={}'.format(key)
-        posturl.append(targetupdatebundle + mangle(comd))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
-        if len(answer) > 0:
-            print('Phase 5: failed to set status=LocalDeleted for', localname, answer)
+        outp, erro, code = flagBundleStatus(key, 'LocalDeleted')
+        if len(outp) > 0:
+            print('Phase 5: failed to set status=LocalDeleted for', localname, outp)
             continue 
     return
 

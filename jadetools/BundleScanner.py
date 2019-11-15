@@ -23,7 +23,7 @@ NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -103,7 +103,7 @@ GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'Abort', 'Retry']
+        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 
 # String manipulation stuff
 def unslash(strWithSlashes):

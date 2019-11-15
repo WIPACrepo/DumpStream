@@ -19,7 +19,7 @@ NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -61,6 +61,7 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -98,7 +99,7 @@ GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'Abort', 'Retry']
+        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -336,7 +337,7 @@ logit('LocalStatus= ', nstats)
 # How many bundles have each status?
 # I will probably get fancier later.  For now, just this.
 nstats = ''
-for opt in BundleStatusOptions:
+for opt in BUNDLESTATI:
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetbundlestatuscount + mangle(opt))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
@@ -344,9 +345,12 @@ for opt in BundleStatusOptions:
     if int(code) != 0:
         nstats = nstats + 'DB Failure'
     else:
-        my_json = json.loads(singletodouble(outp.decode('utf-8')))
-        js = my_json[0]
-        nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
+        try:
+            my_json = json.loads(singletodouble(outp.decode('utf-8')))
+            js = my_json[0]
+            nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
+        except:
+            print('Failed to get proper json for', opt, outp)
 logit('BundleStatusCounts= ', nstats)
 
 ####

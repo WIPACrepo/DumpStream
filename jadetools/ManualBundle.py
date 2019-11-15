@@ -23,7 +23,7 @@ NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -103,7 +103,7 @@ GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'Abort', 'Retry']
+        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -411,12 +411,9 @@ def Phase5():
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
-        posturl = copy.deepcopy(basicposturl)
-        comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE bundleStatus_id={}'.format(key)
-        posturl.append(targetupdatebundle + mangle(comd))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
-        if len(answer) > 0:
-            print('Phase 5: failed to set status=LocalDeleted for', localname, answer)
+        outp, erro, code = flagBundleStatus(key, 'LocalDeleted')
+        if len(outp) > 0:
+            print('Phase 5: failed to set status=LocalDeleted for', localname, outp)
             continue 
     return
 

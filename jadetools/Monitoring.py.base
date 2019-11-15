@@ -85,7 +85,7 @@ logit('LocalStatus= ', nstats)
 # How many bundles have each status?
 # I will probably get fancier later.  For now, just this.
 nstats = ''
-for opt in BundleStatusOptions:
+for opt in BUNDLESTATI:
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetbundlestatuscount + mangle(opt))
     outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
