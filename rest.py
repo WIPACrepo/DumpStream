@@ -29,7 +29,9 @@ DUMPSTATI = ['Run', 'Halt', 'Drain', 'Error']
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
+               'RetrieveRequest', 'RetrievePending', 'ExportReady',
+               'Downloading', 'DownloadDone', 'RemoteCleaned']
 BUNDLESTATUSCOLUMNS = []
 DEBUGDB = False
 
