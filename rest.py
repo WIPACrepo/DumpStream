@@ -633,7 +633,7 @@ def getinfobyjade(estring):
         qstring = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE UUIDJade=? AND status=?'
         params = (words[0], words[1])
     try:
-        stuff = insert_db_final(qstring, params)
+        stuff = query_db_final(qstring, params)
         if len(str(stuff)) > 0:
             return str(stuff)
         return ""
@@ -641,12 +641,28 @@ def getinfobyjade(estring):
         print('getinfobyjade problem:', qstring, params, str(stuff))
         return ""
 
+# Get all the bundles associated with the specified string.  This
+# is useful for getting all bundles for a given directory
+@app.route("/bundles/specifiedlike/<estring>", methods=["GET"])
+def getspecifiedlike(estring):
+    unstring = kludgequote(unmangle(estring))
+    qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE \"%?%\"'
+    params = (unstring, )
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ""
+    except:
+        print('getspecifiedlike problem:', qstring, params, str(stuff))
+        return ""
+
 
 # Get the count of the bundle status type specified
 @app.route("/bundles/statuscount/<estring>", methods=["GET"])
 def getstatuscount(estring):
     unstring = str(kludgequote(unmangle(estring)))
-    if not unstring in BUNDLESTATI:
+    if unstring not in BUNDLESTATI:
         return 'Invalid status: ' + unstring
     qstring = 'SELECT COUNT(*) FROM BundleStatus WHERE status=?'
     params = (unstring,)
