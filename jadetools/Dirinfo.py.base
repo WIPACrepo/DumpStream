@@ -1,0 +1,42 @@
+# Dirinfo.py (.base)
+import sys
+#SUPERIMPORT IMPORT_utils.py
+
+#SUPERIMPORT CODE_utils.py
+
+DEBUGIT = False
+
+
+########################################################
+# Define Phases for Main.  In this case, all I care about
+#  is getting information from the database.
+
+def Phase1(pcarg):
+    #
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetfindbundleslike + mangle('%25' + pcarg + '%25'))
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    if len(answer) == 0:
+        print('No answer for', pcarg)
+        return
+    try:
+        janswer = json.loads(singletodouble(answer))
+    except:
+        print('Failed to create json:', pcarg, answer)
+        return
+    for j in janswer:
+        print(j['idealName'], j['bundleStatus_id'], j['status'])
+    #
+    return
+
+###############
+# Main
+
+if len(sys.argv) == 1:
+    print('No directory/file specified.  Use the \"ideal\" name or part of the name')
+    sys.exit(0)
+
+for i in range(1, len(sys.argv)):
+    carg = str(sys.argv[i])
+    Phase1(carg)
+sys.exit(0)

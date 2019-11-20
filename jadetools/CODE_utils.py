@@ -52,6 +52,7 @@ SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
 targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
+targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
