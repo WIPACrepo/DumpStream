@@ -23,7 +23,9 @@ NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
+               'RetrieveRequest', 'RetrievePending', 'ExportReady',
+               'Downloading', 'DownloadDone', 'RemoteCleaned']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -66,6 +68,7 @@ SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
 targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
+targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -449,13 +452,8 @@ def Phase1():
             words = str(line).split('.json')
             filefragment = words[0]
             geturl = copy.deepcopy(basicgeturl)
-            #trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
-            #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
-            ##print(trysql)
-            #geturl.append(targetupdatebundle + mangle(trysql))
             geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
             answer = getoutputsimplecommandtimeout(geturl, 1)
-            #danswer = answer.decode("utf-8")
             danswer = massage(answer)
             if danswer == '':
                 continue
@@ -464,24 +462,15 @@ def Phase1():
                 break
             #
             # What happens if I get multiple returns?????  DEBUG
-            #print(type(danswer),danswer)
             janswer = json.loads(singletodouble(danswer))
             if len(janswer) <= 0:
-                ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
-                break
+                continue   # Not relevant to our activity
+                #ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
             if len(janswer) > 1:
                 ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
                 break
-            #print(type(janswer),janswer)
-            #print(type(janswer[0]),janswer[0])
             bsid = janswer[0]['bundleStatus_id']
-            #posturl = copy.deepcopy(basicposturl)
-            #trysql = 'UPDATE BundleStatus SET status=\"PushProblem\" WHERE bundleStatus_id=' + str(bsid)
-            ##print(trysql)
-            #posturl.append(targetupdatebundle + mangle(trysql))
-            #answer = getoutputsimplecommandtimeout(posturl, 1)
             answer, erro, code = flagBundleStatus(str(bsid), 'PushProblem')
-            #print(answer)
             command = ['/bin/mv', GLOBUS_PROBLEM_SPACE + '/' + str(line), GLOBUS_PROBLEM_HOLDING]
             outp, erro, code = getoutputerrorsimplecommand(command, 1)
             if int(code) != 0:
@@ -518,13 +507,8 @@ def Phase2():
         words = str(line).split('.json')
         filefragment = words[0]
         geturl = copy.deepcopy(basicgeturl)
-        #trysql = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus WHERE'
-        #trysql = trysql + ' UUIDJade = \"' + filefragment + '\" AND status=\"JsonMade\"'
-        ##print(trysql)
-        #geturl.append(targetupdatebundle + mangle(trysql))
         geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
         answer = getoutputsimplecommandtimeout(geturl, 1)
-        #danswer = answer.decode("utf-8")
         danswer = massage(answer)
         if danswer == '':
             continue
@@ -536,21 +520,13 @@ def Phase2():
         #print(type(danswer),danswer)
         janswer = json.loads(singletodouble(danswer))
         if len(janswer) <= 0:
-            ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
-            break
+            continue   # Not relevant to our activity
+            #ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
         if len(janswer) > 1:
             ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
             break
-        #print(type(janswer),janswer)
-        #print(type(janswer[0]),janswer[0])
         bsid = janswer[0]['bundleStatus_id']
-        #posturl = copy.deepcopy(basicposturl)
-        #trysql = 'UPDATE BundleStatus SET status=\"PushDone\" WHERE bundleStatus_id=' + str(bsid)
-        ##print(trysql)
-        #posturl.append(targetupdatebundle + mangle(trysql))
-        #answer = getoutputsimplecommandtimeout(posturl, 1)
         answer, erro, code = flagBundleStatus(str(bsid), 'PushDone')
-        #print(answer)
         command = ['/bin/mv', GLOBUS_DONE_SPACE + '/' + str(line), GLOBUS_DONE_HOLDING]
         outp, erro, code = getoutputerrorsimplecommand(command, 1)
         if int(code) != 0:
