@@ -646,7 +646,7 @@ def getinfobyjade(estring):
 @app.route("/bundles/specifiedlike/<estring>", methods=["GET"])
 def getspecifiedlike(estring):
     unstring = kludgequote(unmangle(estring))
-    qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE \"%?%\"'
+    qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE ?'
     params = (unstring, )
     try:
         stuff = query_db_final(qstring, params)
