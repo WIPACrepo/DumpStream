@@ -1,0 +1,30 @@
+Using python3, using a virtual environment 
+(e.g. ~jbellinger/archivemonitor/venv)
+
+I want to maintain consistency between chunks of code, so the utility
+code is in the import files
+IMPORT_db.py	For mysql accesses
+IMPORT_utils.py For everything else
+and the codebase that I want to keep the same everywhere is in
+CODE_db.py	For mysql access
+CODE_utils.py	For everything else
+
+The preprocessor is
+preproc.py
+e.g.
+python preproc.py BundleScanner.py.base
+ creates BundleScanner.py
+
+The advantage to using this rather than a local environment is
+ease of setup: I only need a single python file at NERSC.
+
+The stripped-down code is in the py.base files
+
+NERSC_Client.py.base
+   This is the NERSC command center.  It checks our rest server
+    to see what needs doing next, doles out slurm jobs to move
+    new bundles into HPSS, cleans out old scratch area bundles
+    when they are safely in HPSS, and tells the rest server
+    when all is done.  It can run on any cori system, or several
+    (only one gets to run) in case one cori system goes off the
+    air.

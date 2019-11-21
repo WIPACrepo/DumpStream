@@ -1,0 +1,54 @@
+Using python3, using a virtual environment 
+(e.g. ~jbellinger/archivemonitor/venv)
+
+I want to maintain consistency between chunks of code, so the utility
+code is in the import files
+IMPORT_db.py	For mysql accesses
+IMPORT_utils.py For everything else
+and the codebase that I want to keep the same everywhere is in
+CODE_db.py	For mysql access
+CODE_utils.py	For everything else
+
+The preprocessor is
+preproc.py
+e.g.
+python preproc.py BundleScanner.py.base
+ creates BundleScanner.py
+
+The advantage to using this rather than a local environment is
+ease of setup: I only need a single python file at NERSC.
+
+The stripped-down code is in the py.base files
+BundleScanner.py.base
+  This runs on jade-lta, and handles bundles appearing that
+   need to be shipped to NERSC.
+
+ChainInfo.py.base
+  This will be (in progress) a tool to tell what the overall
+   chain of operations looks like.  Right now it simply checks
+   the to-NERSC pipeline, and determines how much space the
+   to-NERSC buffer has.  Later this will include the processing
+   space, the dump space, and any info from NERSC we think useful
+
+Command.py.base
+   Tell the to-NERSC pipeline to Run or Halt or Drain
+
+Dirinfo.py.base
+   Tell me about what bundles are associated with what directories
+    in the rest DB
+
+ManualBundle.py.base
+   Delete bundles that have gone to NERSC safely
+
+ManualFiles.py.base
+   Delete the files that went into the bundles that went to NERSC
+    safely.  Run after ManualBundle
+
+Monitoring.py.base
+   Tell what's going on with the to-NERSC pipeline.  E.g.
+NERSCStatus=   Run |  | 48420 | 2019-11-21 13:31:03  7
+NERSCToken=   NULL at 2019-11-21 13:31:04  7
+LocalStatus=   Run |  | 349397 | 2019-11-21 13:10:01  28
+BundleStatusCounts=    | Untouched:0 | JsonMade:0 | PushProblem:0 | PushDone:0 | NERSCRunning:0 | NERSCDone:0 | NERSCProblem:0 | NERSCClean:5 | LocalDeleted:90 | LocalFilesDeleted:406 | Abort:123 | Retry:0
+Duplicate bundle transfers=  33.0
+
