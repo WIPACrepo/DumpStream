@@ -33,6 +33,13 @@ BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'RetrieveRequest', 'RetrievePending', 'ExportReady',
                'Downloading', 'DownloadDone', 'RemoteCleaned']
 BUNDLESTATUSCOLUMNS = []
+PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
+DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
+SLOTBAD = -2
+SLOTRESERVED = -1
+SLOTUNK = 0
 DEBUGDB = False
 
 
@@ -804,45 +811,364 @@ def gettree(estring):
         stuff = ''
     return str(stuff)
 
-### Debugging methods.  Here I'm doing the testing of json unpacking for bundling
-# IT DOES NOT HAVE DB INSERTION CODE
-@app.route("/debugging/<estring>", methods=["GET", "POST"])
-def fiddling(estring):
-    if DEBUGDB:
-        print(estring)
-        print(reslash(estring))
-        backagain = urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"')
-        print(backagain)
-        try:
-            fjson = (json.loads(backagain))
-        except:
-            print('fiddling', backagain)
-            return "Problem with json.loads"
-        try:
-            for x in fjson:
-                print("fiddling: {} had {}".format(x, fjson[x]))
-            #return "OK"
-        except:
-            return "Problem with extraction of json"
-        params = (fjson['localName'],)
-        qstring = 'SELECT bundleStatus_id FROM BundleStatus WHERE localName=?'
-        print('fiddling', qstring)
-        try:
-            stuff = query_db(qstring, params)
-            print('fiddling returns:', stuff)
-        except:
-            print("fiddling: Some kind of error")
-            return "BAD"
-        #
-        qstring = 'SELECT * FROM BundleStatus WHERE localName=?'
-        stuff = query_db(qstring, params)
-        for indb in stuff[0]:
-            if stuff[0][indb] != fjson[indb]:
-                print('fiddling', indb, stuff[0][indb], fjson[indb])
-        return "OK done"
-    return 'OK done'
+
+###
+### Dump control
+###
+
+###
+# Return the current state of the DumpSystemState
+@app.route("/dumping/state", methods=["GET"])
+def dumpstate():
+    #
+    query = "SELECT * FROM DumpSystemState ORDER BY dumpss_id DESC LIMIT 1"
+    try:
+        stuff = query_db_final(query)
+    except:
+        print("dumpstate:  Failed to query")
+        stuff = ''
+    return str(stuff)
 
 
+###
+# Adjust the current state of the DumpSystemState
+# Adjust the current state of the DumpSystemState
+@app.route("/dumping/state/count/<estring>", methods=["POST"])
+def dumpstatesetcount(estring):
+    return dumpstateset('count', estring)
+@app.route("/dumping/state/nextaction/<estring>", methods=["POST"])
+def dumpstatesetnextaction(estring):
+    return dumpstateset('nextaction', estring)
+@app.route("/dumping/state/status/<estring>", methods=["POST"])
+def dumpstatesetstatus(estring):
+    return dumpstateset('status', estring)
+#
+# Utility
+def dumpstateset(toupdate, estring):
+    #
+    astring = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'),)
+    # sanity checking
+    if toupdate not in ['count', 'nextaction', 'status']:
+        print('dumpstateset:  action not allowed', toupdate)
+        return 'FAILURE'
+    if toupdate == 'count':
+        try:
+            icount = int(astring)
+        except:
+            print('dumpstateset: count to be set to non-integer', estring)
+            return 'FAILURE'
+    if toupdate == 'nextaction':
+        if astring not in DumperNextOptions:
+            print('dumpstateset:', astring, 'not a valid nextaction')
+            return 'FAILURE'
+    if toupdate == 'status':
+        if astring not in DumperStatusOptions:
+            print('dumpstateset:', astring, 'not a valid state')
+            return 'FAILURE'
+    # SANE!
+    #
+    query1 = "SELECT * FROM DumpSystemState ORDER BY dumpss_id DESC LIMIT 1"
+    query2 = "INSERT INTO DumpSystemState (nextAction, status, lastChangeTime, count)"
+    query2 = query2 + " VALUES (?,?,datetime(\'now\',\'localtime\'),?)"
+    #
+    try:
+        stuff = query_db_final(query1)
+    except:
+        print("dumpstateset:  Failed to query1")
+        return 'FAILURE'
+    try:
+        nexta = str(stuff[0]['nextAction'])
+        status = str(stuff[0]['status'])
+        count = str(stuff[0]['count'])
+    except:
+        print('dumpstateset, failed to unpack dictionary', stuff)
+        return 'FAILURE'
+    #
+    if toupdate == 'count':
+        count = astring
+    if toupdate == 'nextaction':
+        nexta = astring
+    if toupdate == 'status':
+        status = astring
+    params = (nexta, status, count)
+    try:
+        stuff = insert_db_final(query2, params)
+    except:
+        print('dumpstateset:  Failed to update query2', query2, params)
+        return 'FAILURE'
+    return ''
+
+
+###
+# PoleDisk manipulations
+#
+# Get all the info on all the PoleDisks.  A lot!
+@app.route("/dumping/poledisk", methods=["GET"])
+def polediskinfoall():
+    query = 'SELECT * FROM PoleDisk ORDER BY poledisk_id ASC'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('polediskinfo:  Failed to read')
+        stuff = ''
+    return str(stuff)
+
+# Get all the info on the PoleDisks that used this slot and aren't
+# Done yet.  May be some 'Error' in here, => may be more than 1
+@app.route("/dumping/poledisk/infobyslot/<estring>", methods=["GET"])
+def polediskinfobyslot(estring):
+    query = 'SELECT * FROM PoleDisk WHERE slotnumber=? AND status != \'Done\' ORDER BY poledisk_id DESC'
+    unstring = unmangle(estring)
+    try:
+        inum = int(unstring)
+    except:
+        print('polediskinfobyslot:  invalid slot number (1-12)', estring)
+        return ''
+    if inum < 1 or inum > 12:
+        print('polediskinfobyslot:  slot number out of range (1-12)', inum)
+        return ''
+    params = (unstring, )
+    try:
+        stuff = query_db_final(query, params)
+    except:
+        print('polediskinfobyslot: query failed', query, params)
+        stuff = ''
+    return str(stuff)
+
+# Get all the info on the PoleDisks of this UUID and aren't
+# Done yet.  May be some 'Error' in here, => may be more than 1
+@app.route("/dumping/poledisk/infobyuuid/<estring>", methods=["GET"])
+def polediskinfobyuuid(estring):
+    query = 'SELECT * FROM PoleDisk WHERE diskuuid=? AND status != \'Done\' ORDER BY poledisk_id DESC'
+    unstring = unmangle(estring)
+    params = (unstring, )
+    try:
+        stuff = query_db_final(query, params)
+    except:
+        print('polediskinfobyuuid: query failed', query, params)
+        stuff = ''
+    return str(stuff)
+
+# Get all the info on the PoleDisk with this poledisk_id
+@app.route("/dumping/poledisk/infobyid/<estring>", methods=["GET"])
+def polediskinfobyid(estring):
+    query = 'SELECT * FROM PoleDisk WHERE poledisk_id=?'
+    unstring = unmangle(estring)
+    params = (unstring, )
+    try:
+        stuff = query_db_final(query, params)
+    except:
+        print('polediskinfobyid: query failed', query, params)
+        stuff = ''
+    return str(stuff)
+
+# Set the start time of the dump.  Wants the poledisk_id as a parameter
+@app.route("/dumping/poledisk/start/<estring>", methods=["POST"])
+def polediskstart(estring):
+    query = 'UPDATE PoleDisk SET dateBegun=datetime(\'now\',\'localtime\') WHERE poledisk_id=?'
+    unstring = unmangle(estring)
+    try:
+        inum = int(unstring)
+    except:
+        print('polediskstart:  invalid poledisk_id', estring)
+        return 'FAILURE'
+    params = (unstring, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('polediskstart:  Failed update', query, params)
+        return 'FAILURE'
+    if len(stuff) > 0:
+        print('polediskstart:  Failed update', query, params, stuff)
+        return 'FAILURE'
+    return ''
+
+# Set the end time of the dump.  Wants the poledisk_id as a parameter
+@app.route("/dumping/poledisk/done/<estring>", methods=["POST"])
+def polediskdone(estring):
+    query = 'UPDATE PoleDisk SET dateEnded=datetime(\'now\',\'localtime\') WHERE poledisk_id=?'
+    unstring = unmangle(estring)
+    try:
+        inum = int(unstring)
+    except:
+        print('polediskdone:  invalid poledisk_id', estring)
+        return 'FAILURE'
+    params = (unstring, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('polediskdone:  Failed update', query, params)
+        return 'FAILURE'
+    if len(stuff) > 0:
+        print('polediskdone:  Failed update', query, params, stuff)
+        return 'FAILURE'
+    return ''
+
+
+# Add a new PoleDisk entry
+@app.route("/dumping/poledisk/loadfrom/<estring>", methods=["POST"])
+def polediskload(estring):
+    query = 'INSERT INTO PoleDisk (diskuuid,slotnumber,dateBegun,dateEnded,targetArea,status) VALUES '
+    query = query + '(?, ?, \'\', \'\', ?, ?)'
+    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    try:
+        fjson = json.loads(backagain)
+    except:
+        print('polediskload: failed to turn into json', estring)
+        return 'FAILURE'
+    for ljson in fjson:
+        try:
+            diskuuid = ljson['diskuuid']
+            slotnumber = ljson['slotnumber']
+            targetArea = ljson['targetArea']
+            status = 'Inventoried'
+        except:
+            print('polediskload: Cannot get info from', ljson, 'from', fjson)
+            return 'FAILURE'
+        params = (diskuuid, slotnumber, targetArea, status)
+        try:
+            stuff = insert_db_final(query, params)
+        except:
+            print('polediskload: Failed to load from', query, params)
+            return 'FAILURE'
+    return ''
+
+
+#####
+# Adjust dump-target.  Not something to do lightly or often
+
+# Get info
+@app.route("/dumping/dumptarget", methods=["GET"])
+def dumptarget():
+    query = 'SELECT target from DumpTarget'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('dumptarget get failed')
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Set dump-target.  Add the current to the list of OldDumpTargets
+# if appropriate (target is a PRIMARY KEY, so it should just fail
+# if it is old)
+@app.route("/dumping/dumptarget/<estring>", methods=["POST"])
+def dumptargetset(estring):
+    query = 'SELECT target FROM DumpTarget'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('dumptargetset failed to get target info', query)
+        return 'FAILURE'
+    #
+    query = 'INSERT INTO OldDumpTargets (target) VALUES (?)'
+    params = (str(stuff), )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('dumptargetset failed to set oldtarget', query, params)
+    # Don't bail above.  Dunno what happens if duplicate primary key, which
+    # is harmless
+    query = 'UPDATE DumpTarget SET target = ?'
+    newdir = unmangle(urllib.parse.unquote_plus(reslash(estring)))
+    params = (newdir, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('dumptargetset failed to set target', query, params)
+        return 'FAILURE'
+    return ''
+
+
+####
+# Get info from OldDumpTarget
+@app.route("/dumping/olddumptarget", methods=["GET"])
+def olddumptarget():
+    query = 'SELECT target from OldDumpTargets'
+    query = 'SELECT target FROM DumpTarget'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('olddumptarget failed to get target info', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Get the contents of all the slots.  This will point to
+# the PoleDisk information.  It hardly seems worth the
+# hassle to select info by slot--there are only 12 and
+# the info is lightweight
+@app.route("/dumping/slotcontents", methods=["GET"])
+def getslotcontents():
+    query = 'SELECT * FROM SlotContents'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getslotcontents failed to get the slot info', query)
+        return 'FAILURE'
+    return str(stuff)
+
+
+####
+# Get the contents of a slot.  This is just a couple of
+# numbers:  'slot# poledisk_id'
+@app.route("/dumping/slotcontents/<estring>", methods=["POST"])
+def setslot(estring):
+    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    words = backagain.split()
+    if len(words) != 2:
+        print('setslot wants 2 arguments:  slot# and poledisk_id', estring)
+        return 'FAILURE'
+    try:
+        testint1 = int(words[0])
+        testint2 = int(words[1])
+    except:
+        print('setslot wants integer arguments:  slot# and poledisk_id', estring)
+        return 'FAILURE'
+    if testint1 < 1 or testint1 > 12 or testint2 < 0:
+        print('setslot wants the first argument 1..12, the second poledisk_id', estring)
+        return 'FAILURE'
+    query = 'UPDATE SlotContents SET poledisk_id = ? WHERE slotnumber = ?'
+    params = (words[1], words[0])
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('setslot failed to set the slot info', query, params)
+        return 'FAILURE'
+    return ''
+
+####
+# Get the substring representing the trees we want to retrieve
+#  Format is IceCube/YEAR/internal-system/pDAQ-2ndBld, where
+# YEAR is to be replaced by the year(s) found on the disk
+@app.route("/dumping/wantedtrees", methods=["GET"])
+def getwantedtrees():
+    query = 'SELECT dataTree from WantedTrees'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getwantedtrees failed to get the tree info', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Add another substring representing a tree we want to retrieve
+#  Format is IceCube/YEAR/internal-system/pDAQ-2ndBld, where
+# YEAR is to be replaced by the year(s) found on the disk
+@app.route("/dumping/wantedtrees/<estring>", methods=["POST"])
+def addwantedtrees(estring):
+    query = 'INSERT INTO WantedTrees (dataTree) VALUES (?)'
+    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    params = (str(backagain), )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('addwantedtree failed to add a wanted data tree', query, params)
+        return 'FAILURE'
+    return ''
+
+
+###################################################
 #####
 # OK, now the main code
 #db = SQLAlchemy(app)

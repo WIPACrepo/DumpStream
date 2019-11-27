@@ -1,3 +1,16 @@
+# DumpControl.py.base
+import sys
+# IMPORT_utils.py
+# Assumes "import sys"
+import datetime
+import site
+import json
+#?import urllib.parse
+import subprocess
+import copy
+import os
+import uuid
+#
 # IMPORT CODE_utils.py
 #####
 # Define some constants
@@ -268,3 +281,149 @@ def deltaT(oldtimestring):
         delta = -1
     return delta
 #
+
+##########
+# Utilities:
+#  1) Check a slot
+#    a) Is it readable?
+#    b) What is its UUID?  The .json file tells us
+#    c) Get the wanted trees and parse for the top directories
+#    d) Organize the groups by top directory
+#    e) Look in those top directories to find the year(s) for each
+#    f) Use those lists and those years to create a new list of
+#       rsync sources, and return this and the UUID
+#  2) Create a rsync bash script using the UUID and rsync sources
+#    a) New file w/ UUID.sh name and a list
+#    b) Submit this (do I want the process ID too?)
+
+###
+# Give top directories from a list
+def GiveTops(desiredtrees):
+    if len(desiredtrees) <= 0:
+        return []
+    toplist = []
+    for tree in desiredtrees:
+        tip = tree.split('/')[0]
+        if tip not in toplist:
+            toplist.append(tip)
+    return toplist
+
+###
+# Inventory a slot.  Pass it the json for the slot (has old info)
+# and the list of trees we want to archive.  YEAR must be
+# replaced with the actual year(s) found
+def InventoryOne(slotjson, desiredtrees):
+    if len(desiredtrees) <= 0:
+        return []
+    #
+    toplist = GiveTops(desiredtrees)
+    #
+    try:
+        slotlocation = slotjson['name']
+    except:
+        print('InventoryOne: problem with slotjson', slotjson)
+        return []
+    #
+    command = ['/bin/ls', slotlocation]
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        print('Cannot read the disk in', slotlocation)
+        return []	# Do I want to set an error?
+    answer = str(outp)
+    for toplevel in answer.split():
+        #print(toplevel)
+        if len(toplevel.split('-')) == 5:
+            diskuuid = toplevel
+    #
+    # Generate the list of directories to rsync
+    dirstoscan = []
+    for tip in toplist:
+        if tip in answer.split():
+            command = ['/bin/ls', slotlocation + '/' + tip]
+            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            if code != 0:
+                continue	# May not be present, do not worry about it
+            tipyearlist = []
+            for y in outp.split():
+                tipyearlist.append(y)
+            for dt in desiredtrees:
+                if tip in dt:
+                    words = dt.split('YEAR')
+                    for y in tipyearlist:
+                        dirstoscan.append(words[0] + y + words[1])
+    #for j in dirstoscan:
+    #    print(j)
+    return [diskuuid, dirstoscan]
+
+####
+def InventoryAll():
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingslotcontents)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0:
+        print('SlotContents failure', geturl, outp)
+        sys.exit(0)
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingdumptarget)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('get dump target failure', geturl, outp)
+        sys.exit(0)
+    targetarea = str(outp)
+    #
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingwantedtrees)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Get trees failure', geturl, outp)
+        sys.exit(0)
+    desired = []
+    for h in str(outp):
+        desired.append(h)
+    for js in my_json:
+        if js['poledisk_id'] < 0:
+            continue
+        goodstuff = InventoryOne(js, desired)
+        if len(goodstuff) == 0:
+            print('Got junk for', js['slotnumber'])
+            continue
+        #print(goodstuff[0])
+        # GENERIC:
+        # Add a new PoleDisk if this doesn't already exist
+        #   [Only force if demanded!]
+        # Link SlotContents to the new PoleDisk
+        stuffforpd = {"diskuuid":goodstuff[0], "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetdumpingsetslotcontents + mangle(stuffforpd))
+        outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        if int(code) != 0 or 'FAILURE' in str(outp):
+            print('Load new PoleDisk failed', posturl, outp)
+            sys.exit(0)
+        geturl = copy.deepcopy(basicgeturl)
+        geturl.append(targetdumpingpolediskuuid + mangle(goodstuff[0]))
+        outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+        if len(outp) == 0 or 'FAILURE' in str(outp):
+            print('Retrive PoleDisk info failed', geturl, outp)
+            sys.exit(0)
+        try:
+            djson = json.loads(singletodouble(outp))
+            js = djson[0]
+            case = mangle(str(js['slotnumber']) + ' ' + str(js['poledisk_id']))
+        except:
+            print('Retrieve of new poledisk_id failed', djson)
+            sys.exit(0)
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetdumpingsetslotcontents + case)
+        outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        if len(outp) != 0 or 'FAILURE' in str(outp):
+            print('Update SlotContents info failed', posturl, outp)
+            sys.exit(0)
+
+    # Load info for each PoleDisk!
+    #  NOT DONE YET
+    return
+
+###########
+#
+InventoryAll()

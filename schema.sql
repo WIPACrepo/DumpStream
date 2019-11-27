@@ -37,3 +37,35 @@ CREATE TABLE Trees(
   ultimate TEXT,
   treetop TEXT
 );
+CREATE TABLE SlotContents(
+  slotnumber  INTEGER NOT NULL,
+  name   TEXT,
+  poledisk_id   INTEGER
+);
+CREATE TABLE DumpTarget(
+  target      TEXT
+);
+CREATE TABLE OldDumpTargets(
+  oldtarget_id  INTEGER PRIMARY KEY,
+  target      TEXT
+);
+CREATE TABLE DumpSystemState(
+  dumpss_id   INTEGER PRIMARY KEY,
+  nextAction  TEXT,
+  status      TEXT,
+  lastChangeTime  TEXT,
+  count       INTEGER
+);
+CREATE TABLE PoleDisk(
+  poledisk_id	INTEGER PRIMARY KEY,
+  diskuuid    TEXT,
+  slotnumber  INTEGER,
+  dateBegun   TEXT,
+  dateEnded   TEXT,
+  targetArea  TEXT,
+  status      TEXT
+);
+CREATE TABLE WantedTrees (
+  wantedtree_id INTEGER PRIMARY KEY,
+  dataTree   TEXT
+);
