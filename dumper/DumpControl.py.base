@@ -34,11 +34,24 @@ def GiveTops(desiredtrees):
 # Inventory a slot.  Pass it the json for the slot (has old info)
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found
-def InventoryOne(slotjson, desiredtrees):
+def InventoryOneFull(slotjson):
+    # First find out what trees we want to read
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingwantedtrees)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Get trees failure', geturl, outp)
+        sys.exit(0)
+    desiredtrees = []
+    for h in str(outp):
+        desiredtrees.append(h)
+
     if len(desiredtrees) <= 0:
         return []
     #
     toplist = GiveTops(desiredtrees)
+    #
+    # If no trees to read, why bother?
     #
     try:
         slotlocation = slotjson['name']
@@ -46,12 +59,16 @@ def InventoryOne(slotjson, desiredtrees):
         print('InventoryOne: problem with slotjson', slotjson)
         return []
     #
+    # Note that even if the disk is not mounted, the mountpoint
+    #  is still there, and will be "readable" if not populated
+    # Bail if it is empty--probably not mounted
+    #
     command = ['/bin/ls', slotlocation]
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
-    if int(code) != 0:
+    if int(code) != 0 or len(outp) <= 1:
         print('Cannot read the disk in', slotlocation)
         return []	# Do I want to set an error?
-    answer = str(outp)
+    answer = str(outp.decode('utf-8'))
     for toplevel in answer.split():
         #print(toplevel)
         if len(toplevel.split('-')) == 5:
@@ -78,6 +95,34 @@ def InventoryOne(slotjson, desiredtrees):
     return [diskuuid, dirstoscan]
 
 ####
+# Get the UUID, if this is readable, for use with slot
+# management
+def InventoryOne(slotjson):
+    #
+    try:
+        slotlocation = slotjson['name']
+    except:
+        print('InventoryOne: problem with slotjson', slotjson)
+        return []
+    #
+    command = ['/bin/ls', slotlocation]
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0 or len(outp) <= 1:
+        print('Cannot read the disk in', slotlocation)
+        return []	# Do I want to set an error?
+    answer = str(outp.decode('utf-8'))
+    diskuuid = ''
+    for toplevel in answer.split():
+        #print(toplevel)
+        if len(toplevel.split('-')) == 5:
+            diskuuid = toplevel
+    return diskuuid
+
+
+####
+# Go through all the slots and see what the UUID is in them
+# Connect information between SlotContents and PoleDisk
+#  entries
 def InventoryAll():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpingslotcontents)
@@ -94,39 +139,26 @@ def InventoryAll():
         sys.exit(0)
     targetarea = str(outp)
     #
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetdumpingwantedtrees)
-    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    if int(code) != 0 or 'FAILURE' in str(outp):
-        print('Get trees failure', geturl, outp)
-        sys.exit(0)
-    desired = []
-    for h in str(outp):
-        desired.append(h)
     for js in my_json:
         if js['poledisk_id'] < 0:
             continue
-        goodstuff = InventoryOne(js, desired)
-        if len(goodstuff) == 0:
-            print('Got junk for', js['slotnumber'])
+        diskuuid = InventoryOne(js)
+        if diskuuid == '':
+            print('Got nothing for', js['slotnumber'])
             continue
-        #print(goodstuff[0])
-        # GENERIC:
-        # Add a new PoleDisk if this doesn't already exist
-        #   [Only force if demanded!]
         # Link SlotContents to the new PoleDisk
-        stuffforpd = {"diskuuid":goodstuff[0], "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
         posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetdumpingsetslotcontents + mangle(stuffforpd))
+        posturl.append(targetdumpingsetslotcontents + mangle(str(stuffforpd)))
         outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
         if int(code) != 0 or 'FAILURE' in str(outp):
-            print('Load new PoleDisk failed', posturl, outp)
+            print('Load new PoleDisk failed', posturl, outp, erro, code)
             sys.exit(0)
         geturl = copy.deepcopy(basicgeturl)
-        geturl.append(targetdumpingpolediskuuid + mangle(goodstuff[0]))
+        geturl.append(targetdumpingpolediskuuid + mangle(diskuuid))
         outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
         if len(outp) == 0 or 'FAILURE' in str(outp):
-            print('Retrive PoleDisk info failed', geturl, outp)
+            print('Retrive PoleDisk info failed', geturl, outp, erro, code)
             sys.exit(0)
         try:
             djson = json.loads(singletodouble(outp))
