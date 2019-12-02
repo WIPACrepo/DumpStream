@@ -5,7 +5,7 @@ import sys
 import datetime
 import site
 import json
-#?import urllib.parse
+import urllib.parse
 import subprocess
 import copy
 import os
@@ -109,6 +109,8 @@ targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
 targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
 targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
+targetdumpinggetactive = curltargethost + '/dumping/activeslots'
+targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -129,6 +131,13 @@ BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERS
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
+# The backplane limit is about 2 Pole disks dumping at once.
+DUMPING_LIMIT = 2
+# 3 days worth of minutes
+DUMPING_TIMEOUT = 4320
+# Where do log files go?
+DUMPING_LOG_SPACE = '/tmp'
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -298,6 +307,11 @@ def deltaT(oldtimestring):
 #    a) New file w/ UUID.sh name and a list
 #    b) Submit this (do I want the process ID too?)
 
+
+
+#################################################################
+# INVENTORY CODE
+#
 ###
 # Give top directories from a list
 def GiveTops(desiredtrees):
@@ -420,33 +434,42 @@ def InventoryAll():
     targetarea = str(outp)
     #
     for js in my_json:
+        # First check if the slot is disabled
         if js['poledisk_id'] < 0:
             continue
+        # Now inventory the slot--get the UUID of the disk, if available
         diskuuid = InventoryOne(js)
         if diskuuid == '':
             print('Got nothing for', js['slotnumber'])
             continue
+        #
         # Link SlotContents to the new PoleDisk
         stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
         posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetdumpingsetslotcontents + mangle(str(stuffforpd)))
+        #posturl.append(targetdumpingsetslotcontents + mangle(str(stuffforpd)))
+        posturl.append(targetdumpingsetslotcontents + urllib.parse.urlencode(stuffforpd))
         outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
         if int(code) != 0 or 'FAILURE' in str(outp):
             print('Load new PoleDisk failed', posturl, outp, erro, code)
             sys.exit(0)
+        #
+        # OK, now I want to read back what I wrote so I get the new poledisk_id
         geturl = copy.deepcopy(basicgeturl)
         geturl.append(targetdumpingpolediskuuid + mangle(diskuuid))
         outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
         if len(outp) == 0 or 'FAILURE' in str(outp):
             print('Retrive PoleDisk info failed', geturl, outp, erro, code)
             sys.exit(0)
+        soutp = outp.decode('utf-8')
         try:
-            djson = json.loads(singletodouble(outp))
+            djson = json.loads(singletodouble(soutp))
             js = djson[0]
             case = mangle(str(js['slotnumber']) + ' ' + str(js['poledisk_id']))
         except:
-            print('Retrieve of new poledisk_id failed', djson)
+            print('Retrieve of new poledisk_id failed', soutp)
             sys.exit(0)
+        #
+        # Armed w/ the new poledisk_id, update the slot contents
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetdumpingsetslotcontents + case)
         outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
@@ -454,10 +477,119 @@ def InventoryAll():
             print('Update SlotContents info failed', posturl, outp)
             sys.exit(0)
 
-    # Load info for each PoleDisk!
-    #  NOT DONE YET
     return
+
+#########################################################
+# JOB CHECK CODE
+def JobInspectAll():
+    # First get a list of all the nominally active slots
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpinggetactive)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0:
+        print('JobInspectAll: active slots check failure', geturl, outp)
+        sys.exit(0)
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    # Load the relevant info up:
+    expected = []
+    for js in my_json:
+        expected.append([js['diskuuid'], js['slotnumber'], js['dateBegun'], js['poledisk_id']])
+    # Suppose expected is empty and the list of jobs isn't?
+    # Flag an error
+    #
+    #  I expect that the active slot info will be a superset
+    #  of the jobs found.  If they match, and the count is
+    #  equal to or higher than DUMPING_LIMIT,
+    #  don't bother doing anything.
+    #  Inspecting the dateBegun vs today might be useful, though
+    #
+    # Now find out what jobs are active
+    command = ['/usr/bin/ps', 'aux']
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        print('JobInspectAll: pstree failed', outp, erro, code)
+        sys.exit(0)
+    candidate = []
+    listing = outp.decode('utf-8').splitlines()
+    for line in listing:
+        if 'DUMPDISK' in line:
+            candidate.append(line)
+    # Inspect if the expected jobs are still running
+    matching = []
+    notmatched = []
+    for v in expected:
+        found = False
+        for c in candidate:
+            if v[0] in c:	# The uuid.  Will there be truncation?
+                matching.append(v)
+                found = True
+                continue
+        if not found:
+            notmatched.append(v)
+    return expected, candidate, matching, notmatched
+
+####
+# Check if the log space is getting full
+def CheckLogSpace():
+    command = ['/usr/bin/df', '-h', DUMPING_LOG_SPACE]
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        print('CheckLogSpace failed', outp, erro, code, DUMPING_LOG_SPACE)
+        sys.exit(0)
+    percent = int(outp.decode('utf-8').split()[-2].split('%')[0])
+    return percent < 90
+
+####
+# Decide whether a new job is needed, or whether an old job is done
+def JobDecision():
+    # Inspect what's out there
+    expected, candidate, matching, notmatched = JobInspectAll()
+    # Sanity check
+    if len(expected) < len(candidate):
+        print('JobDecision: we have more jobs running than expected!', len(expected), len(candidate))
+        sys.exit(0)
+    #
+    # Look for completed jobs and flag them
+    for jdone in notmatched:
+        # First make sure nothing is wrong
+        # I expect a script in DUMPING_LOG_SPACE/DUMPDISK_${UUID} and a log file
+        # in DUMPING_LOG_SPACE/DUMPDISK_${UUID}.log
+        tentative = DUMPING_LOG_SPACE + '/DUMPDISK_' + jdone[0] + '.log'
+        command = ['/usr/bin/tail', '-n1', tentative]
+        outp, erro, code = getoutputerrorsimplecommand(command, 1)
+        if int(code) != 0:
+            print('JobDecision failed to tail', tentative)
+            sys.exit(0)
+        answerline = outp.decode('utf-8')
+        #
+        # Sanity checking--expect "SUMMARY 5 5" or however many rsyncs were done
+        summaryinfo = answerline.split()
+        if summaryinfo[0] != 'SUMMARY':
+            print('JobDecision summary info line missing for', tentative)
+            print('It may have crashed.  Rerun the rsync?')
+            sys.exit(0)
+        try:
+            numtried = int(summaryinfo[1])
+            numsucceeded = int(summaryinfo[2])
+        except:
+            print('JobDecision summary info line corrupt for', tentative)
+            print('It may have crashed.  Rerun the rsync?', answerline)
+            sys.exit(0)
+        if numtried != numsucceeded:
+            print('JobDecision summary line info shows problems for', tentative)
+            print('Rerun the rsyns?', answerline)
+            sys.exit(0)
+        posturl = copy.deepcopy(basicposturl).append(targetdumpingpolediskdone + mangle(js['poledisk_id']))
+        outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        if int(code) != 0 or 'FAILURE' in str(outp):
+            print('Set status of PoleDisk failed', js['poledisk_id'])
+            sys.exit(0)
+    # Done flagging completed jobs  Nothing to do?
+    # BEWARE:  Countup is all I use for determining if a directory is ready--I don't check
+    # the size!!
+    return ''
 
 ###########
 #
-InventoryAll()
+#InventoryAll()
+jobinformation = JobInspectAll()

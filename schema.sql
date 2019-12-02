@@ -8,7 +8,7 @@ CREATE TABLE BundleStatus(
   status TEXT NOT NULL,
   useCount INTEGER,
   checksum TEXT
-);
+, LooseFileDir TEXT, DownloadDir TEXT, FileDate TEXT);
 CREATE TABLE NERSCandC(
   nerscCandC_id INTEGER PRIMARY KEY,
   status TEXT NOT NULL,

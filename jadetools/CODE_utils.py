@@ -96,6 +96,8 @@ targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
 targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
 targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
+targetdumpinggetactive = curltargethost + '/dumping/activeslots'
+targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -116,6 +118,13 @@ BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERS
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
+# The backplane limit is about 2 Pole disks dumping at once.
+DUMPING_LIMIT = 2
+# 3 days worth of minutes
+DUMPING_TIMEOUT = 4320
+# Where do log files go?
+DUMPING_LOG_SPACE = '/tmp'
 
 # String manipulation stuff
 def unslash(strWithSlashes):

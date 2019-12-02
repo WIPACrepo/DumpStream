@@ -1,0 +1,8 @@
+Potential race condition.
+If the Pole tape dumper is writing the last file to a directory, and the Jade-LTA
+feeder notices that the directory APPEARS TO BE complete, the bundler may begin
+work on the contents before it is ready.  It _should_ fail because of the incomplete
+file's checksum, but that's another failure condition to monitor.
+
+Since I haven't written the Jade-LTA feeder yet, this is something to keep an eye on.
+I'm not sure I have the size information, though.

@@ -967,7 +967,7 @@ def polediskinfobyid(estring):
 # Set the start time of the dump.  Wants the poledisk_id as a parameter
 @app.route("/dumping/poledisk/start/<estring>", methods=["POST"])
 def polediskstart(estring):
-    query = 'UPDATE PoleDisk SET dateBegun=datetime(\'now\',\'localtime\') WHERE poledisk_id=?'
+    query = 'UPDATE PoleDisk SET dateBegun=datetime(\'now\',\'localtime\'),status=\'Dumping\' WHERE poledisk_id=?'
     unstring = unmangle(estring)
     try:
         inum = int(unstring)
@@ -988,7 +988,7 @@ def polediskstart(estring):
 # Set the end time of the dump.  Wants the poledisk_id as a parameter
 @app.route("/dumping/poledisk/done/<estring>", methods=["POST"])
 def polediskdone(estring):
-    query = 'UPDATE PoleDisk SET dateEnded=datetime(\'now\',\'localtime\') WHERE poledisk_id=?'
+    query = 'UPDATE PoleDisk SET dateEnded=datetime(\'now\',\'localtime\'),status=\'Done\' WHERE poledisk_id=?'
     unstring = unmangle(estring)
     try:
         inum = int(unstring)
@@ -1138,6 +1138,35 @@ def setslot(estring):
         print('setslot failed to set the slot info', query, params)
         return 'FAILURE'
     return ''
+
+####
+# Get the UUIDs for the disks that have active jobs running
+@app.route("/dumping/activeslots", methods=["GET"])
+def getactiveslotuuid():
+    # Get them all
+    query = 'select pd.diskuuid,pd.slotnumber,pd.dateBegun from PoleDisk as pd join SlotContents as sc'
+    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Dumping\')'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getactiveslotuuid', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Get the UUIDs and slot numbers for the disks that have active jobs running
+@app.route("/dumping/waitingslots", methods=["GET"])
+def getwaitingslotuuid():
+    # Get them all
+    query = 'select pd.diskuuid,pd.slotnumber from PoleDisk as pd join SlotContents as sc'
+    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Inventoried\')'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getwaitingslotuuid', query)
+        return 'FAILURE'
+    return str(stuff)
+    
 
 ####
 # Get the substring representing the trees we want to retrieve

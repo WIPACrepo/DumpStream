@@ -8,6 +8,7 @@ USEHEARTBEATS = False
 ########################################################
 # Main
 
+# optional argument : dups
 
 ####
 # NERSC status   
@@ -98,6 +99,10 @@ for opt in BUNDLESTATI:
         nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
 
+# Are we done?  Not if we want to look for duplicate entries.
+if len(sys.argv) > 1:
+    if 'dups' not in sys.argv[1]:
+        sys.exit(0)
 ####
 # Do we have duplicate entries?
 

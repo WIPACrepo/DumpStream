@@ -15,11 +15,15 @@ import uuid
 # Define some constants
 REPLACESTRING = '+++'
 REPLACENOT = '==='
+REPLACECURLLEFT = '+=+=+'
+REPLACECURLRIGHT = '=+=+='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
+               'RetrieveRequest', 'RetrievePending', 'ExportReady',
+               'Downloading', 'DownloadDone', 'RemoteCleaned']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -62,6 +66,7 @@ SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
 targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
+targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -85,6 +90,25 @@ targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
+targetdumpingstate = curltargethost + '/dumping/state'
+targetdumpingcount = curltargethost + '/dumping/state/count/'
+targetdumpingnext = curltargethost + '/dumping/state/nextaction/'
+targetdumpingstatus = curltargethost + '/dumping/state/status/'
+targetdumpingpoledisk = curltargethost + '/dumping/poledisk'
+targetdumpingpolediskslot = curltargethost + '/dumping/poledisk/infobyslot/'
+targetdumpingpolediskuuid = curltargethost + '/dumping/poledisk/infobyuuid/'
+targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
+targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
+targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
+targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
+targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
+targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
+targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
+targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
+targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
+targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
+targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 
@@ -101,6 +125,10 @@ GLOBUS_INFLIGHT_LIMIT = 3
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
         'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 
+PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
+DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
 # String manipulation stuff
 def unslash(strWithSlashes):
     return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
@@ -112,11 +140,11 @@ def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -260,6 +288,7 @@ USEHEARTBEATS = False
 ########################################################
 # Main
 
+# optional argument : dups
 
 ####
 # NERSC status   
@@ -345,14 +374,15 @@ for opt in BUNDLESTATI:
     if int(code) != 0:
         nstats = nstats + 'DB Failure'
     else:
-        try:
-            my_json = json.loads(singletodouble(outp.decode('utf-8')))
-            js = my_json[0]
-            nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
-        except:
-            print('Failed to get proper json for', opt, outp)
+        my_json = json.loads(singletodouble(outp.decode('utf-8')))
+        js = my_json[0]
+        nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
 
+# Are we done?  Not if we want to look for duplicate entries.
+if len(sys.argv) > 1:
+    if 'dups' not in sys.argv[1]:
+        sys.exit(0)
 ####
 # Do we have duplicate entries?
 
