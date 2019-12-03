@@ -36,10 +36,27 @@ def GiveTops(desiredtrees):
     return toplist
 
 ###
+# Return the target directory for copying "to"
+def GiveTarget():
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingdumptarget)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Get Target directory failed', outp)
+        sys.exit(0)
+    dump_json = json.loads(singletodouble(outp))
+    try:
+        directory = dump_json[0]['target']
+    except:
+        print('Cannot unpack', dump_json)
+        sys.exit(0)
+    return directory
+
+###
 # Inventory a slot.  Pass it the json for the slot (has old info)
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found
-def InventoryOneFull(slotjson):
+def InventoryOneFull(slotlocation):
     # First find out what trees we want to read
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpingwantedtrees)
@@ -48,21 +65,17 @@ def InventoryOneFull(slotjson):
         print('Get trees failure', geturl, outp)
         sys.exit(0)
     desiredtrees = []
-    for h in str(outp):
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    for js in my_json:
+        h = js['dataTree']
         desiredtrees.append(h)
 
+    #
+    # If no trees to read, why bother?
     if len(desiredtrees) <= 0:
         return []
     #
     toplist = GiveTops(desiredtrees)
-    #
-    # If no trees to read, why bother?
-    #
-    try:
-        slotlocation = slotjson['name']
-    except:
-        print('InventoryOne: problem with slotjson', slotjson)
-        return []
     #
     # Note that even if the disk is not mounted, the mountpoint
     #  is still there, and will be "readable" if not populated
@@ -88,7 +101,7 @@ def InventoryOneFull(slotjson):
             if code != 0:
                 continue	# May not be present, do not worry about it
             tipyearlist = []
-            for y in outp.split():
+            for y in outp.decode('utf-8').split():
                 tipyearlist.append(y)
             for dt in desiredtrees:
                 if tip in dt:
@@ -102,13 +115,7 @@ def InventoryOneFull(slotjson):
 ####
 # Get the UUID, if this is readable, for use with slot
 # management
-def InventoryOne(slotjson):
-    #
-    try:
-        slotlocation = slotjson['name']
-    except:
-        print('InventoryOne: problem with slotjson', slotjson)
-        return []
+def InventoryOne(slotlocation):
     #
     command = ['/bin/ls', slotlocation]
     outp, erro, code = getoutputerrorsimplecommand(command, 1)
@@ -142,14 +149,14 @@ def InventoryAll():
     if int(code) != 0 or 'FAILURE' in str(outp):
         print('get dump target failure', geturl, outp)
         sys.exit(0)
-    targetarea = str(outp)
+    targetarea = str(outp.decode('utf-8'))
     #
     for js in my_json:
         # First check if the slot is disabled
         if js['poledisk_id'] < 0:
             continue
         # Now inventory the slot--get the UUID of the disk, if available
-        diskuuid = InventoryOne(js)
+        diskuuid = InventoryOne(js['name'])
         if diskuuid == '':
             print('Got nothing for', js['slotnumber'])
             continue
@@ -251,21 +258,15 @@ def CheckLogSpace():
     return percent < 90
 
 ####
-# Decide whether a new job is needed, or whether an old job is done
-def JobDecision():
-    # Inspect what's out there
-    expected, candidate, matching, notmatched = JobInspectAll()
-    # Sanity check
-    if len(expected) < len(candidate):
-        print('JobDecision: we have more jobs running than expected!', len(expected), len(candidate))
-        sys.exit(0)
-    #
+# Flag completed jobs as needed.  Sanity checking
+def JobDecisionCompleted(notmatched):
     # Look for completed jobs and flag them
     for jdone in notmatched:
         # First make sure nothing is wrong
         # I expect a script in DUMPING_LOG_SPACE/DUMPDISK_${UUID} and a log file
         # in DUMPING_LOG_SPACE/DUMPDISK_${UUID}.log
-        tentative = DUMPING_LOG_SPACE + '/DUMPDISK_' + jdone[0] + '.log'
+        id = jdone['poledisk_id']
+        tentative = DUMPING_LOG_SPACE + 'DUMPDISK_' + jdone[0] + '.log'
         command = ['/usr/bin/tail', '-n1', tentative]
         outp, erro, code = getoutputerrorsimplecommand(command, 1)
         if int(code) != 0:
@@ -290,17 +291,153 @@ def JobDecision():
             print('JobDecision summary line info shows problems for', tentative)
             print('Rerun the rsyns?', answerline)
             sys.exit(0)
-        posturl = copy.deepcopy(basicposturl).append(targetdumpingpolediskdone + mangle(js['poledisk_id']))
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetdumpingpolediskdone + mangle(id))
         outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
         if int(code) != 0 or 'FAILURE' in str(outp):
-            print('Set status of PoleDisk failed', js['poledisk_id'])
+            print('Set status of PoleDisk failed', id)
             sys.exit(0)
-    # Done flagging completed jobs  Nothing to do?
-    # BEWARE:  Countup is all I use for determining if a directory is ready--I don't check
-    # the size!!
-    return ''
+    # Done flagging completed jobs
+    return
+
+####
+# Decide whether a new job is needed, or whether an old job is done
+#  Do some cleanup too
+def JobDecision(dumperstatus, dumpernextAction):
+    # Inspect what's out there
+    expected, candidate, matching, notmatched = JobInspectAll()
+    # Sanity check
+    if len(expected) < len(candidate):
+        print('JobDecision: we have more jobs running than expected!', len(expected), len(candidate))
+        sys.exit(0)
+    #
+    # Check on completed jobs
+    JobDecisionCompleted(notmatched)
+    #
+    # Next see how long the current set of jobs has been taking
+    for jrunning in matched:
+        dateBegun = datetime.datetime.strptime(str(jrunning['dateBegun']), '%Y-%m-%d %H:%M:%S')
+        # Since all the times are local, I can use something simple
+        minutes = (datetime.today() - dateBegun).total_seconds() / 60
+        if minutes > DUMPING_TIMEOUT:
+            print('JobDecision:  job for', jrunning['diskuuid'], 'has run long')
+            # Don't bail, this might be OK
+    #
+    # What should we be doing?
+    if dumpernextAction == 'Pause' or dumperstatus == 'Idle':
+        return
+    #
+    # See if the jobcount is low enough to let me add another dump
+    if len(candidate) >= DUMPING_LIMIT:
+        return
+    #
+    # Got room for another...
+    if not CheckLogSpace():
+        print('JobDecision:  log space running short')
+        return
+    # Pick up the next one
+    geturl = copy.deepcopy(basicposturl)
+    geturl.append(targetdumpinggetwaiting)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Get next undone disk failed', outp)
+        sys.exit(0)
+    if len(outp) <= 0:
+        return		# Nothing left to do here
+    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    try:
+        uuid = my_json[0]['diskuuid']
+        id = my_json[0]['poledisk_id']
+        slotnumber = my_json[0]['slotnumber']
+    except:
+        print('JobDecision:  cannot unpack next disk', my_json)
+        sys.exit(0)
+    #
+    command = ['/usr/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_LOG_SPACE + 'DUMPING_' + str(uuid)]
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        print('JobDecision: failed to copy to new script')
+        sys.exit(0)
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingslotcontents)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0:
+        print('JobDecision: SlotContents failure', geturl, outp)
+        sys.exit(0)
+    sl_json = json.loads(singletodouble(outp.decode('utf-8')))
+    for js in sl_json:
+        if js['slotnumber'] == slotnumber:
+            slotlocation = js['name']
+            break
+    returnstuff = InventoryOneFull(slotlocation)
+    targetdir = GiveTarget()
+    dirstoscan = returnstuff[1]
+    command = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_LOG_SPACE + 'DUMPING_' + str(uuid)]
+    for source in dirstoscan:
+        arglist.append(slotlocation + '/' + source)
+        # Create the target directory...
+        arglist.append(targetdir + '/' + source)
+    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    if int(code) != 0:
+        print('JobDecision: submitdumper failed ')
+        sys.exit(0)
+    #
+    # Update PoleDisk info
+    posturl = copy.deepcopy(basicposturl)
+    posturl.append(targetdumpingpolediskstart + mangle(id))
+    outp, erro, code = gettoutputerrorsimplecommand(posturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('JobDecision:  update PoleDisk w/ start time failed', outp)
+        sys.exit(0)
+    # If we're running in DumpOne mode, Pause 
+    if dumpernextAction == 'DumpOne':
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetdumpingstatus + mangle('Pause'))
+        outp, erro, code = gettoutputerrorsimplecommand(posturl, 1)
+        if int(code) != 0 or 'FAILURE' in str(outp):
+            print('JobDecision:  update Dumper status failed', outp)
+            sys.exit(0)
+    #
+    #
+    return
+
+####
+# Decisions
+def DumperTodo():
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetdumpingstate)
+    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Get Dumper state failed', outp)
+        sys.exit(0)
+    # status, nextAction
+    dump_json = json.loads(singletodouble(outp.decode('utf-8')))
+    status = dump_json[0]['status']
+    nextAction = dump_json[0]['nextAction']
+    return status, nextAction
+#DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+#DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
 
 ###########
+# MAIN
 #
+# Should we be active at all?
+#  Note that Pause still lets us check whether old jobs have completed.
+dumpstatus, dumpnextAction = DumperTodo()
+if dumpnextAction == 'Inventory':
+    sys.exit(0)
+# Note that the Idle status still allows us to check whether old
+# jobs have completed.
+if dumpstatus == 'Error' or dumpstatus == 'Inventorying':
+    sys.exit(0)
+if dumpnextAction == 'Dump' and dumperstatus == 'Idle':
+    posturl = copy.deepcopy(basicposturl)
+    posturl.append(targetdumpingstate + mangle('Dumping'))
+    outp, erro, code = getoutputerrorsimplecommand(posturl, 1)
+    if int(code) != 0 or 'FAILURE' in str(outp):
+        print('Set new Dumper status failed', outp)
+        sys.exit(0)
+
 #InventoryAll()
 jobinformation = JobInspectAll()
+# JobDecision(dumperstatus, dumpernextAction)

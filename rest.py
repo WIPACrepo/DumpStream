@@ -1144,7 +1144,7 @@ def setslot(estring):
 @app.route("/dumping/activeslots", methods=["GET"])
 def getactiveslotuuid():
     # Get them all
-    query = 'select pd.diskuuid,pd.slotnumber,pd.dateBegun from PoleDisk as pd join SlotContents as sc'
+    query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id,pd.dateBegun from PoleDisk as pd join SlotContents as sc'
     query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Dumping\')'
     try:
         stuff = query_db_final(query)
@@ -1154,12 +1154,13 @@ def getactiveslotuuid():
     return str(stuff)
 
 ####
-# Get the UUIDs and slot numbers for the disks that have active jobs running
+# Get the the next UUID and slot number for the disks that don't yet have jobs running
 @app.route("/dumping/waitingslots", methods=["GET"])
 def getwaitingslotuuid():
     # Get them all
-    query = 'select pd.diskuuid,pd.slotnumber from PoleDisk as pd join SlotContents as sc'
+    query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id from PoleDisk as pd join SlotContents as sc'
     query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Inventoried\')'
+    query = query + ' ORDER BY pd.poledisk_id ASC LIMIT 1'
     try:
         stuff = query_db_final(query)
     except:

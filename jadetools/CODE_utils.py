@@ -124,7 +124,9 @@ DUMPING_LIMIT = 2
 # 3 days worth of minutes
 DUMPING_TIMEOUT = 4320
 # Where do log files go?
-DUMPING_LOG_SPACE = '/tmp'
+DUMPING_LOG_SPACE = '/tmp/'
+# Where do scripts live?
+DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -182,7 +184,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
         returncode = proc.returncode
-        return output, error, returncode
+        return output.decode('utf-8'), error, returncode
     except subprocess.CalledProcessError:
         print(cmd, " Failed to spawn")
         return "", "", 1

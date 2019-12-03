@@ -1,0 +1,20 @@
+#!/bin/bash
+# Expected arguments:
+#  Script name (including directory)  I append .log to this to get the log file
+#  pairs of source and target directories
+#
+if [[ ! -f $1 ]]
+  then
+     echo "Where is the dumping script?"
+     echo "$@"
+     exit 1
+  fi
+
+script=`echo $1`
+logfile=`echo "${script}.log"`
+
+# Move the argument list down 1
+shift
+
+$1 "$@" >& ${logfile} &
+exit 0
