@@ -261,10 +261,10 @@ def globusjson(localuuid, localdir, remotesystem, idealdir):
 def flagBundleStatus(key, newstatus):
     if str(newstatus) not in BUNDLESTATI:
         return 'Failure', newstatus + ' is not allowed', '1'
-    posturl = copy.deepcopy(basicposturl)
+    fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
-    posturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    fbposturl.append(targetupdatebundlestatus + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
     if len(outp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
