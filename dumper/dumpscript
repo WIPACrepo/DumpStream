@@ -1,0 +1,34 @@
+# Template script.  Copy to the name RSYNC${UUID} so we can identify
+#  which disk it is copying
+# Execute the rsync
+#   ./${UUID}.sh source1 target1 source2 target2 source3 target3 ...
+#
+declare -i donejobs expectedjobs
+echo "$@"
+ok=1
+donejobs=0
+expectedjobs=0
+uuidlogname=`echo $0 | awk '{n=split($1,a,"/");print "/tmp/"a[n]"copy.log";}'`
+touch ${uuidlogname}
+while [[ ${ok} == 1 ]]
+  do
+    if [[ "$1" != "" && "$2" != "" ]]
+       then
+          expectedjobs=$(( ${expectedjobs} + 1 ))
+          echo "rsync -av $1 $2 >> ${uuidlogname}"
+          if [[ $? != 0 ]]
+            then
+              echo "FAILURE at $1  to $2"
+              continue
+            else
+              donejobs=$(( ${donejobs} + 1 ))
+            fi
+       else
+          echo $1 "..." $2 ",,,"
+          ok=0
+          continue
+       fi
+    shift
+  done
+echo "SUMMARY ${expectedjobs} ${donejobs}"
+exit 0
