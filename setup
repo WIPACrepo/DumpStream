@@ -1,0 +1,5 @@
+ln -s ../jadetools/CODE_db.py ./
+ln -s ../jadetools/CODE_utils.py ./
+ln -s ../jadetools/IMPORT_db.py ./
+ln -s ../jadetools/IMPORT_utils.py ./
+ln -s ../jadetools/preproc.py ./

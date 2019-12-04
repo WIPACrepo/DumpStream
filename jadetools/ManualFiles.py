@@ -1,3 +1,4 @@
+# ManualFiles.py (.base)
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
@@ -294,130 +295,100 @@ def deltaT(oldtimestring):
     return delta
 #
 
-USEHEARTBEATS = False
-
+DEBUGIT = False
 ########################################################
+#
+def Phase1():
+    #
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetfindbundles + mangle('LocalDeleted'))
+    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
+        print('Phase 1 failure with', geturl)
+        return
+    if len(answer) == 0:
+        return	# Nothing to do
+    #
+    jjanswer = json.loads(singletodouble(answer))
+    numwaiting = len(jjanswer)
+    # Sanity check
+    if numwaiting <= 0:
+        # This should not happen, but maybe the json isn't understood
+        print('Phase 1 json is empty', str(answer))
+        return
+    #
+    stuffToLookAt = []
+    for js in jjanswer:
+        try:
+            localname = js['localName']
+            loosefilesexpectedpath = os.path.split(js['idealName'])[0]
+            bid = js['bundleStatus_id']
+        except:
+            print('Phase 1: problem with getting info from', js)
+            continue
+        #print('Candidate for removal', localname)
+        stuffToLookAt.append([loosefilesexpectedpath, localname, bid])
+    if len(stuffToLookAt) == 0:
+        return	#Nothing useful to do
+    #
+    stuffFound = []
+    for dinfo in stuffToLookAt:
+        directory = dinfo[0]
+        command = ['/usr/bin/ls', directory]
+        try:
+            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            if len(outp) == 0:
+                continue
+            stuffFound.append([dinfo, outp.decode('utf-8')])
+        except:
+            print('Failure doing ls of ', directory, command, erro, code, len(outp))
+            continue
+    #
+    if len(stuffFound) <= 0:
+        return	# Nothing useful to do
+    for pair in stuffFound:
+        print(pair[0][0], len(pair[1].split()))		# Print ideal name, not local
+    #
+    shortanswer = input('OK to remove the above? y/Y ').lower()
+    if len(shortanswer) <= 0:
+        return			# Don't do anything
+    if shortanswer[0] != 'y':
+        return			# Don't do anything
+    # pair[0][0] is the directory name from which we bundled the loose files 
+    # pair[0][1] is the local zip file name, including the local path.  It
+    #            may not exist anymore locally.
+    # pair[0][2] is the bundle id
+    # pair[1] is a list of file names in the directory of loose files.  There
+    #            is no path associated, just the file names
+    for pair in stuffFound:
+        bunchofiles = pair[1].split()
+        for fname in bunchofiles:
+            command = ['/usr/bin/rm', pair[0][0] + '/' + fname.strip()]
+            #print(command)
+            try:
+                outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            except:
+                print('Phase 1: problem executing command', command)
+                continue
+            if int(code) != 0:
+                print('Phase 1: bad code executing command', command, code)
+                continue
+        #
+        outp, erro, code = flagBundleStatus(pair[0][2], 'LocalFilesDeleted')
+        if len(outp) > 0:
+            print('Phase 1: failed to set status=LocalFilesDeleted for', localname, outp)
+            continue
+    #
+    # I could do a rm -rf pair[0], but it makes me nervous--a DB
+    # corruption could delete an awful lot of stuff.  File by file
+    # is probably safer--and it should fail if it hits a directory.
+    # Slow but safe.
+    return
+
+###############
 # Main
 
-# optional argument : dups
-
-####
-# NERSC status   
-geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetnerscinfo)
-outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-nstats = ''
-if int(code) != 0:
-    nstats = 'DB Failure'
-else:
-    #print(outp)
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (str(my_json['status']) + ' | ' + str(my_json['nerscError']) + ' | '
-              + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
-              + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
-logit('NERSCStatus= ', nstats)
-
-
-####
-# NERSC token status
-geturl = copy.deepcopy(basicgeturl)
-geturl.append(targettokeninfo)
-outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-nstats = ''
-if int(code) != 0:
-    nstats = 'DB Failure'
-else:
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    tname = 'NULL'
-    if my_json['hostname'] != '':
-        tname = my_json['hostname']
-    nstats = tname + ' at ' + str(my_json['lastChangeTime'])
-    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
-logit('NERSCToken= ', nstats)
-
-####
-# NERSC heartbeats
-if USEHEARTBEATS:
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetheartbeatinfo)
-    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    nstats = ''
-    if int(code) != 0:
-        nstats = 'DB Failure'
-    else:
-        trialbunch = stringtodict(str(outp))
-        #print(trialbunch)
-        nstats = 'Beats: '
-        for chunk in trialbunch:
-            #print(chunk)
-            my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
-            nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
-            nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
-    logit('NERSCHeartbeats= ', nstats)
-
-
-####
-# local status   
-geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetdumpinfo)
-outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-nstats = ''
-if int(code) != 0:
-    nstats = 'DB Failure'
-else:
-    #print(outp)
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
-              + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
-    nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
-logit('LocalStatus= ', nstats)
-
-
-####
-# How many bundles have each status?
-# I will probably get fancier later.  For now, just this.
-nstats = ''
-for opt in BUNDLESTATI:
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetbundlestatuscount + mangle(opt))
-    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    #print(outp)
-    if int(code) != 0:
-        nstats = nstats + 'DB Failure'
-    else:
-        my_json = json.loads(singletodouble(outp.decode('utf-8')))
-        js = my_json[0]
-        nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
-logit('BundleStatusCounts= ', nstats)
-
-# Are we done?  Not if we want to look for duplicate entries.
-if len(sys.argv) > 1:
-    if 'dups' not in sys.argv[1]:
-        sys.exit(0)
-####
-# Do we have duplicate entries?
-
-doubles = -1
-ndoubles = ''
-geturl = copy.deepcopy(basicgeturl)
-geturl.append(targetbundlesworking)
-outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-if int(code) != 0:
-    ndoubles = 'DB Failure'
-else:
-    doubles = 0
-    bunch = []
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
-    for js in my_json:
-        bunch.append([os.path.basename(js['localName']), str(js['status']), str(js['bundleStatus_id'])])
-    for b in bunch:
-        ln = b[0]
-        for c in bunch:
-            if c != b:
-                if ln == c[0]:
-                    doubles = doubles + 1
-    doubles = doubles / 2
-    ndoubles = str(doubles)
-# do I want to log this at all if there's no problem?
-if doubles != 0:
-    logit('Duplicate bundle transfers=', ndoubles)
+Phase1()
+# Phase1 does not work unless we have write access to the /data/exp/wherever
+# filesystem to which the files were initially dumped, and jade-lta does not.
+# Nor does the jade account have privileges to delete dumped files.

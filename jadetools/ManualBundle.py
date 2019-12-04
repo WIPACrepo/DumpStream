@@ -10,20 +10,21 @@ import subprocess
 import copy
 import os
 import uuid
-# IMPORT_db.py 
-# Assumes we have "import sys" as well
-import pymysql
 
 # IMPORT CODE_utils.py
 #####
 # Define some constants
 REPLACESTRING = '+++'
 REPLACENOT = '==='
+REPLACECURLLEFT = '+=+=+'
+REPLACECURLRIGHT = '=+=+='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
+               'RetrieveRequest', 'RetrievePending', 'ExportReady',
+               'Downloading', 'DownloadDone', 'RemoteCleaned']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -66,6 +67,7 @@ SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
 targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
+targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -89,6 +91,27 @@ targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
+targetdumpingstate = curltargethost + '/dumping/state'
+targetdumpingcount = curltargethost + '/dumping/state/count/'
+targetdumpingnext = curltargethost + '/dumping/state/nextaction/'
+targetdumpingstatus = curltargethost + '/dumping/state/status/'
+targetdumpingpoledisk = curltargethost + '/dumping/poledisk'
+targetdumpingpolediskslot = curltargethost + '/dumping/poledisk/infobyslot/'
+targetdumpingpolediskuuid = curltargethost + '/dumping/poledisk/infobyuuid/'
+targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
+targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
+targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
+targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
+targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
+targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
+targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
+targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
+targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
+targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
+targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
+targetdumpinggetactive = curltargethost + '/dumping/activeslots'
+targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 
@@ -105,6 +128,19 @@ GLOBUS_INFLIGHT_LIMIT = 3
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
         'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
 
+PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
+DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
+# The backplane limit is about 2 Pole disks dumping at once.
+DUMPING_LIMIT = 2
+# 3 days worth of minutes
+DUMPING_TIMEOUT = 4320
+# Where do log files go?
+DUMPING_LOG_SPACE = '/tmp/'
+# Where do scripts live?
+DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
+
 # String manipulation stuff
 def unslash(strWithSlashes):
     return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
@@ -116,11 +152,11 @@ def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -161,7 +197,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
         returncode = proc.returncode
-        return output, error, returncode
+        return output.decode('utf-8'), error, returncode
     except subprocess.CalledProcessError:
         print(cmd, " Failed to spawn")
         return "", "", 1
@@ -238,10 +274,10 @@ def globusjson(localuuid, localdir, remotesystem, idealdir):
 def flagBundleStatus(key, newstatus):
     if str(newstatus) not in BUNDLESTATI:
         return 'Failure', newstatus + ' is not allowed', '1'
-    posturl = copy.deepcopy(basicposturl)
+    fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
-    posturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    fbposturl.append(targetupdatebundlestatus + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
     if len(outp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
@@ -258,103 +294,6 @@ def deltaT(oldtimestring):
         delta = -1
     return delta
 #
-DBdatabase = None
-DBcursor = None
-######################################################
-######
-# DB connection established
-def getdbgen():
-    global DBdatabase
-    global DBcursor
-    try:
-        # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
-        DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
-    except pymysql.OperationalError:
-        print(['ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
-        sys.exit(1)
-    try:
-        #DBcursor = DBdatabase.cursor()
-        DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
-    except pymysql.OperationalError:
-        print(['ERROR: could not get cursor for database.'])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
-        sys.exit(1)
-    return
-
-####
-def returndbgen():
-    return DBcursor
-
-####
-def closedbgen():
-    DBcursor.close()
-    DBdatabase.close()
-    return
-
-####
-# Commit changes to DB specified
-def doCommitDB():
-    try:
-        DBdatabase.commit()
-    except pymysql.OperationalError:
-        DBdatabase.rollback()
-        print(['doCommitDB: ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
-    except Exception:
-        DBdatabase.rollback()
-        print(['doCommitDB: Failed to execute the commit'])
-        sys.exit(1)
-
-
-
-############################################
-######  Execute a command.  Crash if it fails, otherwise return silently
-def doOperationDB(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        return
-    except pymysql.OperationalError:
-        print(['ERROR: doOperationDB could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: doOperationDB undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
-    return
-
-############################################
-######  Execute a command.  Crash if it fails, return False if it didn't work right, True if it was OK
-def doOperationDBWarn(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        return True
-    except pymysql.OperationalError:
-        print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
-    except pymysql.IntegrityError:
-        print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
-        return False
-    except Exception:
-        print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
-    return True
-
-############################################
-######  Execute a command, return the answer.  Or error messages if it failed
-def doOperationDBTuple(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        expectedtuple = dbcursor.fetchall()
-        return expectedtuple		#Assume you know what you want to do with this
-    except pymysql.OperationalError:
-        return ['ERROR: doOperationDBTuple could not connect to MySQL ', string, ' database.', command]
-    except Exception:
-        return ['ERROR: doOperationDBTuple undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command]
-    return [[]]
 
 DEBUGIT = False
 ########################################################

@@ -1,10 +1,8 @@
 # ManualBundle.py (.base)
 import sys
 #SUPERIMPORT IMPORT_utils.py
-#SUPERIMPORT IMPORT_db.py
 
 #SUPERIMPORT CODE_utils.py
-#SUPERIMPORT CODE_db.py
 
 DEBUGIT = False
 ########################################################

@@ -16,11 +16,15 @@ import uuid
 # Define some constants
 REPLACESTRING = '+++'
 REPLACENOT = '==='
+REPLACECURLLEFT = '+=+=+'
+REPLACECURLRIGHT = '=+=+='
 NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
 LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
 BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'Abort', 'Retry']
+               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
+               'RetrieveRequest', 'RetrievePending', 'ExportReady',
+               'Downloading', 'DownloadDone', 'RemoteCleaned']
 DEBUGPROCESS = False
 # WARN if free scratch space is low
 FREECUTLOCAL = 50000000
@@ -62,6 +66,8 @@ SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
 SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
 
 targetfindbundles = curltargethost + 'bundles/specified/'
+targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
+targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
 targettaketoken = curltargethost + 'nersctokentake/'
 targetreleasetoken = curltargethost + 'nersctokenrelease/'
 targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
@@ -85,6 +91,27 @@ targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 
+targetdumpingstate = curltargethost + '/dumping/state'
+targetdumpingcount = curltargethost + '/dumping/state/count/'
+targetdumpingnext = curltargethost + '/dumping/state/nextaction/'
+targetdumpingstatus = curltargethost + '/dumping/state/status/'
+targetdumpingpoledisk = curltargethost + '/dumping/poledisk'
+targetdumpingpolediskslot = curltargethost + '/dumping/poledisk/infobyslot/'
+targetdumpingpolediskuuid = curltargethost + '/dumping/poledisk/infobyuuid/'
+targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
+targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
+targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
+targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
+targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
+targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
+targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
+targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
+targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
+targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
+targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
+targetdumpinggetactive = curltargethost + '/dumping/activeslots'
+targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 
@@ -99,7 +126,20 @@ GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
 GLOBUS_INFLIGHT_LIMIT = 3
 
 BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'Abort', 'Retry']
+        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
+
+PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
+DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+
+# The backplane limit is about 2 Pole disks dumping at once.
+DUMPING_LIMIT = 2
+# 3 days worth of minutes
+DUMPING_TIMEOUT = 4320
+# Where do log files go?
+DUMPING_LOG_SPACE = '/tmp/'
+# Where do scripts live?
+DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -112,11 +152,11 @@ def unmangle(strFromPost):
     # dummy for now.  Final thing has to fix missing spaces,
     # quotation marks, commas, slashes, and so on.
     #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!')
+    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
 
 def mangle(strFromPost):
     # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT)
+    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
 
 def tojsonquotes(strFromPost):
     # Turn single into double quotes
@@ -157,7 +197,7 @@ def getoutputerrorsimplecommand(cmd, Timeout):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
         returncode = proc.returncode
-        return output, error, returncode
+        return output.decode('utf-8'), error, returncode
     except subprocess.CalledProcessError:
         print(cmd, " Failed to spawn")
         return "", "", 1
@@ -234,10 +274,10 @@ def globusjson(localuuid, localdir, remotesystem, idealdir):
 def flagBundleStatus(key, newstatus):
     if str(newstatus) not in BUNDLESTATI:
         return 'Failure', newstatus + ' is not allowed', '1'
-    posturl = copy.deepcopy(basicposturl)
+    fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
-    posturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
+    fbposturl.append(targetupdatebundlestatus + comstring)
+    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
     if len(outp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(outp))
