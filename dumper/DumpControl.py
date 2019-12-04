@@ -561,7 +561,7 @@ def JobDecisionCompleted(notmatched):
         # First make sure nothing is wrong
         # I expect a script in DUMPING_LOG_SPACE/DUMPDISK_${UUID} and a log file
         # in DUMPING_LOG_SPACE/DUMPDISK_${UUID}.log
-        jid = jdone['poledisk_id']
+        jid = jdone[3]
         tentative = DUMPING_LOG_SPACE + 'DUMPDISK_' + jdone[0] + '.log'
         commandj = ['/usr/bin/tail', '-n1', tentative]
         joutp, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
@@ -673,7 +673,8 @@ def JobDecision(dumperstatus, dumpnextAction):
     for source in dirstoscan:
         commandy.append(slotlocation + '/' + source)
         # Create the target directory...
-        commandy.append(targetdir + '/' + source)
+        reducedsource = os.path.dirname(source)
+        commandy.append(targetdir + '/' + reducedsource)
     youtp, yerro, ycode = getoutputerrorsimplecommand(commandy, 1)
     if int(ycode) != 0:
         print('JobDecision: submitdumper failed ')
@@ -744,7 +745,7 @@ if dumpstatus == 'Error' or dumpstatus == 'Inventorying':
 
 if dumpNextAction == 'Dump' and dumpstatus == 'Idle':
     mposturl = copy.deepcopy(basicposturl)
-    mposturl.append(targetdumpingstate + mangle('Dumping'))
+    mposturl.append(targetdumpingstatus + mangle('Dumping'))
     moutp, merro, mcode = getoutputerrorsimplecommand(mposturl, 1)
     if int(mcode) != 0 or 'FAILURE' in str(moutp):
         print('Set new Dumper status failed', moutp)

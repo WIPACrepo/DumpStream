@@ -15,7 +15,7 @@ while [[ ${ok} == 1 ]]
     if [[ "$1" != "" && "$2" != "" ]]
        then
           expectedjobs=$(( ${expectedjobs} + 1 ))
-          echo "rsync -av $1 $2 >> ${uuidlogname}"
+          sudo rsync -av $1 $2 >> ${uuidlogname}
           if [[ $? != 0 ]]
             then
               echo "FAILURE at $1  to $2"
