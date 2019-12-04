@@ -1,0 +1,55 @@
+James Bellinger
+This is the tree for the to-NERSC lta chain.  The
+chain consists of 4 main parts:
+archivecontrol rest server:	(which uses apachetest.conf and rest.py)
+jade-lta server:		(BundleScanner.py)
+nersc server:			(NERSC_Client.py)
+dumpercontrol			(DumpControl.py)
+
+jadetools	contains BundleScanner.py and various utility
+   programs we run in Madison
+nersctools	contains NERSC_Client.py and runs at NERSC
+dumper		contains python and bash scripts for reading
+   Pole disks
+
+In addition we have in this directory, though not in git (for
+obvious reasons) a rotating backup of the sqlite3 database
+on archivecontrol.
+
+archivecontrol runs its rest server from /opt/testing/rest
+
+archivecontrol uses apache, and in /etc/httpd/conf.d has my
+apachetest.conf to point queries to the right code
+
+archivecontrol uses the Flask utility to handle the interface
+between sqlite3 and python.  The tool rest.py manages the
+processing, and rest.wsgi tells apache where to look for the
+rest.py file  config.py tells Flask what the initial settings
+are.
+
+
+The disk dumping is handled differently.
+
+To load fresh info about what is on the new disks:
+ssh i3admin@jade03 /opt/i3admin/dumpscripts/newset
+This overwrites anything that was already done, btw
+
+Want to see the status of the disks?
+ssh i3admin@jade03 cat /opt/i3admin/dumpscripts/INHAND
+
+To dump the next disk in line:
+ssh i3admin@jade03 /opt/i3admin/dumpscripts/rundumpone
+That submits a job to dump the next disk.  If any.  No errors are returned,
+though some are logged
+
+I should try to put all the command info into a single place,
+presumably the same one I use for to-NERSC
+
+I did something quite crazy and non-pythonic to keep the footprint
+small:  I use a preprocessor instead of a python library.  This
+achieves the same result--keeping utility code in one place and
+consistent for all tools (except the rest.py wsgi handler)--but
+means I only have one script, as a rule, to schlepp around.
+In retrospect, that was crazy, but I was in an experimental mood,
+and it doesn't hurt readability/maintainability.
+
