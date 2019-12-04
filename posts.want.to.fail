@@ -1,8 +1,0 @@
-echo /bundles/oldestuntouched
-curl -X POST http://archivecontrol.wipac.wisc.edu:80/bundles/oldestuntouched
-echo
-echo /bundles/oldestuntouched/
-curl -X POST http://archivecontrol.wipac.wisc.edu:80/bundles/oldestuntouched/
-echo
-echo /bundles/specified/estring
-curl -X POST http://archivecontrol.wipac.wisc.edu:80/bundles/specified/estring
