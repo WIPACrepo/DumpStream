@@ -20,7 +20,7 @@ if int(code) != 0:
     nstats = 'DB Failure'
 else:
     #print(outp)
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    my_json = json.loads(singletodouble(outp))
     nstats = (str(my_json['status']) + ' | ' + str(my_json['nerscError']) + ' | '
               + str(my_json['nerscSize']) + ' | ' + str(my_json['lastChangeTime'])
               + '  ' + str(deltaT(str(my_json['lastChangeTime']))))
@@ -36,7 +36,7 @@ nstats = ''
 if int(code) != 0:
     nstats = 'DB Failure'
 else:
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    my_json = json.loads(singletodouble(outp))
     tname = 'NULL'
     if my_json['hostname'] != '':
         tname = my_json['hostname']
@@ -59,7 +59,7 @@ if USEHEARTBEATS:
         nstats = 'Beats: '
         for chunk in trialbunch:
             #print(chunk)
-            my_json = json.loads(singletodouble(chunk))  #outp.decode('utf-8')))
+            my_json = json.loads(singletodouble(chunk))
             nstats = nstats + '| ' + my_json['hostname'] + '::' + str(my_json['lastChangeTime'])
             nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
     logit('NERSCHeartbeats= ', nstats)
@@ -75,7 +75,7 @@ if int(code) != 0:
     nstats = 'DB Failure'
 else:
     #print(outp)
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    my_json = json.loads(singletodouble(outp))
     nstats = (my_json['status'] + ' | ' + my_json['bundleError'] + ' | '
               + str(my_json['bundlePoolSize']) + ' | ' + str(my_json['lastChangeTime']))
     nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
@@ -94,7 +94,7 @@ for opt in BUNDLESTATI:
     if int(code) != 0:
         nstats = nstats + 'DB Failure'
     else:
-        my_json = json.loads(singletodouble(outp.decode('utf-8')))
+        my_json = json.loads(singletodouble(outp))
         js = my_json[0]
         nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
 logit('BundleStatusCounts= ', nstats)
@@ -116,7 +116,7 @@ if int(code) != 0:
 else:
     doubles = 0
     bunch = []
-    my_json = json.loads(singletodouble(outp.decode('utf-8')))
+    my_json = json.loads(singletodouble(outp))
     for js in my_json:
         bunch.append([os.path.basename(js['localName']), str(js['status']), str(js['bundleStatus_id'])])
     for b in bunch:

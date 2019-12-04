@@ -28,7 +28,7 @@ while [[ ${ok} == 1 ]]
           ok=0
           continue
        fi
-    shift
+    shift 2
   done
 echo "SUMMARY ${expectedjobs} ${donejobs}"
 exit 0

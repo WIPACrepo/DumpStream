@@ -16,5 +16,5 @@ logfile=`echo "${script}.log"`
 # Move the argument list down 1
 shift
 
-$1 "$@" >& ${logfile} &
+${script} "$@" >& ${logfile} &
 exit 0

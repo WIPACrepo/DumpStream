@@ -308,7 +308,7 @@ def abandon():
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetreleasetoken)
     # Ask for a 30-second timeout, in case of network issues
-    answer = getoutputsimplecommandtimeout(posturl, 30)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
     # If this fails, I can't update anything anyway
     if 'OK' not in str(answer):
         print('abandon fails with', str(answer))
@@ -318,7 +318,7 @@ def release():
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetreleasetoken)
     # Ask for a 30-second timeout, in case of network issues
-    answer = getoutputsimplecommandtimeout(posturl, 30)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
     # If this fails, I can't update anything anyway
     if 'OK' not in str(answer):
         print('release fails with', str(answer))
@@ -337,7 +337,7 @@ def Phase0():
     posturl = copy.deepcopy(basicposturl)
     posturl.append(command)
     # Ask for a 30-second timeout, in case of network issues
-    answer = getoutputsimplecommandtimeout(posturl, 30)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
     if 'OK' not in str(answer):
         if DEBUGIT:
             print(answer)
@@ -412,15 +412,15 @@ def Phase1():
         posturl.append(targetupdateerror + mangle(NERSCErrorString))
     else:
         posturl.append(targetupdateerror + 'clear')
-    answer = getoutputsimplecommandtimeout(posturl, 30)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
     if 'OK' not in str(answer):
         print('Not OK somehow', str(answer))
         AbortFlag = True
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetnerscpool + mangle(str(freespace)))
-    answer = getoutputsimplecommandtimeout(posturl, 30)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
     if 'OK' not in str(answer):
-        print('Not OK somehow', str(answer))
+        print('Not OK somehow', str(answer), erro)
         AbortFlag = True
     #
     if AbortFlag:
@@ -448,7 +448,7 @@ def Phase2():
         return
         # Failed to get information.  It's a waste of time trying to
         # set an error when there are network problems
-    my_json = json.loads(singletodouble(outp.decode("utf-8")))
+    my_json = json.loads(singletodouble(outp))
     if my_json['status'] == 'Halt' or my_json['status'] == 'Error':
         abandon()	# Bail, there may be a good reason for the status
     if my_json['status'] == 'Drain':
@@ -467,7 +467,7 @@ def Phase2():
         # set an error when there are network problems
     #  if NC =0, return, to next phase
     #  abandon if fails to get info
-    bundleJobJson = json.loads(singletodouble(outp.decode("utf-8")))
+    bundleJobJson = json.loads(singletodouble(outp))
     numberJobs = len(bundleJobJson)
     if numberJobs == 0:
         #if DEBUGIT:
@@ -508,7 +508,7 @@ def Phase2():
         if int(logstat) != 0:
             print(logdir + ' access timed out')
             return	# Why didn't we get an answer, since filesystem is there?
-        loglines = logfiles.decode("utf-8").splitlines()
+        loglines = logfiles.splitlines()
         #
         foundfile = ''
         for aline in loglines:
@@ -564,10 +564,6 @@ def Phase2():
         #  delete the scratch file
         #  move the old slurm log file to OLD
         #  nextfile
-        #posturl = copy.deepcopy(basicposturl)
-        #sqlcom = 'UPDATE BundleStatus SET status=\"NERSCClean\" WHERE bundleStatus_id={}'.format(bjson['bundleStatus_id'])
-        #posturl.append(targetupdatebundle + mangle(sqlcom))
-        #outp, erro, code = getoutputerrorsimplecommand(posturl, 15)
         outp, erro, code = flagBundleStatus(bjson['bundleStatus_id'], 'NERSCClean')
         if int(code) != 0:
             # Try again
@@ -612,7 +608,7 @@ def Phase3():
     # Look for files with PushDone as the status, pull all info
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('PushDone'))
-    listofbundles = getoutputsimplecommandtimeout(geturl, 30)
+    listofbundles, erro, code = getoutputerrorsimplecommand(geturl, 30)
     if len(listofbundles) == 0:
         return		# Nothing to do
     #
@@ -630,7 +626,7 @@ def Phase3():
     if NERSCErrorString != '':
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetupdateerror + mangle(NERSCErrorString))
-        answer = getoutputsimplecommandtimeout(posturl, 30)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 30)
         return   # This is the last phase, so the abandon will happen
         # automatically
     lines = allstuff.splitlines()
@@ -652,7 +648,7 @@ def Phase3():
     ##           if count >= SLURMCOUNT
     ##               DONE with this phase
     try:
-        my_json = json.loads(singletodouble(listofbundles.decode("utf-8")))
+        my_json = json.loads(singletodouble(listofbundles))
     except:
         print('Phase3 json fail', listofbundles)
         abandon()

@@ -412,7 +412,7 @@ def Phase0():
     if int(code) != 0:
         ErrorString = ErrorString + ' Failed to df '
     else:
-        lines = outp.decode("utf-8").splitlines()
+        lines = outp.splitlines()
         size = -1
         for line in lines:
             if storageArea in str(line):
@@ -432,7 +432,7 @@ def Phase0():
         ErrorString = ErrorString + ' Failed to get NERSC info'
     else:
         try:
-            my_json = json.loads(singletodouble(outp.decode('utf-8')))
+            my_json = json.loads(singletodouble(outp))
             lastscan = deltaT(str(my_json['lastChangeTime']))
             if lastscan > WAITFORNERSCAFTER:
                 ErrorString = ErrorString + ' No NERSC activity'
@@ -445,17 +445,17 @@ def Phase0():
     if len(ErrorString) > 0:
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         return
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetsetdumppoolsize + str(size))
-    answer = getoutputsimplecommandtimeout(posturl, 1)
+    answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
     danswer = massage(answer)
     if 'OK' not in danswer:
         print(answer)
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle('Failed to set poolsize'))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         return
 
 #targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
@@ -477,10 +477,10 @@ def Phase1():
     if int(code) != 0:
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_PROBLEM_SPACE))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         return
     # If here, ls worked ok.
-    lines = outp.decode("utf-8").splitlines()
+    lines = outp.splitlines()
     if len(lines) == 0:
         return	# OK, nothing to do
     for line in lines:
@@ -489,7 +489,7 @@ def Phase1():
             filefragment = words[0]
             geturl = copy.deepcopy(basicgeturl)
             geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
-            answer = getoutputsimplecommandtimeout(geturl, 1)
+            answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
             danswer = massage(answer)
             if danswer == '':
                 continue
@@ -515,7 +515,7 @@ def Phase1():
     if ErrorString != '':
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
     #
     # I have not implemented the rm of the Alert file
     return
@@ -531,10 +531,10 @@ def Phase2():
     if int(code) != 0:
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_DONE_SPACE))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         return
     # If here, ls worked ok.
-    lines = outp.decode("utf-8").splitlines()
+    lines = outp.splitlines()
     if len(lines) == 0:
         return	# OK, nothing to do
     for line in lines:
@@ -544,7 +544,7 @@ def Phase2():
         filefragment = words[0]
         geturl = copy.deepcopy(basicgeturl)
         geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
-        answer = getoutputsimplecommandtimeout(geturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
         danswer = massage(answer)
         if danswer == '':
             continue
@@ -571,7 +571,7 @@ def Phase2():
     if ErrorString != '':
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
     #
     return
 
@@ -582,7 +582,7 @@ def Phase3():
     geturl = copy.deepcopy(basicgeturl)
     ultimate = 'NERSC'
     geturl.append(targettree + mangle(ultimate))
-    answer = getoutputsimplecommandtimeout(geturl, 1)
+    answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
     danswer = massage(answer)
     ErrorString = ''
     candidateList = []
@@ -608,7 +608,7 @@ def Phase3():
         lines = outp.splitlines()
         for t in lines:
             if '.zip' in str(t):
-                candidateList.append(t.decode("utf-8"))
+                candidateList.append(t)
     if len(candidateList) <= 0:
         return
     # OK, found a curious limit with sqlite3.  I cannot use
@@ -632,7 +632,7 @@ def Phase3():
             #print('bigq=', bigq)
             geturl = copy.deepcopy(basicgeturl)
             geturl.append(targetfindbundlesin + mangle(bigq))
-            answer = getoutputsimplecommandtimeout(geturl, 3)
+            answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
             danswer = massage(answer)
             if len(danswer) < 1:
                 continue
@@ -654,7 +654,7 @@ def Phase3():
         #print('bigq=', bigq)
         geturl = copy.deepcopy(basicgeturl)
         geturl.append(targetfindbundlesin + mangle(bigq))
-        answer = getoutputsimplecommandtimeout(geturl, 3)
+        answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
         danswer = massage(answer)
         #print('danswer length=', len(danswer))
         if len(danswer) > 1:
@@ -710,7 +710,7 @@ def Phase3():
                 #print(mangle(str(insdict)))
                 posturl = copy.deepcopy(basicposturl)
                 posturl.append(targetaddbundle + mangle(str(insdict)))
-                answer = getoutputsimplecommandtimeout(posturl, 1)
+                answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
                 if 'OK' not in str(answer):
                     print(str(insdict), answer)
                 continue
@@ -731,7 +731,8 @@ def Phase3():
 def Phase4():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpinfo)
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     janswer = json.loads(singletodouble(answer))
     # I know a priori there is only one return line
     status = janswer['status']
@@ -742,7 +743,8 @@ def Phase4():
     #geturl.append(targetuntouchedall)
     geturl.append(targetuntouchedall)
     #print(geturl)
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     #print(answer)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Error in answer')
@@ -803,7 +805,7 @@ def Phase4():
         ##print(trysql)
         #posturl.append(targetupdatebundle + mangle(trysql))
         posturl.append(targetupdatebundlestatusuuid + mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
-        answer = getoutputsimplecommandtimeout(posturl, 1)
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         # Not checking answer is probably a bad thing hereJNB
         continue
     return
@@ -828,7 +830,8 @@ def Phase4():
 def Phase5():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpinfo)
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     janswer = json.loads(singletodouble(answer))
     # I know a priori there is only one return line
     status = janswer['status']
@@ -837,7 +840,8 @@ def Phase5():
     #
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('NERSCClean'))
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)
         return
@@ -870,7 +874,7 @@ def Phase5():
         answer, erro, code = flagBundleStatus(key, 'LocalDeleted')
         #comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
         #posturl.append(targetupdatebundle + mangle(comd))
-        #answer = getoutputsimplecommandtimeout(posturl, 1)
+        #answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         if len(answer) > 0:
             print('Phase 5: failed to set status=LocalDeleted for', localname)
             continue 

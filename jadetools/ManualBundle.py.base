@@ -17,9 +17,10 @@ def Phase5():
     #
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('NERSCClean'))
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
-        print('Phase 5 failure with', geturl)
+        print('Phase 5 failure with', geturl, answer)
         return
     if len(answer) == 0:
         return	# Nothing to do

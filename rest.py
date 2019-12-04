@@ -1145,7 +1145,7 @@ def setslot(estring):
 def getactiveslotuuid():
     # Get them all
     query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id,pd.dateBegun from PoleDisk as pd join SlotContents as sc'
-    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Dumping\')'
+    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and pd.status=\'Dumping\')'
     try:
         stuff = query_db_final(query)
     except:
@@ -1159,7 +1159,7 @@ def getactiveslotuuid():
 def getwaitingslotuuid():
     # Get them all
     query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id from PoleDisk as pd join SlotContents as sc'
-    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and sc.status=\'Inventoried\')'
+    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and pd.status=\'Inventoried\')'
     query = query + ' ORDER BY pd.poledisk_id ASC LIMIT 1'
     try:
         stuff = query_db_final(query)

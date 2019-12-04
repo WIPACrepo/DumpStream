@@ -310,18 +310,20 @@ def Phase1(pcarg):
     lcarg = pcarg
     geturl = copy.deepcopy(basicposturl)
     geturl.append(targetsetdumpstatus + mangle(lcarg))
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     if 'OK' not in answer:
-        print('Phase 1 failure with', geturl)
+        print('Phase 1 failure with', geturl, answer, erro1)
         return
     #
     if lcarg == 'Drain':
         lcarg = 'DrainNERSC'
     geturl = copy.deepcopy(basicposturl)
     geturl.append(targetsetnerscstatus + mangle(lcarg))
-    answer = massage(getoutputsimplecommandtimeout(geturl, 1))
+    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
+    answer = massage(answer1)
     if 'OK' not in answer:
-        print('Phase 1 failure with', geturl)
+        print('Phase 1 failure with', geturl, answer, erro1)
     return
 
 ###############
