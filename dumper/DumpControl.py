@@ -518,13 +518,13 @@ def JobInspectAll():
     # Now find out what jobs are active
     #commandj = ['/usr/bin/ps', 'aux']
     commandj = ['/bin/ps', 'aux']
-    joutp, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
+    listing, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
     if int(jcode) != 0:
         print('JobInspectAll: pstree failed', joutp, jerro, jcode)
         sys.exit(0)
     candidate = []
-    listing = joutp
-    for line in listing:
+    wlisting = listing.split()
+    for line in wlisting:
         if 'DUMPING' in line:
             candidate.append(line)
     # Inspect if the expected jobs are still running
@@ -557,6 +557,11 @@ def CheckLogSpace():
 # Flag completed jobs as needed.  Sanity checking
 def JobDecisionCompleted(notmatched):
     # Look for completed jobs and flag them
+    # First sanity check
+    donelist = []
+    if len(notmatched) == 0:
+        return donelist
+    #
     for jdone in notmatched:
         # First make sure nothing is wrong
         # I expect a script in DUMPING_LOG_SPACE/DUMPING_${UUID} and a log file
@@ -564,37 +569,41 @@ def JobDecisionCompleted(notmatched):
         jid = jdone[3]
         tentative = DUMPING_LOG_SPACE + 'DUMPING_' + jdone[0] + '.log'
         commandj = ['/usr/bin/tail', '-n1', tentative]
-        joutp, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
+        answerline, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
         if int(jcode) != 0:
-            print('JobDecision failed to tail', tentative)
+            print('JobDecisionCompleted failed to tail', tentative, 'X')
             sys.exit(0)
-        answerline = joutp
+        #
+        # If the file is still empty, presumably it is not yet done
+        if len(answerline) == 0:
+            donelist.append(False)
+            continue
         #
         # Sanity checking--expect "SUMMARY 5 5" or however many rsyncs were done
         summaryinfo = answerline.split()
         if summaryinfo[0] != 'SUMMARY':
-            print('JobDecision summary info line missing for', tentative)
-            print('It may have crashed.  Rerun the rsync?')
-            sys.exit(0)
+            donelist.append(False)
+            continue
         try:
             numtried = int(summaryinfo[1])
             numsucceeded = int(summaryinfo[2])
         except:
-            print('JobDecision summary info line corrupt for', tentative)
-            print('It may have crashed.  Rerun the rsync?', answerline)
+            print('JobDecisionCompleted summary info line corrupt for', tentative, summaryinfo)
+            print('It may have crashed.  Rerun the rsync?', answerline, 'X')
             sys.exit(0)
         if numtried != numsucceeded:
-            print('JobDecision summary line info shows problems for', tentative)
-            print('Rerun the rsyns?', answerline)
+            print('JobDecisionCompleted summary line info shows problems for', tentative, summaryinfo)
+            print('Rerun the rsync?', answerline, 'X')
             sys.exit(0)
         jdposturl = copy.deepcopy(basicposturl)
-        jdposturl.append(targetdumpingpolediskdone + mangle(jid))
+        jdposturl.append(targetdumpingpolediskdone + mangle(str(jid)))
         jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdposturl, 1)
         if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-            print('Set status of PoleDisk failed', jid)
+            print('JobDecisionCompleted: Set status of PoleDisk failed', jid)
             sys.exit(0)
+        donelist.append(True)
     # Done flagging completed jobs
-    return
+    return donelist
 
 ####
 # Decide whether a new job is needed, or whether an old job is done
@@ -608,15 +617,15 @@ def JobDecision(dumperstatus, dumpnextAction):
         sys.exit(0)
     #
     # Check on completed jobs
-    JobDecisionCompleted(notmatched)
+    donelist = JobDecisionCompleted(notmatched)
     #
     # Next see how long the current set of jobs has been taking
-    for jrunning in matching:
-        dateBegun = datetime.datetime.strptime(str(jrunning['dateBegun']), '%Y-%m-%d %H:%M:%S')
+    for jdrunning in matching:
+        dateBegun = datetime.datetime.strptime(str(jdrunning[2]), '%Y-%m-%d %H:%M:%S')
         # Since all the times are local, I can use something simple
         minutes = (datetime.datetime.today() - dateBegun).total_seconds() / 60
         if minutes > DUMPING_TIMEOUT:
-            print('JobDecision:  job for', jrunning['diskuuid'], 'has run long')
+            print('JobDecision:  job for', jdrunning[0], 'has run long')
             # Don't bail, this might be OK
     #
     # What should we be doing?
