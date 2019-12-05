@@ -1144,7 +1144,7 @@ def setslot(estring):
 @app.route("/dumping/activeslots", methods=["GET"])
 def getactiveslotuuid():
     # Get them all
-    query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id,pd.dateBegun from PoleDisk as pd join SlotContents as sc'
+    query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id,pd.dateBegun,sc.name from PoleDisk as pd join SlotContents as sc'
     query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and pd.status=\'Dumping\')'
     try:
         stuff = query_db_final(query)

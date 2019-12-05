@@ -505,7 +505,7 @@ def JobInspectAll():
     # Load the relevant info up:
     expected = []
     for js in my_json:
-        expected.append([js['diskuuid'], js['slotnumber'], js['dateBegun'], js['poledisk_id']])
+        expected.append([js['diskuuid'], js['slotnumber'], js['dateBegun'], js['poledisk_id'], js['name']])
     # Suppose expected is empty and the list of jobs isn't?
     # Flag an error
     #
@@ -539,6 +539,10 @@ def JobInspectAll():
                 continue
         if not found:
             notmatched.append(v)
+    # expected = DB query says these may be still active
+    # candidate = jobs actively running
+    # matching = jobs running that are in DB
+    # notmached = jobs not running that are in DB (=done?)
     return expected, candidate, matching, notmatched
 
 ####
