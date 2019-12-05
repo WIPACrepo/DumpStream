@@ -525,7 +525,7 @@ def JobInspectAll():
     candidate = []
     listing = joutp
     for line in listing:
-        if 'DUMPDISK' in line:
+        if 'DUMPING' in line:
             candidate.append(line)
     # Inspect if the expected jobs are still running
     matching = []
@@ -559,10 +559,10 @@ def JobDecisionCompleted(notmatched):
     # Look for completed jobs and flag them
     for jdone in notmatched:
         # First make sure nothing is wrong
-        # I expect a script in DUMPING_LOG_SPACE/DUMPDISK_${UUID} and a log file
-        # in DUMPING_LOG_SPACE/DUMPDISK_${UUID}.log
+        # I expect a script in DUMPING_LOG_SPACE/DUMPING_${UUID} and a log file
+        # in DUMPING_LOG_SPACE/DUMPING_${UUID}.log
         jid = jdone[3]
-        tentative = DUMPING_LOG_SPACE + 'DUMPDISK_' + jdone[0] + '.log'
+        tentative = DUMPING_LOG_SPACE + 'DUMPING_' + jdone[0] + '.log'
         commandj = ['/usr/bin/tail', '-n1', tentative]
         joutp, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
         if int(jcode) != 0:
