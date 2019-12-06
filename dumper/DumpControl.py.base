@@ -53,6 +53,21 @@ def GiveTarget():
     return directory
 
 ###
+#  Count the number of files in the specified directory and compare
+#   with the expected number
+def CountFilesInDir(cfidname, cfidexpectedcount):
+    cfidcommand = ['/bin/ls', cfidname]
+    cfidoutp, cfiderro, cfidcode = getoutputerrorsimplecommand(cfidcommand, 1)
+    if int(cfidcode) != 0:
+        print('CountFilesInDir failed to see', cfidname, cfiderro)
+        sys.exit(0)
+    #
+    return len(cfidoutp.split()) == cfidexpectedcount
+
+####
+# Return the subdirectory names
+
+###
 # Inventory a slot.  Pass it the json for the slot (has old info)
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found

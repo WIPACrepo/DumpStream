@@ -1199,6 +1199,62 @@ def addwantedtrees(estring):
         return 'FAILURE'
     return ''
 
+####
+# Get expected file count for the directory specified by the 
+#  tree fragment proffered
+@app.route("/dumping/expectedir/<estring>", methods=["GET"])
+def getcountexpected(estring):
+    directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    query = 'SELECT number from expected WHERE directory LIKE %?%'
+    params = (str(directoryfragment), )
+    cc = -1
+    try:
+        stuff = query_db_final(query, params)
+        cc = int(stuff)
+    except:
+        print('getcountexpected failed to get info for', directoryfragment, stuff)
+    return cc
+
+####
+# Get the list of directories that we think are complete, for handing
+#  off to LTA
+@app.route("/dumping/readydir", methods=["GET"])
+def givereaddirs():
+    query = 'SELECT idealName FROM FullDirectories'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('givereaddirs:  cannot read query', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Insert a new ready directory
+@app.route("/dumping/enteredreadydir/<estring>", methods=["POST"])
+def enterreadydir(estring):
+    query = 'INSERT INTO FullDirectories (idealName,toLTA) VALUES (?,0)'
+    params = (str(unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))), )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('enterreadydirs:  cannot insert directory', query, params)
+        return 'FAILURE'
+    return ''
+
+####
+# Update a new ready directory
+@app.route("/dumping/notifiedreadydir/<estring>", methods=["POST"])
+def updatereadydir(estring):
+    directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE %?%'
+    params = (str(directoryfragment), )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('updatereadydir failed to set info for', directoryfragment, stuff)
+        return 'FAILURE'
+    return ''
+
 
 ###################################################
 #####

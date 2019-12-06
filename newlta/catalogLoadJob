@@ -1,0 +1,26 @@
+#!/bin/bash
+# catalogLoadJob  "directory name"
+
+# The checksums involved take about 3 hours/TiB (2.8)
+# I do not know whether a condor job will succeed or not, obviously.
+# Hence the last-line info in the log file
+# This is a first pass:  there may be more steps involved.
+
+# Sanity check
+if [[ ! -d $1 ]]; then echo "$1 is not a visible directory"; exit 1; fi
+echo "About to verify $1"
+
+cd ~jade/lta
+source env/bin/activate
+
+./ltacmd catalog load --path $1
+
+if [[ $? == 0 ]]
+  then
+    echo "SUCCEEDED $1"
+    exit 0
+  else
+    echo "FAILURE $1"
+    exit 1
+  fi
+#

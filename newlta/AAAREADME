@@ -1,0 +1,21 @@
+Scripts for interfacing the disk dumper to the new LTA code.
+General idea:
+Run a script on submit-1 or a cobalt to poll the REST server
+to learn of new directories available for verification and
+bundling.
+For each, create a condor job and submit this to checksum and
+bundle.
+HOW DO WE LIMIT THE NUMBER OF JOBS?
+HOW DO WE MONITOR THE JOBS? -- Success/Failure/Retry?
+
+The only robust way to monitor for success is to actually look
+at the log files.
+
+Therefore I need, in the database that governs this, at least
+3 different status possibilities for a new directory:
+0   = To Be Handed Off to LTA
+1   = LTA Attempting to Ingest This
+2   = LTA Ingest Succeeded
+
+If there are more steps involved, I'll need more options.  But
+I hope I can just hand it off and let LTA monitor itself.

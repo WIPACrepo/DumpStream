@@ -98,6 +98,12 @@ targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
 targetdumpinggetactive = curltargethost + '/dumping/activeslots'
 targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
+
+targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
+targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
+targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
+targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']

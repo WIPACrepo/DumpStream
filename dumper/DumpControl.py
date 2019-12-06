@@ -111,6 +111,12 @@ targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
 targetdumpinggetactive = curltargethost + '/dumping/activeslots'
 targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
+
+targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
+targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
+targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
+targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -342,6 +348,19 @@ def GiveTarget():
         print('Cannot unpack', dump_json)
         sys.exit(0)
     return directory
+
+###
+#  Count the number of files in the specified directory and compare
+#   with the expected number
+def CountFilesInDir(cfidname, cfidexpectedcount):
+    cfidcommand = ['/bin/ls', cfidname]
+    cfidoutp, cfiderro, cfidcode = getoutputerrorsimplecommand(cfidcommand, 1)
+    if int(cfidcode) != 0:
+        print('CountFilesInDir failed to see', cfidname, cfiderro)
+        sys.exit(0)
+    #
+    return len(cfidoutp.split()) == cfidexpectedcount
+
 
 ###
 # Inventory a slot.  Pass it the json for the slot (has old info)
