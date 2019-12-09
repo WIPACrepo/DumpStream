@@ -110,6 +110,14 @@ targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
 targetdumpinggetactive = curltargethost + '/dumping/activeslots'
 targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
+targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
+targetdumpingcountready = curltargethost + '/dumping/countready'
+
+targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
+targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
+targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
+targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -170,27 +178,6 @@ def singletodouble(stringTo):
     return stringTo.replace('\'', '\"')
 
 # timeout is in seconds
-def getoutputsimplecommandtimeout(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        if len(error) != 0:
-            print('ErrorA:::', cmd, '::-::', error)
-            return ""
-        return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT"
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
-
 def getoutputerrorsimplecommand(cmd, Timeout):
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -211,7 +198,6 @@ def getoutputerrorsimplecommand(cmd, Timeout):
 # something other than simply print
 def logit(string1, string2):
     print(string1 + '  ' + string2)
-    return
 
 
 ####
@@ -276,11 +262,11 @@ def flagBundleStatus(key, newstatus):
     fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
     fbposturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
-    if len(outp) > 0:
+    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
+    if len(foutp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
-              + 'for key ' + str(key) + ' : ' + str(outp))
-    return outp, erro, code
+              + 'for key ' + str(key) + ' : ' + str(foutp))
+    return foutp, ferro, fcode
 
 #
 def deltaT(oldtimestring):
@@ -372,6 +358,61 @@ else:
     nstats = nstats + '  ' + str(deltaT(str(my_json['lastChangeTime'])))
 logit('LocalStatus= ', nstats)
 
+####
+# Disk dumping status
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetdumpingstate)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure w/ DiskDumping status'
+else:
+    try:
+        my_json = json.loads(singletodouble(outp))
+        myj = my_json[0]
+        nstats = (str(myj['status']) +  '=> ' + str(myj['nextAction'])
+                  + ' | ' + str(myj['lastChangeTime']))
+    except:
+        print(outp)
+        print(myj)
+        nstats = 'FAILURE'
+logit('DiskDumpStatus= ', nstats)
+
+####
+# FullDirectories available
+
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetdumpingcountready)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure w/ FullDirectory'
+else:
+    my_json = json.loads(singletodouble(outp))[0]
+    nstats = 'total=' + str(my_json['total']) + ' | ' + 'unstaged=' + str(my_json['unstaged'])
+    nstats = nstats + ' | ' + 'staged= ' + str(my_json['staged'])
+    nstats = nstats + ' | ' + 'done= ' + str(my_json['done'])
+    recount = int(my_json['unstaged']) + int(my_json['staged']) + int(my_json['done'])
+    if recount != int(my_json['total']):
+        nstats = nstats + '  and ' + str(recount - int((my_json['total']))) + ' not accounted for'
+logit('FullDirectories= ', nstats)
+
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetdumpinggetwhat)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+nstats = ''
+if int(code) != 0:
+    nstats = 'DB Failure w/ DiskDumping'
+else:
+    my_json = json.loads(singletodouble(outp))
+    for stype in PoleDiskStatusOptions:
+        ccount = 0
+        for ji in my_json:
+            if ji['status'] == stype:
+                ccount = ccount + 1
+        nstats = nstats + ' | ' + stype + ':' + str(ccount)
+logit('DiskStatuses= ', nstats)
+
 
 ####
 # How many bundles have each status?
@@ -391,9 +432,10 @@ for opt in BUNDLESTATI:
 logit('BundleStatusCounts= ', nstats)
 
 # Are we done?  Not if we want to look for duplicate entries.
-if len(sys.argv) > 1:
-    if 'dups' not in sys.argv[1]:
-        sys.exit(0)
+if len(sys.argv) <= 1:
+    sys.exit(0)
+if 'dups' not in sys.argv[1]:
+    sys.exit(0)
 ####
 # Do we have duplicate entries?
 

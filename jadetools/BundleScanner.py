@@ -114,6 +114,14 @@ targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
 targetdumpinggetactive = curltargethost + '/dumping/activeslots'
 targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
+targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
+targetdumpingcountready = curltargethost + '/dumping/countready'
+
+targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
+targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
+targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
+targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
@@ -174,27 +182,6 @@ def singletodouble(stringTo):
     return stringTo.replace('\'', '\"')
 
 # timeout is in seconds
-def getoutputsimplecommandtimeout(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        if len(error) != 0:
-            print('ErrorA:::', cmd, '::-::', error)
-            return ""
-        return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT"
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
-
 def getoutputerrorsimplecommand(cmd, Timeout):
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -215,7 +202,6 @@ def getoutputerrorsimplecommand(cmd, Timeout):
 # something other than simply print
 def logit(string1, string2):
     print(string1 + '  ' + string2)
-    return
 
 
 ####
@@ -280,11 +266,11 @@ def flagBundleStatus(key, newstatus):
     fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
     fbposturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
-    if len(outp) > 0:
+    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
+    if len(foutp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
-              + 'for key ' + str(key) + ' : ' + str(outp))
-    return outp, erro, code
+              + 'for key ' + str(key) + ' : ' + str(foutp))
+    return foutp, ferro, fcode
 
 #
 def deltaT(oldtimestring):

@@ -16,7 +16,7 @@ CREATE TABLE NERSCandC(
   nerscError TEXT,
   nerscSize INTEGER,
   lastChangeTime TEXT
-);
+, hpsstree INTEGER);
 CREATE TABLE DumpCandC(
   dumpCandC_id INTEGER PRIMARY KEY,
   status TEXT NOT NULL,
@@ -68,4 +68,19 @@ CREATE TABLE PoleDisk(
 CREATE TABLE WantedTrees (
   wantedtree_id INTEGER PRIMARY KEY,
   dataTree   TEXT
+);
+CREATE TABLE BundleTreesWanted (
+  wantedtree_id INTEGER PRIMARY KEY,
+  dataTree   TEXT,
+  bundletype TEXT,
+  subdirs    INTEGER
+);
+CREATE TABLE expected (directory TEXT PRIMARY KEY, number INTEGER, done INTEGER);
+CREATE TABLE FullDirectories (
+  idealName  TEXT PRIMARY KEY,
+  toLTA   INTEGER
+);
+CREATE TABLE NERSCHPSS (
+  hpss_id     INTEGER PRIMARY KEY,
+  TreeTopName TEXT
 );

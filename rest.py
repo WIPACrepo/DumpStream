@@ -339,10 +339,11 @@ def updatenerscstatus(estring):
     if estring not in NERSCSTATI:
         return 'Must be one of ' + str(NERSCSTATI)	# This sanitizes the input for me
     #
-    getallstr = 'SELECT nerscSize,localError FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    getallstr = 'SELECT nerscSize,localError,hpsstree FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
-    newstr = 'INSERT INTO NERSCandC (localError,nerscSize,lastChangeTime,status)'
+    newstr = 'INSERT INTO NERSCandC (localError,nerscSize,hpsstree,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'' + str(stuff[0]['localError']) + '\',' + str(stuff[0]['nerscSize']) + ','
+    newstr = newstr + str(stuff[0]['hpsstree']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + estring + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking?
@@ -359,11 +360,11 @@ def updatenerscpoolsize(estring):
         newint = int(estring)	# This sanitizes the input for me
     except:
         return 'Not an integer'
-    getallstr = 'SELECT localError,nerscError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    getallstr = 'SELECT localError,nerscError,status,hpsstree FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
-    newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)'
+    newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,hpsstree,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'' + str(stuff[0]['localError']) + '\',\'' + stuff[0]['nerscError'] + '\','
-    newstr = newstr + str(newint)
+    newstr = newstr + str(newint) + ',' + str(stuff[0]['hpsstree'])
     newstr = newstr + ',datetime(\'now\',\'localtime\'),\'' + str(stuff[0]['status']) + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
@@ -375,15 +376,16 @@ def updatenerscpoolsize(estring):
 def updatenerscerror(estring):
     #
     revisedstring = unmangle(estring)
-    getallstr = 'SELECT nerscSize,localError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    getallstr = 'SELECT nerscSize,localError,status,hpsstree FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     if len(revisedstring) > 0:
         # Error--change status automatically
         berror = 'Error'
     else:
         berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
-    nnewstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)' + ' VALUES(?, ?, ?, datetime(\'now\',\'localtime\'), ?)'
-    params = (revisedstring, str(stuff[0]['localError']), str(stuff[0]['nerscSize']), berror)
+    nnewstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,hpsstree,lastChangeTime,status)'
+    nnewstr = nnewstr + ' VALUES(?, ?, ?, ?, datetime(\'now\',\'localtime\'), ?)'
+    params = (revisedstring, str(stuff[0]['localError']), str(stuff[0]['nerscSize']), str(stuff[0]['hpsstree']), berror)
     if DEBUGDB:
         print(nnewstr)
     stuff = insert_db_final(nnewstr, params)
@@ -397,12 +399,12 @@ def updatenerscerror(estring):
 @app.route("/nersccontrol/update/nerscerror/clear", methods=["POST"])
 def resetnerscerror():
     #  All internal, so should be safe
-    getallstr = 'SELECT nerscSize,localError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    getallstr = 'SELECT nerscSize,localError,status,hpsstree FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
-    newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,lastChangeTime,status)'
+    newstr = 'INSERT INTO NERSCandC (nerscError,localError,nerscSize,hpsstree,lastChangeTime,status)'
     newstr = newstr + ' VALUES (\'\',\'' + str(stuff[0]['localError']) + '\','
-    newstr = newstr + str(stuff[0]['nerscSize']) + ','
+    newstr = newstr + str(stuff[0]['nerscSize']) + ',' + str(stuff[0]['hpsstree']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + berror + '\')'
     if DEBUGDB:
         print(newstr)
@@ -419,18 +421,16 @@ def resetnerscerror():
 def updatenersclocalerror(estring):
     #
     revisedstring = unmangle(estring)
-    getallstr = 'SELECT nerscSize,nerscError,status FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
+    getallstr = 'SELECT nerscSize,nerscError,status,hpsstree FROM NERSCandC ORDER BY nerscCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     if len(revisedstring) > 0:
         # Error--change status automatically
         berror = 'Error'
     else:
         berror = str(stuff[0]['status'])   # If clearing it, leave the status the same
-    #newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)\
-    #    VALUES (\'{}\',\'{}\',{},datetime(\'now\',\'localtime\'),\'{}\')'.format(revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
     newstr = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status)\
-        VALUES (?,?,?,datetime(\'now\',\'localtime\'),?)'
-    params = (revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), berror)
+        VALUES (?,?,?,?,datetime(\'now\',\'localtime\'),?)'
+    params = (revisedstring, str(stuff[0]['nerscError']), str(stuff[0]['nerscSize']), str(stuff[0]['hpsstree']), berror)
     stuff = insert_db_final(newstr, params)
     # Put in sanity checking
     return 'OK'
@@ -439,10 +439,10 @@ def updatenersclocalerror(estring):
 @app.route("/nersccontrol/update/reset", methods=["POST"])
 def updatenerscreset():
     #
-    stuff = query_db('SELECT nerscSize from NERSCandC order by nerscCandC_id DESC LIMIT 1')
+    stuff = query_db('SELECT nerscSize,hpsstree from NERSCandC order by nerscCandC_id DESC LIMIT 1')
     updatestring = 'INSERT INTO NERSCandC (localError,nerscError,nerscSize,lastChangeTime,status) \
-        VALUES ("","",?,datetime(\'now\',\'localtime\'),"Run")'
-    params = (str(stuff[0]['nerscSize']),)
+        VALUES ("","",?,?,datetime(\'now\',\'localtime\'),"Run")'
+    params = (str(stuff[0]['nerscSize']), str(stuff[0]['hpsstree']))
     stuff = insert_db_final(updatestring, params)
     # Put in sanity checking
     return 'OK'
@@ -1154,17 +1154,32 @@ def getactiveslotuuid():
     return str(stuff)
 
 ####
-# Get the the next UUID and slot number for the disks that don't yet have jobs running
+# Get the next UUID and slot number for the disks that don't yet have jobs running
 @app.route("/dumping/waitingslots", methods=["GET"])
 def getwaitingslotuuid():
     # Get them all
     query = 'select pd.diskuuid,pd.slotnumber,pd.poledisk_id from PoleDisk as pd join SlotContents as sc'
-    query = query + ' on (pd.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and pd.status=\'Inventoried\')'
+    query = query + ' on (sc.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id and pd.status=\'Inventoried\')'
     query = query + ' ORDER BY pd.poledisk_id ASC LIMIT 1'
     try:
         stuff = query_db_final(query)
     except:
         print('getwaitingslotuuid', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Get the status for all the slot numbers
+@app.route("/dumping/whatslots", methods=["GET"])
+def getwhatslot():
+    # Get them all
+    query = 'select pd.slotnumber,pd.status,pd.poledisk_id from PoleDisk as pd join SlotContents as sc'
+    query = query + ' on (sc.poledisk_id>0 and pd.poledisk_id=sc.poledisk_id)'
+    query = query + ' ORDER BY pd.poledisk_id ASC'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getwhatslot', query)
         return 'FAILURE'
     return str(stuff)
     
@@ -1220,7 +1235,7 @@ def getcountexpected(estring):
 #  off to LTA
 @app.route("/dumping/readydir", methods=["GET"])
 def givereaddirs():
-    query = 'SELECT idealName FROM FullDirectories'
+    query = 'SELECT idealName,toLTA FROM FullDirectories'
     try:
         stuff = query_db_final(query)
     except:
@@ -1254,6 +1269,23 @@ def updatereadydir(estring):
         print('updatereadydir failed to set info for', directoryfragment, stuff)
         return 'FAILURE'
     return ''
+
+####
+# Count the ready directories
+@app.route("/dumping/countready", methods=["GET"])
+def countready():
+    # total, unstaged, staged, done
+    query = 'SELECT count(*) AS total, sum(case when toLTA=0 then 1 else 0 end) AS unstaged, '
+    query = query + 'sum(case when toLTA=1 then 1 else 0 end) AS staged, '
+    query = query + 'sum(case when toLTA=2 then 1 else 0 end) AS done '
+    query = query + 'FROM FullDirectories GROUP BY toLTA;'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('countready:  cannot read query', query)
+        return 'FAILURE'
+    return str(stuff)
+
 
 
 ###################################################
