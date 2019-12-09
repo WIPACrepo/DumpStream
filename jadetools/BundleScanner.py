@@ -319,6 +319,7 @@ def returndbgen():
 def closedbgen():
     DBcursor.close()
     DBdatabase.close()
+    return
 
 ####
 # Commit changes to DB specified
@@ -677,7 +678,7 @@ def Phase3():
     getdbgen()
     cursor = returndbgen()
     #
-    # It seems reasonabl to think that a particular file will only
+    # It seems reasonable to think that a particular file will only
     # exist once in the jade-lta-db.  Unique UUID and all..
     for filex in nomatch:
         mybasename = os.path.basename(filex)

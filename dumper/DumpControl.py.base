@@ -304,13 +304,11 @@ def JobDecisionCompleted(notmatched):
         #
         # If the file is still empty, presumably it is not yet done
         if len(answerline) == 0:
-            donelist.append(False)
             continue
         #
         # Sanity checking--expect "SUMMARY 5 5" or however many rsyncs were done
         summaryinfo = answerline.split()
         if summaryinfo[0] != 'SUMMARY':
-            donelist.append(False)
             continue
         try:
             numtried = int(summaryinfo[1])
@@ -329,9 +327,64 @@ def JobDecisionCompleted(notmatched):
         if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
             print('JobDecisionCompleted: Set status of PoleDisk failed', jid)
             sys.exit(0)
-        donelist.append(True)
+        donelist.append(jdone)
     # Done flagging completed jobs
     return donelist
+
+###
+# Get the expected count from the DB
+def GetExpectedCount(trialdirname):
+    #  This checks whether the fragment matches anything in the DB
+    gegeturl = copy.deepcopy(basicgeturl)
+    gegeturl.append(targetdumpinggetexpected + mangle(trialdirname))
+    geoutp, geerro, gecode = getoutputerrorsimplecommand(gegeturl, 1)
+    if gecode != 0 or len(geoutp) <= 0:
+        return -1
+    gejson = json.loads(singletodouble(geoutp))
+    try:
+        genumber = gejson[0]['number']
+    except:
+        return -1
+    try:
+        gen = int(genumber)
+    except:
+        gen = -1
+    return gen
+    
+
+###
+# Determine whether any of the directories are now full.  Return the
+# target directory in question if so
+def DirectoryCheckFull(donelist):
+    # Each entry in the array is an array with [uuid,slot#,datebegun,poledisk_id,slotname]
+    dcok = []
+    if len(donelist) <= 0:
+        return
+    dtargetdir = GiveTarget()
+    for packet in donelist:
+        # This repeats an earlier disk access!
+        dstuff = InventoryOneFull(packet[4])
+        for tentativedir in dstuff[1]:
+            # It should, in theory not have been full before, and thus
+            #  there should not be anything in FullDirectories.  But,
+            #  to be on the safe side, check before registering it
+            numberexpect = GetExpectedCount(tentativedir)
+            if numberexpect < 0:
+                print('DirectoryCheckFull has nothing for', tentativedir)
+                continue
+            dtarg = dtargetdir + '/' + tentativedir
+            if CountFilesInDir(dtarg, numberexpect):
+                dcok.append(dtarg)
+                dcposturl = copy.deepcopy(basicposturl)
+                dcposturl.append(targetdumpingenteredreadydir + mangle(dtarg))
+                dcoutp, dcerro, dccode = getoutputerrorsimplecommand(geposturl, 1)
+                if dccode != 0 or 'FAILURE' in str(dcoutp):
+                    print('DirectoryCheckFull could not load', dtarg)
+                    continue
+    return
+
+###
+# Load
 
 ####
 # Decide whether a new job is needed, or whether an old job is done
@@ -346,6 +399,10 @@ def JobDecision(dumperstatus, dumpnextAction):
     #
     # Check on completed jobs
     donelist = JobDecisionCompleted(notmatched)
+    #
+    # Now look through the completed list and see what needs doing with
+    # the directories it loaded.  It will push info into FullDirectories
+    DirectoryCheckFull(donelist)
     #
     # Next see how long the current set of jobs has been taking
     for jdrunning in matching:

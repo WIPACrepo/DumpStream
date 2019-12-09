@@ -111,7 +111,9 @@ targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
 targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
 targetdumpinggetactive = curltargethost + '/dumping/activeslots'
 targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
+targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
 targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
+targetdumpingcountready = curltargethost + '/dumping/countready'
 
 targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
 targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
@@ -177,27 +179,6 @@ def singletodouble(stringTo):
     return stringTo.replace('\'', '\"')
 
 # timeout is in seconds
-def getoutputsimplecommandtimeout(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #proc = subprocess.call(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        if len(error) != 0:
-            print('ErrorA:::', cmd, '::-::', error)
-            return ""
-        return output
-    except subprocess.CalledProcessError:
-        if DEBUGPROCESS:
-            print('ErrorB::::', cmd, " Failed to spawn")
-        return ""
-    except subprocess.TimeoutExpired:
-        return "TIMEOUT"
-    except Exception:
-        if DEBUGPROCESS:
-            print([cmd, " Unknown error", sys.exc_info()[0]])
-        return ""
-
-
 def getoutputerrorsimplecommand(cmd, Timeout):
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -218,7 +199,6 @@ def getoutputerrorsimplecommand(cmd, Timeout):
 # something other than simply print
 def logit(string1, string2):
     print(string1 + '  ' + string2)
-    return
 
 
 ####
@@ -283,11 +263,11 @@ def flagBundleStatus(key, newstatus):
     fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
     fbposturl.append(targetupdatebundlestatus + comstring)
-    outp, erro, code = getoutputerrorsimplecommand(fbposturl, 15)
-    if len(outp) > 0:
+    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
+    if len(foutp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
-              + 'for key ' + str(key) + ' : ' + str(outp))
-    return outp, erro, code
+              + 'for key ' + str(key) + ' : ' + str(foutp))
+    return foutp, ferro, fcode
 
 #
 def deltaT(oldtimestring):
@@ -361,6 +341,8 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
     #
     return len(cfidoutp.split()) == cfidexpectedcount
 
+####
+# Return the subdirectory names
 
 ###
 # Inventory a slot.  Pass it the json for the slot (has old info)
@@ -599,13 +581,11 @@ def JobDecisionCompleted(notmatched):
         #
         # If the file is still empty, presumably it is not yet done
         if len(answerline) == 0:
-            donelist.append(False)
             continue
         #
         # Sanity checking--expect "SUMMARY 5 5" or however many rsyncs were done
         summaryinfo = answerline.split()
         if summaryinfo[0] != 'SUMMARY':
-            donelist.append(False)
             continue
         try:
             numtried = int(summaryinfo[1])
@@ -624,9 +604,64 @@ def JobDecisionCompleted(notmatched):
         if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
             print('JobDecisionCompleted: Set status of PoleDisk failed', jid)
             sys.exit(0)
-        donelist.append(True)
+        donelist.append(jdone)
     # Done flagging completed jobs
     return donelist
+
+###
+# Get the expected count from the DB
+def GetExpectedCount(trialdirname):
+    #  This checks whether the fragment matches anything in the DB
+    gegeturl = copy.deepcopy(basicgeturl)
+    gegeturl.append(targetdumpinggetexpected + mangle(trialdirname))
+    geoutp, geerro, gecode = getoutputerrorsimplecommand(gegeturl, 1)
+    if gecode != 0 or len(geoutp) <= 0:
+        return -1
+    gejson = json.loads(singletodouble(geoutp))
+    try:
+        genumber = gejson[0]['number']
+    except:
+        return -1
+    try:
+        gen = int(genumber)
+    except:
+        gen = -1
+    return gen
+    
+
+###
+# Determine whether any of the directories are now full.  Return the
+# target directory in question if so
+def DirectoryCheckFull(donelist):
+    # Each entry in the array is an array with [uuid,slot#,datebegun,poledisk_id,slotname]
+    dcok = []
+    if len(donelist) <= 0:
+        return
+    dtargetdir = GiveTarget()
+    for packet in donelist:
+        # This repeats an earlier disk access!
+        dstuff = InventoryOneFull(packet[4])
+        for tentativedir in dstuff[1]:
+            # It should, in theory not have been full before, and thus
+            #  there should not be anything in FullDirectories.  But,
+            #  to be on the safe side, check before registering it
+            numberexpect = GetExpectedCount(tentativedir)
+            if numberexpect < 0:
+                print('DirectoryCheckFull has nothing for', tentativedir)
+                continue
+            dtarg = dtargetdir + '/' + tentativedir
+            if CountFilesInDir(dtarg, numberexpect):
+                dcok.append(dtarg)
+                dcposturl = copy.deepcopy(basicposturl)
+                dcposturl.append(targetdumpingenteredreadydir + mangle(dtarg))
+                dcoutp, dcerro, dccode = getoutputerrorsimplecommand(geposturl, 1)
+                if dccode != 0 or 'FAILURE' in str(dcoutp):
+                    print('DirectoryCheckFull could not load', dtarg)
+                    continue
+    return
+
+###
+# Load
 
 ####
 # Decide whether a new job is needed, or whether an old job is done
@@ -641,6 +676,10 @@ def JobDecision(dumperstatus, dumpnextAction):
     #
     # Check on completed jobs
     donelist = JobDecisionCompleted(notmatched)
+    #
+    # Now look through the completed list and see what needs doing with
+    # the directories it loaded.  It will push info into FullDirectories
+    DirectoryCheckFull(donelist)
     #
     # Next see how long the current set of jobs has been taking
     for jdrunning in matching:
