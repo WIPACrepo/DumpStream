@@ -319,7 +319,6 @@ def returndbgen():
 def closedbgen():
     DBcursor.close()
     DBdatabase.close()
-    return
 
 ####
 # Commit changes to DB specified
@@ -578,9 +577,10 @@ def Phase3():
     if 'FAILURE' in danswer:
         print(danswer)
         return
-    #print(danswer)
     jdiranswer = json.loads(singletodouble(danswer))
-    #print(len(jdiranswer), janswer)
+    #
+    # jdiranswer is the list of directories to search for zip bundles
+    #
     for js in jdiranswer:
         dirs = js['treetop']
         command = ['/bin/find', dirs, '-type', 'f']
@@ -597,6 +597,10 @@ def Phase3():
                 candidateList.append(t)
     if len(candidateList) <= 0:
         return
+    #
+    # candidateList is the list of zip files found.  Presumably these
+    # are bundles
+    #
     # OK, found a curious limit with sqlite3.  I cannot use
     #  more than 25 string entries in the localName IN () query
     # So, I have to break it up into multiple queries
@@ -604,18 +608,17 @@ def Phase3():
     jsonList = []
     nomatch = []
     for p in candidateList:
+        # p is the real localName of the file.  Search for this
+        # in the database--maybe we've dealt with it already
+        #
         if inchunkCount == 0:
-            #bigquery = 'status!=\"Abort\" AND localName IN ('
             bigquery = ''
-        #bigquery = bigquery + '\"' + p + '\",'
         bigquery = bigquery + p + ','
         inchunkCount = inchunkCount + 1
         if inchunkCount > 15:	# Avoid count limit
             inchunkCount = 0
             # replace the last comma with a right parenthesis
-            #bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
             bigq = bigquery[::-1].replace(',', '', 1)[::-1]
-            #print('bigq=', bigq)
             geturl = copy.deepcopy(basicgeturl)
             geturl.append(targetfindbundlesin + mangle(bigq))
             answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
@@ -624,7 +627,6 @@ def Phase3():
                 continue
             if 'Not Found' in danswer:
                 print('Not Found', danswer)
-                #print(bigq)
                 continue
             try:
                 jjanswer = json.loads(singletodouble(danswer))
@@ -635,18 +637,14 @@ def Phase3():
                 jsonList.append(js)
         #
     if inchunkCount > 0:
-        #bigq = bigquery[::-1].replace(',', ')', 1)[::-1]
         bigq = bigquery[::-1].replace(',', '', 1)[::-1]
-        #print('bigq=', bigq)
         geturl = copy.deepcopy(basicgeturl)
         geturl.append(targetfindbundlesin + mangle(bigq))
         answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
         danswer = massage(answer)
-        #print('danswer length=', len(danswer))
         if len(danswer) > 1:
             if 'Not Found' in danswer:
                 print('Not Found', danswer)
-                #print('bigq=', bigq)
                 return
             try:
                 jjanswer = json.loads(singletodouble(danswer))
@@ -655,7 +653,10 @@ def Phase3():
                 return
             for js in jjanswer:
                 jsonList.append(js)
-
+    #
+    # Now we have a list of already known bundles, whose info is now
+    #  in jsonList
+    #
     if len(jsonList) == 0:
         for p in candidateList:
             nomatch.append(p)
@@ -669,7 +670,6 @@ def Phase3():
             if not mfound:
                 nomatch.append(p)
     if len(nomatch) == 0:
-        #print(len(nomatch), 'No matches found')
         return		# All present and accounted for
     #
     # OK, now check that the info is in the database.  Connect to
@@ -684,22 +684,21 @@ def Phase3():
         reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
-        #print(reply[0]['size'], reply[0]['checksum'])
-        #
-        for js in jdiranswer:
-            dirs = js['treetop']
-            nc = filex.split(dirs)
-            if len(nc) == 2:
-                insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + nc[1] + '\', \'size\' : \'' + str(reply[0]['size'])
-                insdict = insdict + '\', \'checksum\' : \'' + str(reply[0]['checksum']) + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
-                insdict = insdict + ' \'useCount\' : \'1\', \'status\' : \'Untouched\'\}'
-                #print(mangle(str(insdict)))
-                posturl = copy.deepcopy(basicposturl)
-                posturl.append(targetaddbundle + mangle(str(insdict)))
-                answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
-                if 'OK' not in str(answer):
-                    print(str(insdict), answer)
-                continue
+        myjso = json.loads(singletodouble(reply))
+        myjs = myjso[0]
+        idealName = str(myjs['destination']) + '/' + mybasename
+        size = str(myjs['size'])
+        checksum = str(myjs['checksum'])
+        insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
+        insdict = insdict + '\', \'checksum\' : \'' + checksum + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
+        insdict = insdict + ' \'useCount\' : \'1\', \'status\' : \'Untouched\'\}'
+        posturl = copy.deepcopy(basicposturl)
+        posturl.append(targetaddbundle + mangle(str(insdict)))
+        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        if 'OK' not in str(answer):
+            print(str(insdict), answer)
+        continue
+    #
     return
 # Foreach tree
 #   Find bundle files in each tree
