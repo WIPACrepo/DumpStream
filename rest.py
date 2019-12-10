@@ -736,10 +736,11 @@ def updatebundlestatus(estring):
 # This needs some debugging yet.
 @app.route("/addbundle/<estring>", methods=["POST"])
 def addbundle(estring):
-    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    backagain = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
     #print(backagain)
+    # crazy hack--getting rid of those excess backslashes is a pain
     try:
-        fjson = (json.loads(backagain))
+        fjson = (json.loads(backagain[1:-2] + '}'))
     except:
         print('addbundle', backagain)
         return "Not valid json"
@@ -786,10 +787,7 @@ def addbundle(estring):
     for inargs in fjson:
         if not inargs in BUNDLESTATUSCOLUMNS:
             return inargs + " is not a valid database column for BundleStatus"
-    idealName = '/data/exp' + str(fjson['localName']).split('data/exp')[1]
-    #initialstring = initialstring + "(\"" + str(fjson['localName']) + "\",\""
-    #initialstring = initialstring + idealName + "\"," + str(fjson['size']) + ",\""
-    #initialstring = initialstring + str(fjson['checksum']) + "\",\"\",\"\",1,\"Untouched\")"
+    idealName = str(fjson['idealName'])
     initialstring = initialstring + "(?,?,?,?,\"\",\"\",1,\"Untouched\")"
     params = (str(fjson['localName']), idealName, str(fjson['size']), str(fjson['checksum']))
     #print(initialstring)
@@ -1056,7 +1054,7 @@ def dumptarget():
 # if it is old)
 @app.route("/dumping/dumptarget/<estring>", methods=["POST"])
 def dumptargetset(estring):
-    query = 'SELECT target FROM DumpTarget'
+    query = 'SELECT target FROM DumpTarget LIMIT 1'
     try:
         stuff = query_db_final(query)
     except:

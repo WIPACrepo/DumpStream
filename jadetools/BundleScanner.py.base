@@ -310,13 +310,16 @@ def Phase3():
         reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
-        myjso = json.loads(singletodouble(reply))
-        myjs = myjso[0]
+        try:
+            myjs = reply[0]
+            size = str(myjs['size'])
+        except:
+            print('Phase3:  myjs did not unpack', reply)
+            sys.exit(0)
         idealName = str(myjs['destination']) + '/' + mybasename
-        size = str(myjs['size'])
         checksum = str(myjs['checksum'])
         insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
-        insdict = insdict + '\', \'checksum\' : \'' + checksum + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
+        insdict = insdict + ' \'checksum\' : \'' + checksum + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
         insdict = insdict + ' \'useCount\' : \'1\', \'status\' : \'Untouched\'\}'
         posturl = copy.deepcopy(basicposturl)
         posturl.append(targetaddbundle + mangle(str(insdict)))
