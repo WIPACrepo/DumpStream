@@ -726,23 +726,22 @@ def Phase4():
     # I know a priori there is only one return line
     status = janswer['status']
     if status != 'Run':
-        #print('No run')
         return		# Don't load more in the globus pipeline
     geturl = copy.deepcopy(basicgeturl)
-    #geturl.append(targetuntouchedall)
     geturl.append(targetuntouchedall)
-    #print(geturl)
-    answer1 = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
-    #print(answer)
+    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    answer = singletodouble(massage(answer1))
+    if len(answer) <= 0:
+        return	# silence
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Error in answer')
         return
     # There may be multiple entries here
-    #print(answer)
-    if len(answer) <= 0:
-        return	# silence
-    jjanswer = json.loads(singletodouble(answer))
+    try:
+        jjanswer = json.loads(answer)
+    except:
+        print('Phase4 getting untouched failed', answer)
+        sys.exit(0)
     numwaiting = len(jjanswer)
     #print(numwaiting)
     if numwaiting <= 0:
@@ -819,7 +818,7 @@ def Phase4():
 def Phase5():
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetdumpinfo)
-    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
     answer = massage(answer1)
     janswer = json.loads(singletodouble(answer))
     # I know a priori there is only one return line
@@ -829,7 +828,7 @@ def Phase5():
     #
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('NERSCClean'))
-    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
     answer = massage(answer1)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl)

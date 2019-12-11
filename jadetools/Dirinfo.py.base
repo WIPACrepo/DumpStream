@@ -15,7 +15,7 @@ def Phase1(pcarg):
     #
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundleslike + mangle('%25' + pcarg + '%25'))
-    answer1 = getoutputerrorsimplecommand(geturl, 1)
+    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
     answer = massage(answer1)
     if len(answer) == 0:
         print('No answer for', pcarg, answer)
