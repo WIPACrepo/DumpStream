@@ -367,7 +367,11 @@ def GetExpectedCount(trialdirname):
     geoutp, geerro, gecode = getoutputerrorsimplecommand(gegeturl, 1)
     if gecode != 0 or len(geoutp) <= 0:
         return -1
-    gejson = json.loads(singletodouble(geoutp))
+    try:
+        gejson = json.loads(singletodouble(geoutp))
+    except:
+        print('No expected counts for directory', trialdirname)
+        return -1
     try:
         genumber = gejson[0]['number']
     except:
