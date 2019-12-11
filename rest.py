@@ -782,13 +782,13 @@ def addbundle(estring):
         if nogo:
             print("addbundle: No: Already exists")
             return "already exists, insert forbidden"
-    initialstring = "INSERT INTO BundleStatus (localName,idealName,size,checksum,UUIDJade,UUIDGlobus,useCount,status) VALUES"
+    initialstring = "INSERT INTO BundleStatus (localName,idealName,size,checksum,UUIDJade,UUIDGlobus,useCount,status,LooseFileDir,DownloadDir,FileDate) VALUES"
     # Sanity check
     for inargs in fjson:
         if not inargs in BUNDLESTATUSCOLUMNS:
             return inargs + " is not a valid database column for BundleStatus"
     idealName = str(fjson['idealName'])
-    initialstring = initialstring + "(?,?,?,?,\"\",\"\",1,\"Untouched\")"
+    initialstring = initialstring + "(?,?,?,?,\"\",\"\",1,\"Untouched\",\"\",\"\",datetime(\"now\",\"localtime\"))"
     params = (str(fjson['localName']), idealName, str(fjson['size']), str(fjson['checksum']))
     #print(initialstring)
     stuff = insert_db_final(initialstring, params)

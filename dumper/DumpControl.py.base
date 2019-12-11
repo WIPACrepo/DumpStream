@@ -145,6 +145,22 @@ def InventoryOne(slotlocation):
             diskuuid = toplevel
     return diskuuid
 
+####
+# Set the Poleid for a given slot#
+def SetSlotsPoleID(slotnum, poleidnum):
+    case = mangle(str(slotnum) + ' ' + str(poleidnum))
+    ssposturl = copy.deepcopy(basicposturl)
+    ssposturl.append(targetdumpingsetslotcontents + case)
+    s1outp, s1err, s2code = getoutputerrorsimplecommand(ssposturl, 1)
+    if len(s1outp) != 0 or s2code != 0:
+        print('SetSlotsPoleID failed', case)
+        sys.exit(0)
+
+####
+# Set the PoleDisk to the given status
+def SetPoleDiskStatus(poleidnum, pstatus):
+    print('JNBSetPoleDiskStatus is not implemented yet')
+    return
 
 ####
 # Go through all the slots and see what the UUID is in them
@@ -175,12 +191,14 @@ def InventoryAll():
         diskuuid = InventoryOne(js['name'])
         if diskuuid == '':
             print('Got nothing for', js['slotnumber'])
+            SetSlotsPoleID(js['slotnumber'], 0)
             continue
         #
         # Link SlotContents to the new PoleDisk
-        stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        #stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        stuffforpd = '{\'diskuuid\':\'' + diskuuid + '\', \'slotnumber\':' + str(js['slotnumber']) + ', \'targetArea\':\'' + targetarea + '\', \'status\':\'Inventoried\'}'
         i1posturl = copy.deepcopy(basicposturl)
-        i1posturl.append(targetdumpingsetslotcontents + urllib.parse.urlencode(stuffforpd))
+        i1posturl.append(targetdumpingpolediskloadfrom + mangle(stuffforpd))
         i2outp, i2erro, i2code = getoutputerrorsimplecommand(i1posturl, 1)
         if int(i2code) != 0 or 'FAILURE' in str(i2outp) or '404 Not Found' in str(i2outp):
             print('Load new PoleDisk failed', i1posturl)
@@ -199,18 +217,12 @@ def InventoryAll():
         try:
             djson = json.loads(singletodouble(soutp))
             js = djson[0]
-            case = mangle(str(js['slotnumber']) + ' ' + str(js['poledisk_id']))
+            cslot = str(js['slotnumber'])
+            cpole = str(js['poledisk_id'])
         except:
             print('Retrieve of new poledisk_id failed', soutp)
             sys.exit(0)
-        #
-        # Armed w/ the new poledisk_id, update the slot contents
-        i2posturl = copy.deepcopy(basicposturl)
-        i2posturl.append(targetdumpingsetslotcontents + case)
-        i2outp, i2erro, i2code = getoutputerrorsimplecommand(i2posturl, 1)
-        if len(i2outp) != 0 or 'FAILURE' in str(i2outp):
-            print('Update SlotContents info failed', i2posturl, i2outp)
-            sys.exit(0)
+        SetSlotsPoleID(cslot, cpole)
 
     return
 
@@ -464,8 +476,16 @@ def JobDecision(dumperstatus, dumpnextAction):
             slotlocation = js['name']
             break
     returnstuff = InventoryOneFull(slotlocation)
+    if len(returnstuff) < 2:
+        # nothing here--not sure why
+        print('JNBNothing to do, flag this as done or error', jid)
+        return
     targetdir = GiveTarget()
     dirstoscan = returnstuff[1]
+    if len(dirstoscan) == 0:
+        # nothing we want here, call it done.
+        print('JNBNothing to do, skip this--need to flag it as done', jid)
+        return
     commandy = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
     for source in dirstoscan:
         commandy.append(slotlocation + '/' + source)

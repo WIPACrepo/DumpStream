@@ -457,7 +457,7 @@ def InventoryAll():
         # Link SlotContents to the new PoleDisk
         stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
         i1posturl = copy.deepcopy(basicposturl)
-        i1posturl.append(targetdumpingsetslotcontents + urllib.parse.urlencode(stuffforpd))
+        i1posturl.append(targetdumpingpolediskloadfrom + mangle(stuffforpd))
         i2outp, i2erro, i2code = getoutputerrorsimplecommand(i1posturl, 1)
         if int(i2code) != 0 or 'FAILURE' in str(i2outp) or '404 Not Found' in str(i2outp):
             print('Load new PoleDisk failed', i1posturl)

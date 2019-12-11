@@ -2,7 +2,16 @@ BATCH -M escori
 #SBATCH -q xfer
 #SBATCH -t 12:00:00
 
-TAPEPATH='/home/projects/icecube'
+
+
+
+if [[ "$2" != "" ]]
+  then
+    TAPEPATH=$2
+  else
+    TAPEPATH='/home/projects/icecube'
+  fi
+
 STAGEPATH='/global/cscratch1/sd/icecubed/read-disk'
 EXPORTPATH='/global/cscratch1/sd/icecubed/export-disk'
 
