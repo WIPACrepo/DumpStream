@@ -102,6 +102,7 @@ targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
 targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
 targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
 targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
+targetdumpingpoledisksetstatus = curltargethost + '/dumping/poledisk/setstatus/'
 targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
 targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
 targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
@@ -422,6 +423,17 @@ def InventoryOne(slotlocation):
             diskuuid = toplevel
     return diskuuid
 
+####
+# Set the Poleid for a given slot#
+def SetSlotsPoleID(slotnum, poleidnum):
+    case = mangle(str(slotnum) + ' ' + str(poleidnum))
+    ssposturl = copy.deepcopy(basicposturl)
+    ssposturl.append(targetdumpingsetslotcontents + case)
+    s1outp, s1err, s2code = getoutputerrorsimplecommand(ssposturl, 1)
+    if len(s1outp) != 0 or s2code != 0:
+        print('SetSlotsPoleID failed', case)
+        sys.exit(0)
+
 
 ####
 # Go through all the slots and see what the UUID is in them
@@ -452,10 +464,12 @@ def InventoryAll():
         diskuuid = InventoryOne(js['name'])
         if diskuuid == '':
             print('Got nothing for', js['slotnumber'])
+            SetSlotsPoleID(js['slotnumber'], 0)
             continue
         #
         # Link SlotContents to the new PoleDisk
-        stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        #stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
+        stuffforpd = '{\'diskuuid\':\'' + diskuuid + '\', \'slotnumber\':' + str(js['slotnumber']) + ', \'targetArea\':\'' + targetarea + '\', \'status\':\'Inventoried\'}'
         i1posturl = copy.deepcopy(basicposturl)
         i1posturl.append(targetdumpingpolediskloadfrom + mangle(stuffforpd))
         i2outp, i2erro, i2code = getoutputerrorsimplecommand(i1posturl, 1)
@@ -476,18 +490,12 @@ def InventoryAll():
         try:
             djson = json.loads(singletodouble(soutp))
             js = djson[0]
-            case = mangle(str(js['slotnumber']) + ' ' + str(js['poledisk_id']))
+            cslot = str(js['slotnumber'])
+            cpole = str(js['poledisk_id'])
         except:
             print('Retrieve of new poledisk_id failed', soutp)
             sys.exit(0)
-        #
-        # Armed w/ the new poledisk_id, update the slot contents
-        i2posturl = copy.deepcopy(basicposturl)
-        i2posturl.append(targetdumpingsetslotcontents + case)
-        i2outp, i2erro, i2code = getoutputerrorsimplecommand(i2posturl, 1)
-        if len(i2outp) != 0 or 'FAILURE' in str(i2outp):
-            print('Update SlotContents info failed', i2posturl, i2outp)
-            sys.exit(0)
+        SetSlotsPoleID(cslot, cpole)
 
     return
 
@@ -612,6 +620,20 @@ def JobDecisionCompleted(notmatched):
     return donelist
 
 ###
+# Set the PoleDisk status
+def SetPoleDiskStatus(spid, sstatus):
+    if sstatus not in PoleDiskStatusOptions:
+        print('SetPoleDiskStatus:  bad status', sstatus)
+        sys.exit(0)
+    sarg = mangle(str(spid) + ' ' + sstatus)
+    spposturl = copy.deepcopy(basicposturl)
+    spposturl.append(targetdumpingpoledisksetstatus + sarg)
+    spoutp, sperro, spcode = getoutputerrorsimplecommand(spposturl, 1)
+    if int(spcode) != 0 or 'FAILURE' in str(spoutp):
+        print('SetPoleDiskStatus: Set status failed', sarg)
+        sys.exit(0)
+
+###
 # Get the expected count from the DB
 def GetExpectedCount(trialdirname):
     #  This checks whether the fragment matches anything in the DB
@@ -669,7 +691,7 @@ def DirectoryCheckFull(donelist):
 ####
 # Decide whether a new job is needed, or whether an old job is done
 #  Do some cleanup too
-def JobDecision(dumperstatus, dumpnextAction):
+def JobDecision(dumperstatus, jdumpnextAction):
     # Inspect what's out there
     expected, candidate, matching, notmatched = JobInspectAll()
     # Sanity check
@@ -694,7 +716,7 @@ def JobDecision(dumperstatus, dumpnextAction):
             # Don't bail, this might be OK
     #
     # What should we be doing?
-    if dumpnextAction == 'Pause' or dumperstatus == 'Idle':
+    if jdumpnextAction == 'Pause' or dumperstatus == 'Idle':
         return
     #
     # See if the jobcount is low enough to let me add another dump
@@ -741,8 +763,16 @@ def JobDecision(dumperstatus, dumpnextAction):
             slotlocation = js['name']
             break
     returnstuff = InventoryOneFull(slotlocation)
+    if len(returnstuff) < 2:
+        # nothing here--not sure why
+        SetPoleDiskStatus(jid, 'Error')
+        return
     targetdir = GiveTarget()
     dirstoscan = returnstuff[1]
+    if len(dirstoscan) == 0:
+        # nothing we want here, call it done.
+        SetPoleDiskStatus(jid, 'Done')
+        return
     commandy = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
     for source in dirstoscan:
         commandy.append(slotlocation + '/' + source)
@@ -762,19 +792,14 @@ def JobDecision(dumperstatus, dumpnextAction):
         print('JobDecision:  update PoleDisk w/ start time failed', jdoutp)
         sys.exit(0)
     # If we're running in DumpOne mode, Pause 
-    if dumpnextAction == 'DumpOne':
-        jdposturl = copy.deepcopy(basicposturl)
-        jdposturl.append(targetdumpingstatus + mangle('Pause'))
-        jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdposturl, 1)
-        if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-            print('JobDecision:  update Dumper status failed', jdoutp)
-            sys.exit(0)
+    if jdumpnextAction == 'DumpOne':
+        DumperSetState('Pause')
     #
     #
     return
 
 ####
-# Decisions
+# State of the Dumper: query and set routines
 def DumperTodo():
     dtgeturl = copy.deepcopy(basicgeturl)
     dtgeturl.append(targetdumpingstate)
@@ -789,6 +814,28 @@ def DumperTodo():
     return status, nextAction
 #DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 #DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+#
+def DumperSetState(value):
+    if value not in DumperStatusOptions:
+        print('DumperSetState:  invalid state to set', value)
+        sys.exit(0)
+    dposturl = copy.deepcopy(basicposturl)
+    dposturl.append(targetdumpingstatus + mangle('value'))
+    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    if int(dcode) != 0 or 'FAILURE' in str(doutp):
+        print('DumperSetState: failed to set', value, doutp, derro)
+        sys.exit(0)
+def DumperSetNext(value):
+    if value not in DumperNextOptions:
+        print('DumperSetNext:  invalid state to set', value)
+        sys.exit(0)
+    dposturl = copy.deepcopy(basicposturl)
+    dposturl.append(targetdumpingnext + mangle('value'))
+    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    if int(dcode) != 0 or 'FAILURE' in str(doutp):
+        print('DumperSetNext: failed to set', value, doutp, derro)
+        sys.exit(0)
+
 
 ###########
 # MAIN
@@ -799,18 +846,10 @@ dumpstatus, dumpNextAction = DumperTodo()
 if dumpNextAction == 'Inventory':
     # Do not start dumping immediately after inventory!
     InventoryAll()
-    mposturl = copy.deepcopy(basicposturl)
-    mposturl.append(targetdumpingstate + mangle('Idle'))
-    moutp, merro, mcode = getoutputerrorsimplecommand(mposturl, 1)
-    if int(mcode) != 0 or 'FAILURE' in str(moutp):
-        print('Set Idle Dumper status failed', moutp)
-        sys.exit(0)
-    mposturl = copy.deepcopy(basicposturl)
-    mposturl.append(targetdumpingnext + mangle('Pause'))
-    moutp, merro, mcode = getoutputerrorsimplecommand(mposturl, 1)
-    if int(mcode) != 0 or 'FAILURE' in str(moutp):
-        print('Set Idle Dumper status failed', moutp)
-        sys.exit(0)
+    DumperSetState('Idle')
+    dumpstatus = 'Idle'
+    DumperSetNext('Pause')
+    dumpnextAction = 'Pause'
 
 # Note that the Idle status still allows us to check whether old
 # jobs have completed.
@@ -818,12 +857,7 @@ if dumpstatus == 'Error' or dumpstatus == 'Inventorying':
     sys.exit(0)
 
 if dumpNextAction == 'Dump' and dumpstatus == 'Idle':
-    mposturl = copy.deepcopy(basicposturl)
-    mposturl.append(targetdumpingstatus + mangle('Dumping'))
-    moutp, merro, mcode = getoutputerrorsimplecommand(mposturl, 1)
-    if int(mcode) != 0 or 'FAILURE' in str(moutp):
-        print('Set new Dumper status failed', moutp)
-        sys.exit(0)
+    DumperSetState('Dumping')
     dumpstatus = 'Dumping'
 
 jobinformation = JobInspectAll()

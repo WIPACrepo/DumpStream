@@ -983,6 +983,34 @@ def polediskstart(estring):
         return 'FAILURE'
     return ''
 
+# Set the status of the PoleDisk.  Wants poledisk_id and status
+@app.route("/dumping/poledisk/setstatus/<estring>", methods=["POST"])
+def poledisksetstatus(estring):
+    # unpack estring first
+    unstring = unmangle(estring).split()
+    if len(unstring) != 2:
+        print('poledisksetstatus has the wrong number of arguments', unstring)
+        return 'FAILURE, number arguments' 
+    try:
+        poleid = int(unstring[0])
+    except:
+        print('poledisksetstatus cannot read the poledisk_id', estring)
+        return 'FAILURE, not integer' 
+    if unstring[1] not in PoleDiskStatusOptions:
+        print('poledisksetstatus has bad status', estring)
+        return 'FAILURE, bad status' 
+    query = 'UPDATE PoleDisk SET status=? WHERE poledisk_id=?'
+    params = (unstring[1], poleid)
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('poledisksetstatus:  Failed update', query, params)
+        return 'FAILURE'
+    if len(stuff) > 0:
+        print('poledisksetstatus:  Failed update', query, params, stuff)
+        return 'FAILURE'
+    return ''
+
 # Set the end time of the dump.  Wants the poledisk_id as a parameter
 @app.route("/dumping/poledisk/done/<estring>", methods=["POST"])
 def polediskdone(estring):
