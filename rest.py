@@ -1038,27 +1038,26 @@ def polediskdone(estring):
 def polediskload(estring):
     query = 'INSERT INTO PoleDisk (diskuuid,slotnumber,dateBegun,dateEnded,targetArea,status) VALUES '
     query = query + '(?, ?, \'\', \'\', ?, ?)'
-    backagain = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    backagain = unmangle(reslash(estring).replace('\'', '\"'))
     try:
         fjson = json.loads(backagain)
     except:
         print('polediskload: failed to turn into json', estring)
-        return 'FAILURE'
-    for ljson in fjson:
-        try:
-            diskuuid = ljson['diskuuid']
-            slotnumber = ljson['slotnumber']
-            targetArea = ljson['targetArea']
-            status = 'Inventoried'
-        except:
-            print('polediskload: Cannot get info from', ljson, 'from', fjson)
-            return 'FAILURE'
-        params = (diskuuid, slotnumber, targetArea, status)
-        try:
-            stuff = insert_db_final(query, params)
-        except:
-            print('polediskload: Failed to load from', query, params)
-            return 'FAILURE'
+        return 'FAILURE to make json'
+    try:
+        diskuuid = fjson['diskuuid']
+        slotnumber = fjson['slotnumber']
+        targetArea = fjson['targetArea']
+        status = 'Inventoried'
+    except:
+        print('polediskload: Cannot get info from', fjson)
+        return 'FAILURE to get info'
+    params = (diskuuid, slotnumber, targetArea, status)
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('polediskload: Failed to load from', query, params)
+        return 'FAILURE to load'
     return ''
 
 
@@ -1311,6 +1310,19 @@ def countready():
         print('countready:  cannot read query', query)
         return 'FAILURE'
     return str(stuff)
+
+####
+# Debug various things.  Only prints locally
+@app.route("/debugging/<estring>", methods=["GET", "POST"])
+def debugging(estring):
+    backagain = unmangle(reslash(estring).replace('\'', '\"'))
+    try:
+        fjson = json.loads(backagain)
+    except:
+        print('debugging: failed to turn into json')
+        print(estring)
+        print(backagain)
+        return 'FAILURE'
 
 
 

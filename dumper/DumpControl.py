@@ -462,14 +462,17 @@ def InventoryAll():
             continue
         # Now inventory the slot--get the UUID of the disk, if available
         diskuuid = InventoryOne(js['name'])
-        if diskuuid == '':
+        if diskuuid == '' or diskuuid == []:
             print('Got nothing for', js['slotnumber'])
             SetSlotsPoleID(js['slotnumber'], 0)
             continue
         #
         # Link SlotContents to the new PoleDisk
-        #stuffforpd = {"diskuuid":diskuuid, "slotnumber":js['slotnumber'], "targetArea":targetarea, "status":"Inventoried"}
-        stuffforpd = '{\'diskuuid\':\'' + diskuuid + '\', \'slotnumber\':' + str(js['slotnumber']) + ', \'targetArea\':\'' + targetarea + '\', \'status\':\'Inventoried\'}'
+        try:
+            stuffforpd = '{\'diskuuid\':\'' + diskuuid + '\', \'slotnumber\':' + str(js['slotnumber']) + ', \'targetArea\':\'' + targetarea + '\', \'status\':\'Inventoried\'}'
+        except:
+            print('FAILS', diskuuid, targetarea)
+            sys.exit(0)
         i1posturl = copy.deepcopy(basicposturl)
         i1posturl.append(targetdumpingpolediskloadfrom + mangle(stuffforpd))
         i2outp, i2erro, i2code = getoutputerrorsimplecommand(i1posturl, 1)
@@ -820,7 +823,7 @@ def DumperSetState(value):
         print('DumperSetState:  invalid state to set', value)
         sys.exit(0)
     dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingstatus + mangle('value'))
+    dposturl.append(targetdumpingstatus + mangle(value))
     doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetState: failed to set', value, doutp, derro)
@@ -830,7 +833,7 @@ def DumperSetNext(value):
         print('DumperSetNext:  invalid state to set', value)
         sys.exit(0)
     dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingnext + mangle('value'))
+    dposturl.append(targetdumpingnext + mangle(value))
     doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetNext: failed to set', value, doutp, derro)
