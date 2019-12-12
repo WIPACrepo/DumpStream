@@ -690,12 +690,9 @@ def Phase3():
             myjs = reply[0]
             size = str(myjs['size'])
         except:
-            try:
-                myjs = reply
-                size = str(myjs['size'])
-            except:
-                print('Phase3:  myjs did not unpack', reply, mybasename)
-                sys.exit(0)
+            print('Phase3:  myjs did not unpack', reply, mybasename)
+            continue
+            #sys.exit(0)
         idealName = str(myjs['destination']) + '/' + mybasename
         checksum = str(myjs['checksum'])
         insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
