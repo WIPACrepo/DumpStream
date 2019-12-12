@@ -105,6 +105,7 @@ targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
 targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
 targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
 targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
+targetdumpingpoledisksetstatus = curltargethost + '/dumping/poledisk/setstatus/'
 targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
 targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
 targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
@@ -689,8 +690,12 @@ def Phase3():
             myjs = reply[0]
             size = str(myjs['size'])
         except:
-            print('Phase3:  myjs did not unpack', reply)
-            sys.exit(0)
+            try:
+                myjs = reply
+                size = str(myjs['size'])
+            except:
+                print('Phase3:  myjs did not unpack', reply, mybasename)
+                sys.exit(0)
         idealName = str(myjs['destination']) + '/' + mybasename
         checksum = str(myjs['checksum'])
         insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
