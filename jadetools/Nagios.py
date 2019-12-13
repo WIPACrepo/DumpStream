@@ -89,6 +89,8 @@ targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
 targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
+targetbundleget = curltargethost + '/bundles/get/'
+targetbundlepatch = curltargethost + '/bundles/patch/'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'

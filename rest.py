@@ -38,7 +38,7 @@ BUNDLESTATUSCOLUMNS = []
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
-
+BUNDLECOLS = ["bundleStatus_id", "localName", "idealName", "UUIDJade", "UUIDGlobus", "size", "status", "useCount", "checksum"]
 SLOTBAD = -2
 SLOTRESERVED = -1
 SLOTUNK = 0
@@ -611,6 +611,59 @@ def getspecifiedin(estring):
         print('getspecified problem:', qstring, params, str(stuff))
         return ""
 
+# Get the specified bundle.  The spec'ed id can be file name or id
+@app.route("/bundles/get/<estring>", methods=["GET"])
+def bundleget(estring):
+    if not estring:
+        return ""
+    unstring = kludgequote(unmangle(estring))
+    try:
+        bid = int(unstring)
+        # If ok, we have an integer, use it as bundleStatus_id
+        qstring = 'SELECT * FROM BundleStatus WHERE bundleStatus_id=?'
+        params = (str(bid), )
+    except:
+        # OK, must be a file name
+        qstring = 'SELECT * FROM BundleStatus where localName LIKE %?%'
+        params = (unstring, )
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ''
+    except:
+        print('bundleget failed:', unstring, stuff)
+        return ''
+
+# Patch the specified bundle.  String format is 'id:type:value'
+@app.route("/bundles/patch/<estring>", methods=["POST"])
+def bundlepatch(estring):
+    if not estring:
+        return 'FAILURE'
+    unstring = kludgequote(unmangle(estring))
+    words = unstring.split(':')
+    if len(words) != 3:
+        print('bundlepatch:', unstring)
+        return 'FAILURE'
+    try:
+        bid = int(words[0])
+        bkey = 'bundleStatus_id=? '
+    except:
+        bkey = 'localName LIKE %?% '
+    if words[2] not in BUNDLECOLS:
+        print('bundlepatch bad argument', words)
+        return 'FAILURE'
+    qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
+    params = (words[2], words[3], words[1])
+    try:
+        stuff = insert_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return 'FAILURE ' + str(stuff)
+        return "OK"
+    except:
+        print('bundlepatch problem:', qstring, params, str(stuff))
+        return "FAILURE"
+
 # Update the specified bundle with new status and jade uuid
 @app.route("/updatebundle/statusuuid/<estring>", methods=["POST"])
 def updatebundlestatusuuid(estring):
@@ -624,11 +677,11 @@ def updatebundlestatusuuid(estring):
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:
-            return str(stuff)
+            return 'FAILURE ' + str(stuff)
         return ""
     except:
         print('updatebundlestatusuuid problem:', qstring, params, str(stuff))
-        return ""
+        return "FAILURE"
 
 # Get information about the specified bundle, knowing the UUIDJade name
 @app.route("/bundles/infobyjade/<estring>", methods=["GET"])
@@ -1318,6 +1371,7 @@ def debugging(estring):
     backagain = unmangle(reslash(estring).replace('\'', '\"'))
     try:
         fjson = json.loads(backagain)
+        return ''
     except:
         print('debugging: failed to turn into json')
         print(estring)

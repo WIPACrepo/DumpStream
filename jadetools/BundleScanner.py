@@ -93,6 +93,8 @@ targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
 targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
+targetbundleget = curltargethost + '/bundles/get/'
+targetbundlepatch = curltargethost + '/bundles/patch/'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'
@@ -383,6 +385,77 @@ def doOperationDBTuple(dbcursor, command, string):
     return [[]]
 
 DEBUGIT = False
+
+##################
+# Utilities
+###
+# Create a new localname
+def backcompare(local, ideal):
+    # find how much these agree, working from the right
+    # Then create a new directory using the residue of the
+    # local name and the ideal name
+    localwords = local.split('/')
+    idealwords = ideal.split('/')
+    danswer = ''
+    if localwords[-1] != idealwords[-1]:
+        return danswer
+    # Also check if the match is exact
+    perfect = 0
+    for i in range(2, min(len(localwords), len(idealwords))):
+        if localwords[-i] == idealwords[-i]:
+            continue
+        q = ''
+        for word in localwords[0:-i+1]:
+            q = q + '/' + word
+        danswer = (q+ideal).replace('//', '/')
+        perfect = 1
+        break
+    if perfect == 0:
+        return local	# perfect match
+    return danswer	# constructed match
+
+###
+# Check if the localname tree matches the ideal name tree
+# If not, make it so.
+def movelocal(local, ideal, bid):
+    # The BundleStatus with bundleStatus_id = bid has the
+    # localName local and idealName ideal
+    # If the file is in the correct place (having a tree
+    # like that of the idealName, but sited differently)
+    # then just return the local name and do nothing else.
+    # Otherwise:
+    # get a newlocal name
+    # mkdir -p the proper tree
+    # mv local newlocal
+    # Update the BundleStatus localName
+    newlocal = backcompare(local, ideal)
+    if newlocal == local:
+        return local
+    #
+    # We've got work to do.
+    localdir = os.path.dirname(newlocal)
+    command = ['/usr/bin/mkdir', '-p', localdir]
+    ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
+    if codx != 0:
+        print('Failure to create new directory', localdir)
+        sys.exit(0)
+    #
+    command = ['/bin/mv', local, newlocal]
+    ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
+    if codx != 0:
+        print('Failure to move', local, 'to', newlocal)
+        sys.exit(0)
+    #
+    posturl = copy.deepcopy(basicposturl)
+    comm = str(bid) + ':localName:' + newlocal
+    posturl.append(targetbundlepatch + mangle(comm))
+    ansx, errx, codx = getoutputerrorsimplecommand(posturl, 1)
+    if 'OK' not in ansx:
+        print('movelocal DB update failed', ansx, errx, codx, comm)
+        sys.exit(0)
+    #
+    return newlocal
+
 ########################################################
 # Define Phases for Main
 
