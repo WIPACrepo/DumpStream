@@ -281,6 +281,42 @@ def deltaT(oldtimestring):
     except:
         delta = -1
     return delta
+
+###
+# Make changes in the BundleStatus specified
+# 2-step process:
+# Get the number of entries that will be touched
+# If zero, return 'None'
+# If one, do it and return 'OK'
+# IF more than 1,
+# If the flag says do them all, do them all, otherwise
+# don't do anything at all and return 'TooMany'
+def patchBundle(bundleid, columntype, newvalue, manyok):
+    #
+    geturlx = copy.deepcopy(basicgeturl)
+    geturlx.append(targetbundleget + mangle(bundleid))
+    ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
+    if 'OK' not in ansx:
+        print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
+        sys.exit(0)
+    try:
+        my_jsonx = json.loads(singletodouble(massage(ansx)))
+    except:
+        print('patchBundle initial query got junk', ansx, bundleid)
+        sys.exit(0)
+    if len(my_jsonx) == 0:
+        return 'None'
+    if len(my_jsonx) > 1 and not manyok:
+        return 'TooMany'
+    #
+    posturlx = copy.deepcopy(basicposturl)
+    comm = str(bundleid) + ':' + str(columntype)+ ':' + str(newvalue)
+    posturlx.append(targetbundlepatch + mangle(comm))
+    ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
+    if 'OK' not in ansx:
+        print('patchBundle update failed', ansx, errx, codx, comm)
+        sys.exit(0)
+    return 'OK'
 #
 
 USEHEARTBEATS = False

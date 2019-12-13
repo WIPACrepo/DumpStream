@@ -68,12 +68,9 @@ def movelocal(local, ideal, bid):
         print('Failure to move', local, 'to', newlocal)
         sys.exit(0)
     #
-    posturl = copy.deepcopy(basicposturl)
-    comm = str(bid) + ':localName:' + newlocal
-    posturl.append(targetbundlepatch + mangle(comm))
-    ansx, errx, codx = getoutputerrorsimplecommand(posturl, 1)
+    ansx = patchBundle(bid, 'localName', newlocal, False)
     if 'OK' not in ansx:
-        print('movelocal DB update failed', ansx, errx, codx, comm)
+        print('movelocal DB update failed', ansx)
         sys.exit(0)
     #
     return newlocal
