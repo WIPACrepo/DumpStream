@@ -887,6 +887,7 @@ def Phase4():
         idealDir = os.path.dirname(idealName) + '/'
         remotesystem = 'NERSC'
         jsonContents = globusjson(jadeuuid, localDir, remotesystem, idealDir)
+        newlocal = movelocal(localName, idealName, bundle_id)
         jsonName = jadeuuid + '.json'
         try:
             fileout = open(GLOBUS_RUN_SPACE + '/' + jsonName, 'w')
@@ -896,12 +897,17 @@ def Phase4():
             print('Failed to open/write/close ' + jsonName)
             return	# Try again later
         # Now update the BundleStatus
-        posturl = copy.deepcopy(basicposturl)
-        #trysql = 'UPDATE BundleStatus SET status=\"JsonMade\",UUIDJade=\"{}\" WHERE bundleStatus_id='.format(jadeuuid) + str(bundle_id)
-        ##print(trysql)
-        #posturl.append(targetupdatebundle + mangle(trysql))
-        posturl.append(targetupdatebundlestatusuuid + mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        panswer = patchBundle(str(bundle_id), 'status', 'JsonMade', False)
+        if 'FAILURE' in panswer:
+            print('Phase4: bundle update failed', panswer, bundle_id)
+            continue
+        panswer = patchBundle(str(bundle_id), 'UUIDJade', jadeuuid, False)
+        if 'FAILURE' in panswer:
+            print('Phase4: bundle update failed uuidjade', panswer, bundle_id)
+            continue
+        #posturl = copy.deepcopy(basicposturl)
+        #posturl.append(targetupdatebundlestatusuuid + mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
+        #answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
         # Not checking answer is probably a bad thing hereJNB
         continue
     return
