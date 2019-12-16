@@ -469,11 +469,11 @@ def Phase4():
             print('Failure in unpacking json info for #', str(countup))
             return
         jadeuuid = str(uuid.uuid4())
-        localDir = os.path.dirname(localName) + '/'
+        newlocal = movelocal(localName, idealName, bundle_id)
+        localDir = os.path.dirname(newlocal) + '/'
         idealDir = os.path.dirname(idealName) + '/'
         remotesystem = 'NERSC'
         jsonContents = globusjson(jadeuuid, localDir, remotesystem, idealDir)
-        newlocal = movelocal(localName, idealName, bundle_id)
         jsonName = jadeuuid + '.json'
         try:
             fileout = open(GLOBUS_RUN_SPACE + '/' + jsonName, 'w')

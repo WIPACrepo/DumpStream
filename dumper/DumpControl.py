@@ -90,6 +90,8 @@ targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
 targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
+targetbundleget = curltargethost + '/bundles/get/'
+targetbundlepatch = curltargethost + '/bundles/patch/'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'
@@ -280,6 +282,42 @@ def deltaT(oldtimestring):
     except:
         delta = -1
     return delta
+
+###
+# Make changes in the BundleStatus specified
+# 2-step process:
+# Get the number of entries that will be touched
+# If zero, return 'None'
+# If one, do it and return 'OK'
+# IF more than 1,
+# If the flag says do them all, do them all, otherwise
+# don't do anything at all and return 'TooMany'
+def patchBundle(bundleid, columntype, newvalue, manyok):
+    #
+    geturlx = copy.deepcopy(basicgeturl)
+    geturlx.append(targetbundleget + mangle(bundleid))
+    ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
+    if 'OK' not in ansx:
+        print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
+        sys.exit(0)
+    try:
+        my_jsonx = json.loads(singletodouble(massage(ansx)))
+    except:
+        print('patchBundle initial query got junk', ansx, bundleid)
+        sys.exit(0)
+    if len(my_jsonx) == 0:
+        return 'None'
+    if len(my_jsonx) > 1 and not manyok:
+        return 'TooMany'
+    #
+    posturlx = copy.deepcopy(basicposturl)
+    comm = str(bundleid) + ':' + str(columntype)+ ':' + str(newvalue)
+    posturlx.append(targetbundlepatch + mangle(comm))
+    ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
+    if 'OK' not in ansx:
+        print('patchBundle update failed', ansx, errx, codx, comm)
+        sys.exit(0)
+    return 'OK'
 #
 
 ##########
@@ -349,6 +387,7 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
 # Inventory a slot.  Pass it the json for the slot (has old info)
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found
+
 def InventoryOneFull(slotlocation):
     # First find out what trees we want to read
     i1geturl = copy.deepcopy(basicgeturl)
@@ -378,7 +417,7 @@ def InventoryOneFull(slotlocation):
     i2outp, i2erro, i2code = getoutputerrorsimplecommand(command, 1)
     if int(i2code) != 0 or len(i2outp) <= 1:
         print('Cannot read the disk in', slotlocation)
-        return []	# Do I want to set an error?
+        return []       # Do I want to set an error?
     answer = str(i2outp)
     for toplevel in answer.split():
         #print(toplevel)
@@ -387,23 +426,37 @@ def InventoryOneFull(slotlocation):
     #
     # Generate the list of directories to rsync
     dirstoscan = []
+    detaildirs = []
+    ylist = []
     for tip in toplist:
         if tip in answer.split():
             command = ['/bin/ls', slotlocation + '/' + tip]
             i3outp, i3erro, i3code = getoutputerrorsimplecommand(command, 1)
             if int(i3code) != 0:
-                continue	# May not be present, do not worry about it
+                continue        # May not be present, do not worry about it
             tipyearlist = []
             for y in i3outp.split():
+                if y not in ylist:
+                    ylist.append(y)
                 tipyearlist.append(y)
             for dt in desiredtrees:
                 if tip in dt:
                     words = dt.split('YEAR')
                     for y in tipyearlist:
                         dirstoscan.append(words[0] + y + words[1])
-    #for j in dirstoscan:
-    #    print(j)
-    return [diskuuid, dirstoscan]
+    #
+    for vdirs in desiredtrees:
+        words = vdirs.split('YEAR')
+        for y in ylist:
+            vtop = slotlocation + '/' + words[0] + y + words[1]
+            command = ['/bin/ls', vtop]
+            i3outp, i3erro, i3code = getoutputerrorsimplecommand(command, 1)
+            if int(i3code) != 0 or len(i3outp) <= 0:
+                continue        # May not be present, do not worry about it
+            subdirs = str(i3outp).split()
+            for subdir in subdirs:
+                detaildirs.append(vtop + '/' + subdir)
+    return [diskuuid, dirstoscan, detaildirs]
 
 ####
 # Get the UUID, if this is readable, for use with slot
@@ -535,10 +588,10 @@ def JobInspectAll():
     commandj = ['/bin/ps', 'aux']
     listing, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
     if int(jcode) != 0:
-        print('JobInspectAll: pstree failed', joutp, jerro, jcode)
+        print('JobInspectAll: pstree failed', listing, jerro, jcode)
         sys.exit(0)
     candidate = []
-    wlisting = listing.split()
+    wlisting = str(listing).split()
     for line in wlisting:
         if 'DUMPING' in line:
             candidate.append(line)
@@ -673,7 +726,7 @@ def DirectoryCheckFull(donelist):
     for packet in donelist:
         # This repeats an earlier disk access!
         dstuff = InventoryOneFull(packet[4])
-        for tentativedir in dstuff[1]:
+        for tentativedir in dstuff[2]:
             # It should, in theory not have been full before, and thus
             #  there should not be anything in FullDirectories.  But,
             #  to be on the safe side, check before registering it
@@ -686,7 +739,7 @@ def DirectoryCheckFull(donelist):
                 dcok.append(dtarg)
                 dcposturl = copy.deepcopy(basicposturl)
                 dcposturl.append(targetdumpingenteredreadydir + mangle(dtarg))
-                dcoutp, dcerro, dccode = getoutputerrorsimplecommand(geposturl, 1)
+                dcoutp, dcerro, dccode = getoutputerrorsimplecommand(dcposturl, 1)
                 if dccode != 0 or 'FAILURE' in str(dcoutp):
                     print('DirectoryCheckFull could not load', dtarg)
                     continue
