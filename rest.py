@@ -645,23 +645,29 @@ def bundlepatch(estring):
         return 'FAILURE'
     unstring = kludgequote(unmangle(estring))
     words = unstring.split(':')
-    if len(words) != 3:
+    chunks = len(words)
+    residual = chunks - 2 * int(chunks/2)
+    if chunks < 3 or residual != 1:
         print('bundlepatch:', unstring)
         return 'FAILURE'
+    #
     try:
         bid = int(words[0])
         bkey = 'bundleStatus_id=? '
     except:
-        bkey = 'localName LIKE %?% '
+        bkey = 'localName LIKE \"%?%\" '
+    #
     if words[1] not in BUNDLECOLS:
         print('bundlepatch bad argument', words)
         return 'FAILURE'
+    #
     qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
+    #
     params = (words[1], words[2], words[0])
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:
-            return 'FAILURE ' + str(stuff)
+            return 'FAILURE ' + str(stuff) + qstring + str(params)
         return "OK"
     except:
         print('bundlepatch problem:', qstring, params, str(stuff))
