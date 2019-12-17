@@ -653,11 +653,11 @@ def bundlepatch(estring):
         bkey = 'bundleStatus_id=? '
     except:
         bkey = 'localName LIKE %?% '
-    if words[2] not in BUNDLECOLS:
+    if words[1] not in BUNDLECOLS:
         print('bundlepatch bad argument', words)
         return 'FAILURE'
     qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
-    params = (words[2], words[3], words[1])
+    params = (words[1], words[2], words[0])
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:

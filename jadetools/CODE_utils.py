@@ -283,9 +283,9 @@ def deltaT(oldtimestring):
 def patchBundle(bundleid, columntype, newvalue, manyok):
     #
     geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(bundleid))
+    geturlx.append(targetbundleget + mangle(str(bundleid)))
     ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
-    if 'OK' not in ansx:
+    if len(ansx) <= 0:
         print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
         sys.exit(0)
     try:

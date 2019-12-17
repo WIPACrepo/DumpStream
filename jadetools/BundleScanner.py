@@ -299,9 +299,9 @@ def deltaT(oldtimestring):
 def patchBundle(bundleid, columntype, newvalue, manyok):
     #
     geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(bundleid))
+    geturlx.append(targetbundleget + mangle(str(bundleid)))
     ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
-    if 'OK' not in ansx:
+    if len(ansx) <= 0:
         print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
         sys.exit(0)
     try:
@@ -471,7 +471,7 @@ def movelocal(local, ideal, bid):
     #
     # We've got work to do.
     localdir = os.path.dirname(newlocal)
-    command = ['/usr/bin/mkdir', '-p', localdir]
+    command = ['/bin/mkdir', '-p', localdir]
     ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
     if codx != 0:
         print('Failure to create new directory', localdir)
@@ -480,7 +480,7 @@ def movelocal(local, ideal, bid):
     command = ['/bin/mv', local, newlocal]
     ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
     if codx != 0:
-        print('Failure to move', local, 'to', newlocal)
+        print('Failure to move', local, 'to', newlocal, errx, codx)
         sys.exit(0)
     #
     ansx = patchBundle(bid, 'localName', newlocal, False)
