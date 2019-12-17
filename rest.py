@@ -1301,7 +1301,7 @@ def addwantedtrees(estring):
 @app.route("/dumping/expectedir/<estring>", methods=["GET"])
 def getcountexpected(estring):
     directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    query = 'SELECT number from expected WHERE directory LIKE %?%'
+    query = 'SELECT number from expected WHERE directory LIKE \"%?%\"'
     params = (str(directoryfragment), )
     cc = -1
     try:
