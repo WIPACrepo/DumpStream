@@ -788,6 +788,25 @@ def updatebundlestatus(estring):
         print('updatebundlestatus Failed with', qstring, qparams)
         return 'FAILURE'
 
+
+###
+# Get all the bundle info in one swell foop
+@app.route("/bundles/allbundleinfo", methods=["GET"])
+def getallbundleinfo():
+    query = 'SELECT COUNT(*) AS total'
+    for stat in BUNDLESTATI:
+        query = query + ', SUM(CASE WHEN status=\"' + stat + '\" THEN 1 ELSE 0 END) AS ' + stat
+    query = query + ' FROM BundleStatus'
+    
+    try:
+        stuff = query_db_final(query)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ''
+    except:
+        print('getallbundleinfo problem:', query, str(stuff))
+        return ''
+
 ### Insertion methods for bundles.  These aren't updates, but new bundles
 # This needs some debugging yet.
 @app.route("/addbundle/<estring>", methods=["POST"])

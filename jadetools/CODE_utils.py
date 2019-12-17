@@ -79,6 +79,7 @@ targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 targetbundleget = curltargethost + '/bundles/get/'
 targetbundlepatch = curltargethost + '/bundles/patch/'
+targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'

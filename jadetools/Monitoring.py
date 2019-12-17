@@ -91,6 +91,7 @@ targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 targetbundleget = curltargethost + '/bundles/get/'
 targetbundlepatch = curltargethost + '/bundles/patch/'
+targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'
@@ -457,18 +458,21 @@ logit('DiskStatuses= ', nstats)
 # How many bundles have each status?
 # I will probably get fancier later.  For now, just this.
 nstats = ''
-for opt in BUNDLESTATI:
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetbundlestatuscount + mangle(opt))
-    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    #print(outp)
-    if int(code) != 0:
-        nstats = nstats + 'DB Failure'
-    else:
+geturl = copy.deepcopy(basicgeturl)
+geturl.append(targetallbundleinfo)
+outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+if int(code) != 0:
+    nstats = nstats + 'DB Failure'
+else:
+    try:
         my_json = json.loads(singletodouble(outp))
         js = my_json[0]
-        nstats = nstats + ' | ' + opt + ':' + str(js['COUNT(*)'])
+        for w in js:
+            nstats = nstats + ' | ' + w + ':' + str(js[w])
+    except:
+        nstats = nstats + 'DB DID NOT GIVE GOOD JSON'
 logit('BundleStatusCounts= ', nstats)
+
 
 # Are we done?  Not if we want to look for duplicate entries.
 if len(sys.argv) <= 1:
