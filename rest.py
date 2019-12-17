@@ -246,7 +246,10 @@ def updatedumpstatus(estring):
     getallstr = 'SELECT bundlePoolSize,bundleError FROM DumpCandC ORDER BY dumpCandC_id DESC LIMIT 1'
     stuff = query_db(getallstr)
     newstr = 'INSERT INTO DumpCandC (bundleError,bundlePoolSize,lastChangeTime,status)'
-    newstr = newstr + ' VALUES (\'' + stuff[0]['bundleError'] + '\',' + str(stuff[0]['bundlePoolSize']) + ','
+    if str(estring) == 'Run':
+        newstr = newstr + ' VALUES (\'\',' + str(stuff[0]['bundlePoolSize']) + ','  # Clear the error
+    else:
+        newstr = newstr + ' VALUES (\'' + stuff[0]['bundleError'] + '\',' + str(stuff[0]['bundlePoolSize']) + ','
     newstr = newstr + 'datetime(\'now\',\'localtime\'),\'' + estring + '\')'
     stuff = insert_db_final(newstr)
     # Put in sanity checking
