@@ -516,22 +516,13 @@ def Phase4():
 #     if yes, execute a delete
 #     reset the status to LocalDeleted
 def Phase5():
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetdumpinfo)
-    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
-    janswer = json.loads(singletodouble(answer))
-    # I know a priori there is only one return line
-    status = janswer['status']
-    if status not in ('Run', 'Drain'):
-        return		# Don't load more in the globus pipeline
     #
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetfindbundles + mangle('NERSCClean'))
-    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
     answer = massage(answer1)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
-        print('Phase 5 failure with', geturl)
+        print('Phase 5 failure with', geturl, answer, erro1, code1)
         return
     if len(answer) == 0:
         return	# Nothing to do
@@ -542,31 +533,43 @@ def Phase5():
         # This should not happen, but maybe the json isn't understood
         print('Phase 5 json is empty', str(answer))
         return
+    #
     for js in jjanswer:
         try:
-            localname = js['localName']
+            localname = str(js['localName'])
         except:
             print('Phase 5: problem with getting info from', js)
             continue
         try:
-            command = [ls, localname]
+            if localname[-4:] != '.zip':
+                continue
+        except:
+            print(localname, 'is not a .zip bundle')
+            continue
+        if localname.find(' ') > 0 or localname.find('\t') > 0:
+            print(localname, 'has dangerous blank spaces in the name')
+            continue
+        try:
+            command = ['/usr/bin/ls', localname]
             outp, erro, code = getoutputerrorsimplecommand(command, 1)
             if int(code) == 0:
-                command = [rm, localname]
+                command = ['/usr/bin/rm', localname]
                 outp, erro, code = getoutputerrorsimplecommand(command, 1)
+                if int(code) != 0:
+                    print('Failed to delete', localname, outp, erro)
+                    continue
         except:
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
-        #posturl = copy.deepcopy(basicposturl)
-        answer, erro, code = flagBundleStatus(key, 'LocalDeleted')
-        #comd = 'UPDATE BundleStatus set status=\"LocalDeleted\" WHERE updateBundle_id={}'.format(key)
-        #posturl.append(targetupdatebundle + mangle(comd))
-        #answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
-        if len(answer) > 0:
-            print('Phase 5: failed to set status=LocalDeleted for', localname)
+        outp, erro, code = flagBundleStatus(key, 'LocalDeleted')
+        if len(outp) > 0:
+            print('Phase 5: failed to set status=LocalDeleted for', localname, outp, erro, code)
             continue 
     return
+#
+###
+# Main
 Phase0()
 if DEBUGIT:
     print('Done w/0, checking space usage')
