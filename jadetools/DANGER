@@ -1,0 +1,5 @@
+If the bundle is skipped in globus, the json is moved to mirror_cache, not
+to problem_files
+BundleStatus thus thinks it is OK
+The only saving grace here is that the file never shows up at NERSC, so
+the NERSC system doesn't process an empty file and never resets the status.

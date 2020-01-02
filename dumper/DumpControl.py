@@ -92,6 +92,7 @@ targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 targetbundleget = curltargethost + '/bundles/get/'
 targetbundlepatch = curltargethost + '/bundles/patch/'
+targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'
@@ -149,6 +150,8 @@ DUMPING_LIMIT = 2
 DUMPING_TIMEOUT = 4320
 # Where do log files go?
 DUMPING_LOG_SPACE = '/tmp/'
+# Where do master log files go?
+DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
 # Where do scripts live?
 DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 
@@ -295,9 +298,9 @@ def deltaT(oldtimestring):
 def patchBundle(bundleid, columntype, newvalue, manyok):
     #
     geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(bundleid))
+    geturlx.append(targetbundleget + mangle(str(bundleid)))
     ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
-    if 'OK' not in ansx:
+    if len(ansx) <= 0:
         print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
         sys.exit(0)
     try:
@@ -636,10 +639,12 @@ def JobDecisionCompleted(notmatched):
     #
     for jdone in notmatched:
         # First make sure nothing is wrong
-        # I expect a script in DUMPING_LOG_SPACE/DUMPING_${UUID} and a log file
-        # in DUMPING_LOG_SPACE/DUMPING_${UUID}.log
+        # I expect a script in DUMPING_MASTER_LOG_SPACE/DUMPING_${UUID} and a log file
+        # in DUMPING_MASTER_LOG_SPACE/DUMPING_${UUID}.log
+        # Note that the master logs are short, just holding the commands that
+        # were executed.
         jid = jdone[3]
-        tentative = DUMPING_LOG_SPACE + 'DUMPING_' + jdone[0] + '.log'
+        tentative = DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + jdone[0] + '.log'
         commandj = ['/usr/bin/tail', '-n1', tentative]
         answerline, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
         if int(jcode) != 0:
@@ -806,7 +811,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
         sys.exit(0)
     #
     #commandx = ['/usr/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
-    commandx = ['/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
+    commandx = ['/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + str(juuid)]
     xoutp, xerro, xcode = getoutputerrorsimplecommand(commandx, 1)
     if int(xcode) != 0:
         print('JobDecision: failed to copy to new script')
@@ -833,7 +838,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
         # nothing we want here, call it done.
         SetPoleDiskStatus(jid, 'Done')
         return
-    commandy = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
+    commandy = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + str(juuid)]
     for source in dirstoscan:
         commandy.append(slotlocation + '/' + source)
         # Create the target directory...

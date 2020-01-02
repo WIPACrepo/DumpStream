@@ -137,6 +137,8 @@ DUMPING_LIMIT = 2
 DUMPING_TIMEOUT = 4320
 # Where do log files go?
 DUMPING_LOG_SPACE = '/tmp/'
+# Where do master log files go?
+DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
 # Where do scripts live?
 DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 

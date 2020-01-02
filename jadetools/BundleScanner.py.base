@@ -445,7 +445,7 @@ def Phase4():
     answerlsb, errorls, codels = getoutputerrorsimplecommand(command, 1)
     #print('code=', str(codels))
     if int(codels) != 0:
-        print('Cannot ls the', GLOBUS_RUN_SPACE)
+        print('Cannot ls the', GLOBUS_RUN_SPACE, errorls)
         return		# Something went wrong, try later
     answerls = massage(answerlsb)
     if 'TIMEOUT' in answerls:

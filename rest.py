@@ -38,7 +38,7 @@ BUNDLESTATUSCOLUMNS = []
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
-BUNDLECOLS = ["bundleStatus_id", "localName", "idealName", "UUIDJade", "UUIDGlobus", "size", "status", "useCount", "checksum"]
+BUNDLECOLS = ["bundleStatus_id", "localName", "idealName", "UUIDJade", "UUIDGlobus", "size", "status", "useCount", "checksum", "LooseFileDir"]
 SLOTBAD = -2
 SLOTRESERVED = -1
 SLOTUNK = 0
@@ -660,14 +660,18 @@ def bundlepatch(estring):
     if words[1] not in BUNDLECOLS:
         print('bundlepatch bad argument', words)
         return 'FAILURE'
+    else:
+        qstring = 'UPDATE BundleStatus SET ' + words[1] + '=? WHERE ' + bkey
     #
-    qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
+    #qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
     #
-    params = (words[1], words[2], words[0])
+    #params = (words[1], words[2], words[0])
+    params = (words[2], words[0])
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:
-            return 'FAILURE ' + str(stuff) + qstring + str(params)
+            if str(stuff) != '[]':
+                return 'FAILURE ' + str(stuff) + ' ' + qstring + str(params)
         return "OK"
     except:
         print('bundlepatch problem:', qstring, params, str(stuff))
