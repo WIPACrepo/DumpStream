@@ -1398,7 +1398,7 @@ def countready():
 
 ####
 # Get/reset the GlueStatus
-@app.route("/gluestatus/<estring>", methods=["GET", "POST"])
+@app.route("/glue/status/<estring>", methods=["GET", "POST"])
 def getgluestatus(estring):
     # return failure if needed
     # Run means currently running.  Ready means ready to run
@@ -1418,19 +1418,90 @@ def getgluestatus(estring):
     if comm == answer:
         return ''
     # We only return a status from these if we are wasting our time
-    if ( (comm == 'Pause' and answer == 'Run') or 
-         (comm == 'Run' and answer == 'Pause') or
-         (comm == 'Ready' and answer == 'Run') ):
+    if ((comm == 'Pause' and answer == 'Run') or 
+            (comm == 'Run' and answer == 'Pause') or
+            (comm == 'Ready' and answer == 'Run')):
         return answer
-    query = 'UPDATE GlueStatus SET status=?,lastChangeTime=datetime(\'now\',\'localtime\'))'
+    query = 'UPDATE GlueStatus SET status=?,lastChangeTime=datetime(\'now\',\'localtime\')'
     params = (comm, )
     try:
-        stuff = update_db_final(query, params)
+        stuff = insert_db_final(query, params)
         return ''
     except:
         print('getgluestatus:  cannot update table with', query, params)
         return 'FAILURE update'
     
+
+####
+# Purge the WorkingTable
+@app.route("/glue/workpurge", methods=["POST"])
+def purgegluework():
+    ''' Empty out the done stuff from WorkingTable If done, everything '''
+    query = 'DELETE FROM WorkingTable WHERE status=\'Picked\''
+    try:
+        stuff = insert_db_final(query)
+        return ''
+    except:
+        print('purgegluework:  cannot empty table', query)
+        return 'FAILURE'
+
+
+####
+# Count the 'Unpicked in the WorkingTable
+@app.route("/glue/workcount", methods=["GET"])
+def countgluework():
+    ''' Empty out the WorkingTable, since we are done '''
+    query = 'SELECT COUNT(*) FROM WorkingTable WHERE status=\'Unpicked\''
+    try:
+        stuff = query_db_final(query)
+        return str(stuff[0]['COUNT(*)'])
+    except:
+        print('countgluework:  cannot count table', query)
+        return str(-1)
+
+####
+# Set the WorkingTable entry to 'Picked'
+@app.route("/glue/workupdate/<estring>", methods=["POST"])
+def glueworkupdate(estring):
+    ''' Update directory as Picked '''
+    # don't check for failure
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    # 1 at a time
+    query = 'UPDATE WorkingTable set status=\'Picked\' WHERE idealName=?'
+    params = (comm, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('glueworkupdate: failed to set status for', query, params)
+        return 'FAILURE'
+    return ''
+
+
+####
+# Load the WorkingTable with 'Unpicked' directories
+@app.route("/glue/workload/<estring>", methods=["POST"])
+def glueworkload(estring):
+    ''' Load WorkingTable with idealName directories '''
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    if len(comm) <= 0:
+        return str(0)
+    individual_dirs = comm.split()
+    query = 'INSERT INTO WorkingTable (idealName,status) VALUES '
+    params = (str(individual_dirs[0]), )
+    query = query + '(?,\'Unpicked\')'
+    if len(individual_dirs) > 1:
+        for mydir in individual_dirs[1:]:
+            query = query + ',(?,\'Unpicked\')'
+            params = params + (str(mydir), )
+    hline = ''
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('glueworkload: failed to insert entirety of ', query, params)
+        hline = 'FAILURE '
+    return hline + str(countgluework())
+    
+
 
 
 ####
