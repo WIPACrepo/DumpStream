@@ -3,13 +3,10 @@ import sys
 # IMPORT_utils.py
 # Assumes "import sys"
 import datetime
-import site
 import json
-import urllib.parse
 import subprocess
 import copy
 import os
-import uuid
 
 # IMPORT CODE_utils.py
 #####
@@ -124,6 +121,8 @@ targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
 targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
 targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
+targetgluestatus = curltargethost + '/gluestatus/'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 
@@ -150,6 +149,8 @@ DUMPING_LIMIT = 2
 DUMPING_TIMEOUT = 4320
 # Where do log files go?
 DUMPING_LOG_SPACE = '/tmp/'
+# Where do master log files go?
+DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
 # Where do scripts live?
 DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 

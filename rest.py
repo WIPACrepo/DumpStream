@@ -1397,6 +1397,43 @@ def countready():
     return str(stuff)
 
 ####
+# Get/reset the GlueStatus
+@app.route("/gluestatus/<estring>", methods=["GET", "POST"])
+def getgluestatus(estring):
+    # return failure if needed
+    # Run means currently running.  Ready means ready to run
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    if comm not in ['Pause', 'Run', 'Ready', 'Query']:
+        return 'Error'
+    #
+    try:
+        stuff = query_db_final('SELECT status from GlueStatus LIMIT 1')
+    except:
+        print('getgluestatus:  cannot read status from table')
+        return 'FAILURE'
+    #
+    answer = str(stuff)
+    if comm == 'Query':
+        return answer
+    if comm == answer:
+        return ''
+    # We only return a status from these if we are wasting our time
+    if ( (comm == 'Pause' and answer == 'Run') or 
+         (comm == 'Run' and answer == 'Pause') or
+         (comm == 'Ready' and answer == 'Run') ):
+        return answer
+    query = 'UPDATE GlueStatus SET status=?,lastChangeTime=datetime(\'now\',\'localtime\'))'
+    params = (comm, )
+    try:
+        stuff = update_db_final(query, params)
+        return ''
+    except:
+        print('getgluestatus:  cannot update table with', query, params)
+        return 'FAILURE update'
+    
+
+
+####
 # Debug various things.  Only prints locally
 @app.route("/debugging/<estring>", methods=["GET", "POST"])
 def debugging(estring):

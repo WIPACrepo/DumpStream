@@ -799,7 +799,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
     if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
         print('Get next undone disk failed', jdoutp)
         sys.exit(0)
-    if len(jdoutp) <= 0:
+    if len(jdoutp) <= 2:
         return		# Nothing left to do here
     my_json = json.loads(singletodouble(jdoutp))
     try:

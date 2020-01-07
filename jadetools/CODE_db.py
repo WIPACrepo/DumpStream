@@ -24,7 +24,6 @@ def getdbgen():
     except Exception:
         print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
         sys.exit(1)
-    return
 
 ####
 def returndbgen():
@@ -34,7 +33,6 @@ def returndbgen():
 def closedbgen():
     DBcursor.close()
     DBdatabase.close()
-    return
 
 ####
 # Commit changes to DB specified

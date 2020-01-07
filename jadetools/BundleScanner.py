@@ -1,15 +1,13 @@
 # BundleScanner.py (.base)
 import sys
+import uuid
 # IMPORT_utils.py
 # Assumes "import sys"
 import datetime
-import site
 import json
-import urllib.parse
 import subprocess
 import copy
 import os
-import uuid
 # IMPORT_db.py 
 # Assumes we have "import sys" as well
 import pymysql
@@ -127,6 +125,8 @@ targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
 targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
 targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
+targetgluestatus = curltargethost + '/gluestatus/'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 
@@ -153,6 +153,8 @@ DUMPING_LIMIT = 2
 DUMPING_TIMEOUT = 4320
 # Where do log files go?
 DUMPING_LOG_SPACE = '/tmp/'
+# Where do master log files go?
+DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
 # Where do scripts live?
 DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 
@@ -349,7 +351,6 @@ def getdbgen():
     except Exception:
         print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
         sys.exit(1)
-    return
 
 ####
 def returndbgen():
@@ -359,7 +360,6 @@ def returndbgen():
 def closedbgen():
     DBcursor.close()
     DBdatabase.close()
-    return
 
 ####
 # Commit changes to DB specified

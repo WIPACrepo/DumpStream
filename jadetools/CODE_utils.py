@@ -111,6 +111,8 @@ targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
 targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
 targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 
+targetgluestatus = curltargethost + '/gluestatus/'
+
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
 

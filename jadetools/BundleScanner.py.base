@@ -1,5 +1,6 @@
 # BundleScanner.py (.base)
 import sys
+import uuid
 #SUPERIMPORT IMPORT_utils.py
 #SUPERIMPORT IMPORT_db.py
 

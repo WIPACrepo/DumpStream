@@ -1,4 +1,4 @@
-# Command.py (.base)
+# Utils.py (.base)
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
@@ -7,6 +7,9 @@ import json
 import subprocess
 import copy
 import os
+# IMPORT_db.py 
+# Assumes we have "import sys" as well
+import pymysql
 
 # IMPORT CODE_utils.py
 #####
@@ -321,50 +324,98 @@ def patchBundle(bundleid, columntype, newvalue, manyok):
         sys.exit(0)
     return 'OK'
 #
+DBdatabase = None
+DBcursor = None
+######################################################
+######
+# DB connection established
+def getdbgen():
+    global DBdatabase
+    global DBcursor
+    try:
+        # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
+        DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
+    except pymysql.OperationalError:
+        print(['ERROR: could not connect to MySQL archivedump database.'])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
+        sys.exit(1)
+    try:
+        #DBcursor = DBdatabase.cursor()
+        DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
+    except pymysql.OperationalError:
+        print(['ERROR: could not get cursor for database.'])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
+        sys.exit(1)
 
-DEBUGIT = False
+####
+def returndbgen():
+    return DBcursor
+
+####
+def closedbgen():
+    DBcursor.close()
+    DBdatabase.close()
+
+####
+# Commit changes to DB specified
+def doCommitDB():
+    try:
+        DBdatabase.commit()
+    except pymysql.OperationalError:
+        DBdatabase.rollback()
+        print(['doCommitDB: ERROR: could not connect to MySQL archivedump database.'])
+        sys.exit(1)
+    except Exception:
+        DBdatabase.rollback()
+        print(['doCommitDB: Failed to execute the commit'])
+        sys.exit(1)
 
 
-########################################################
-# Define Phases for Main.  In this case, all I care about
-# is control of the NERSC and Local control systems.  It
-# turns out NERSC has some issues with keeping the power
-# on (thank you, PG&E), and it is handy to be able to
-# turn everything off or on again.
 
-def Phase1(pcarg):
-    #
-    lcarg = pcarg
-    geturl = copy.deepcopy(basicposturl)
-    geturl.append(targetsetdumpstatus + mangle(lcarg))
-    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
-    if 'OK' not in answer:
-        print('Phase 1 failure with', geturl, answer, erro1)
+############################################
+######  Execute a command.  Crash if it fails, otherwise return silently
+def doOperationDB(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
         return
-    #
-    if lcarg == 'Drain':
-        lcarg = 'DrainNERSC'
-    geturl = copy.deepcopy(basicposturl)
-    geturl.append(targetsetnerscstatus + mangle(lcarg))
-    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
-    if 'OK' not in answer:
-        print('Phase 1 failure with', geturl, answer, erro1)
+    except pymysql.OperationalError:
+        print(['ERROR: doOperationDB could not connect to MySQL ', string, ' database.', command])
+        sys.exit(1)
+    except Exception:
+        print(['ERROR: doOperationDB undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
+        sys.exit(1)
     return
 
-###############
-# Main
+############################################
+######  Execute a command.  Crash if it fails, return False if it didn't work right, True if it was OK
+def doOperationDBWarn(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
+        return True
+    except pymysql.OperationalError:
+        print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
+        sys.exit(1)
+    except pymysql.IntegrityError:
+        print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
+        return False
+    except Exception:
+        print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
+        sys.exit(1)
+    return True
 
-if len(sys.argv) == 1:
-    print('No command given.  Run, Halt, Drain are possible')
-    sys.exit(0)
-
-carg = str(sys.argv[1])
-
-if carg not in ['Run', 'Halt', 'Drain']:
-    print('Command ' + carg + ' is not in Run, Halt, Drain; bailing')
-    sys.exit(1)
-
-Phase1(carg)
-sys.exit(0)
+############################################
+######  Execute a command, return the answer.  Or error messages if it failed
+def doOperationDBTuple(dbcursor, command, string):
+    try:
+        dbcursor.execute(command)
+        expectedtuple = dbcursor.fetchall()
+        return expectedtuple		#Assume you know what you want to do with this
+    except pymysql.OperationalError:
+        return ['ERROR: doOperationDBTuple could not connect to MySQL ', string, ' database.', command]
+    except Exception:
+        return ['ERROR: doOperationDBTuple undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command]
+    return [[]]
