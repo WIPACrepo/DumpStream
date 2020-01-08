@@ -22,6 +22,8 @@ FORCE_LIST = []
 FORBID = False
 FORBID_LIST = []
 
+DEBUG = False
+
 def SetStatus(gnewstatus):
     ''' Set or get the GlueStatus.  Return status or empty '''
     # Finite state system :-)
@@ -45,6 +47,14 @@ def SetStatus(gnewstatus):
     if gnewstatus == 'Query':
         return grevised
     return 'Failure ' + grevised
+
+def PurgeWork():
+    ''' Empty out WorkingTable '''
+    gposturl = copy.deepcopy(U.basicposturl)
+    gposturl.append(U.targetglueworkpurge)
+    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    if 'FAILURE' in goutp:
+        print('PurgeWork could not empty WorkingTable')
 
 def GetWorkCount():
     ''' Get the count of 'Unpicked' in WorkingTable '''
@@ -100,7 +110,19 @@ def InsertWork(idir_array):
     if number_inserted != ilendir:
         print('InsertWork failure: inserted ', number_inserted, ' out of ', ilendir)
     return number_inserted
-            
+
+
+def DiffOldDumpTime():
+    ''' Is the most recent dump time newer than the most recent scan '''
+    ggeturl = copy.deepcopy(U.basicgeturl)
+    ggeturl.append(U.targetgluetimediff)
+    goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    if len(goutp) == 0:
+        print('DiffOldDumpTime failure', gerro, gcode)
+        return False
+    if float(str(goutp)) < 0:
+        return False
+    return True
 
 def ParseParams():
     ''' Parse out what the parameters tell us to do '''
@@ -139,17 +161,19 @@ def ParseParams():
         SUB_TREES = []
         for tree in data['SUB_TREES']:
             SUB_TREES.append(tree)
-        FORCE = False
+        FORCE = bool(data['FORCE'])
         FORCE_LIST = []
-        FORBID = False
+        FORBID = bool(data['FORBID'])
         FORBID_LIST = []
     # Now reload over these from the relevant arguments
     #  Or not.
+    # For initial testing, don't bother
 
 def Phase0():
+    ''' Initial program configuration '''
     # Parse parameters, if any
     # If we aren't "Forcing" or "Partial" only, should we be running
-    #   No if GlueStatus.status is not "Run"
+    #   No if GlueStatus.status is not "Ready"
     #   No if select count(*) from WorkingTable where status=='Unpicked' > 0
     #   Yes otherwise
     #   If "No" but "Forcing" is enabled, warn
@@ -163,27 +187,59 @@ def Phase0():
     #
     # Test the utilities
     ParseParams()
-    # That works OK
-    #print(YEAR, ROOT, PARTIAL, SUB_TREES)
+    #
+    # Should we do anything?
     run_status = SetStatus('Query')
     if run_status in ['Run', 'Pause'] and not FORCE:
         sys.exit(0)
     #
-    #print('Unpicked before=', GetWorkCount())
-    dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
-    # That works OK
-    inserted = InsertWork(dummydirs)
-    # That works OK, modulo some care in figuring out what happens
-    #  when you repeat inserts with partially completed sets
-    #print('inserted', inserted)
-    #print('Unpicked after insertion=', GetWorkCount())
-    xx = UpdateWork(dummydirs[0])
-    # That works OK
-    #print('xx=', xx, '=xx')
-    #print('Unpicked after update=', GetWorkCount())
-    #print('From Pause to Run', SetStatus('Run'))
-    #print('From Pause to Ready', SetStatus('Ready'))
-    
+    still_in_process = GetWorkCount()
+    if still_in_process > 0:
+        if not FORCE:
+            sys.exit(0)
+        else:
+            print('WARNING:  Forcing run w/ ongoing work!')
+    #
+    new_dump = DiffOldDumpTime()
+    if not new_dump:
+        if not FORCE:
+            sys.exit(0)
+        else:
+            print('WARNING: Forcing run w/ old dump')
+    #
+    # Get rid of old stuff in the WorkingTable
+    PurgeWork()
+
+
+def DebugTesting():
+    if DEBUG:
+        dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
+        print(GetWorkCount())
+        inserted = InsertWork(dummydirs)
+        print(GetWorkCount())
+        print(PurgeWork())
+        print(GetWorkCount())
+        xx = UpdateWork(dummydirs[0])
+        print(GetWorkCount())
+
+def Phase1():
+    ''' Get the directories TODO (returned) '''
+    # Assemble list of directories to examine (unless Forced)
+    # If Forced, initialize TODO with the forced directory, else []
+    # Retrieve "Already Picked" and "In Process" for each directory
+    #   Create WorkingTable entries from these
+    # Skipping those that are done (unless Forced):
+    #   Retrieve "expected" count for each directory
+    #   Execute "find" in that directory and count the files
+    #   If this fails/times-out, log the errors and bail
+    #   If they agree, append to the TODO
+    #   If # present > # expected, warn
+    # Return the TODO
+    if FORCE:
+        TODO = copy.deepcopy(FORCE_LIST)
+    else:
+        TODO = []
+
 
 ####
 #

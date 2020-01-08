@@ -1502,8 +1502,44 @@ def glueworkload(estring):
     return hline + str(countgluework())
     
 
+####
+# Set the time for the given type
+@app.route("/glue/timeset/<estring>", methods=["POST"])
+def gluetimeset(estring):
+    ''' Set the time for the given category '''
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    if comm not in ['LastDumpEnded', 'LastGluePass']:
+        return 'FAILURE: bad arg'
+    query = 'UPDATE GlueDump SET lastChangeTime=datetime(\'now\',\'localtime\') WHERE type=?'
+    params = (comm, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('gluetimeset: failed to set time for', query, params)
+        return 'FAILURE'
+    return ''
 
-
+####
+# Return time difference between last Dump and last Glue pass
+@app.route("/glue/timediff", methods=["GET"])
+def gluetimediff():
+    ''' Return the time difference between the last Dump and last Glue pass '''
+    query = 'SELECT julianday(lastChangeTime) FROM GlueDump ORDER BY TYPE'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('gluetimediff: failed to get the times', query, stuff)
+        return '1000000'
+    #
+    print(stuff)
+    try:
+        vd = float(stuff[0]['julianday(lastChangeTime)'])
+        vg = float(stuff[1]['julianday(lastChangeTime)'])
+        return str(vd - vg)
+    except:
+        print('gluetimediff: failed to unpack times', stuff)
+        return '2000000'
+        
 ####
 # Debug various things.  Only prints locally
 @app.route("/debugging/<estring>", methods=["GET", "POST"])

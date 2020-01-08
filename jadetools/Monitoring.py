@@ -125,6 +125,8 @@ targetglueworkload = curltargethost + 'glue/workload/'
 targetglueworkupdate = curltargethost + 'glue/workupdate/'
 targetglueworkcount = curltargethost + 'glue/workcount'
 targetglueworkpurge = curltargethost + 'glue/workpurge'
+targetgluetimeset = curltargethost + 'glue/timeset/'
+targetgluetimediff = curltargethost + 'glue/timediff'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
