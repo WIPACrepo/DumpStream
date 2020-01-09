@@ -27,23 +27,26 @@ processing, and rest.wsgi tells apache where to look for the
 rest.py file  config.py tells Flask what the initial settings
 are.
 
+HISTORICAL NOTE:  I was pointed to the mod_wsgi framework
+for using the REST server.  However, it wasn't obvious
+what to use for communication, so I expanded the initial
+curl test scripts to handle the interactions.  These are
+ugly as home-made sin, and at some point I'd like to get
+rid of them in favor of something more bulletproof--and
+maybe with some authentication.  Patrick has some things
+that would probably work.
+Because the object was to get something running quickly,
+and get stuff to NERSC before we got too far behind the
+eight-ball, this does not (yet) use any of the file catalog
+or Patrick's (new) REST framework.
+In the medium term, the only things I expect to use are
+the dumper/DumpControl.py and the jadetools/GlueLTA.py
+(and the Utils.py)
+In the long term, DumpControl and GlueLTA will probably
+have to be more tightly integrated into the LTA suite.
 
-The disk dumping is handled differently.
-
-To load fresh info about what is on the new disks:
-ssh i3admin@jade03 /opt/i3admin/dumpscripts/newset
-This overwrites anything that was already done, btw
-
-Want to see the status of the disks?
-ssh i3admin@jade03 cat /opt/i3admin/dumpscripts/INHAND
-
-To dump the next disk in line:
-ssh i3admin@jade03 /opt/i3admin/dumpscripts/rundumpone
-That submits a job to dump the next disk.  If any.  No errors are returned,
-though some are logged
-
-I should try to put all the command info into a single place,
-presumably the same one I use for to-NERSC
+The Pole disk dumping uses dumper/DumpControl.py and some
+helper bash scripts.  It runs on jade03
 
 I did something quite crazy and non-pythonic to keep the footprint
 small:  I use a preprocessor instead of a python library.  This
@@ -52,4 +55,6 @@ consistent for all tools (except the rest.py wsgi handler)--but
 means I only have one script, as a rule, to schlepp around.
 In retrospect, that was crazy, but I was in an experimental mood,
 and it doesn't hurt readability/maintainability.
+I'll change it to the right way as needed: (only GlueLTA and
+DumpControl).
 

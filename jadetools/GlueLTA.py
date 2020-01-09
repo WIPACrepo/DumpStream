@@ -9,6 +9,7 @@ import subprocess
 import copy
 import os
 import sys
+import glob
 import Utils as U
 
 config_file = '/home/jbellinger/Glue.json'
@@ -239,6 +240,28 @@ def Phase1():
         TODO = copy.deepcopy(FORCE_LIST)
     else:
         TODO = []
+    Bulk_tocheck = []
+    file_count = {}
+    for p in SUB_TREES:
+        parts = p.split('YEAR')
+        tentative = ROOT + '/' + YEAR + '/' + parts[1] + '/*'
+        subdirlisting = glob.glob(tentative).sort()
+        for d in subdirlisting:
+            if d not in FORBID_LIST:
+                Bulk_tocheck.append(d)
+    if len(Bulk_tocheck) <= 0:
+        return TODO
+    # BFI is ugly.  This represents thousands of calls!
+    # Can I pull from my DB to exclude some of these?
+    # select status,idealName from BundleStatus where idealName
+    #  LIKE p in SUB_TREES and status in (..)  
+    # Take the below and put it in the loop above after vetting
+    # the individual directories in BundleStatus
+    for pdir in Bulk_tocheck:
+        pcount = glob.glob(pdir + '/*')
+        filecount[pdir] = pcount
+    #
+    return TODO
 
 
 ####

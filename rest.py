@@ -1531,7 +1531,6 @@ def gluetimediff():
         print('gluetimediff: failed to get the times', query, stuff)
         return '1000000'
     #
-    print(stuff)
     try:
         vd = float(stuff[0]['julianday(lastChangeTime)'])
         vg = float(stuff[1]['julianday(lastChangeTime)'])

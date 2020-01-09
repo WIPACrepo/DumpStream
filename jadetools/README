@@ -1,7 +1,36 @@
 Using python3, using a virtual environment 
 (e.g. ~jbellinger/archivemonitor/venv)
 
-I want to maintain consistency between chunks of code, so the utility
+UPDATE:  I'm switching over to doing things the python way,
+and I created a Utils.py file that is imported by the
+GlueLTA.py program.  I'll retrofit other stuff later.
+
+Since each of these python scripts (except NERSC_Client)
+was meant to run in a single instance on a single machine,
+in a single thread of Step1 Step2 Step3 etc, I wrote
+the python without using objects.
+
+HISTORICAL NOTE:  I was pointed to the mod_wsgi framework
+for using the REST server.  However, it wasn't obvious
+what to use for communication, so I expanded the initial
+curl test scripts to handle the interactions.  These are
+ugly as home-made sin, and at some point I'd like to get
+rid of them in favor of something more bulletproof--and
+maybe with some authentication.  Patrick has some things
+that would probably work.
+Because the object was to get something running quickly,
+and get stuff to NERSC before we got too far behind the
+eight-ball, this does not (yet) use any of the file catalog
+or Patrick's (new) REST framework.
+In the medium term, the only things I expect to use are
+the dumper/DumpControl.py and the jadetools/GlueLTA.py
+(and the Utils.py)
+In the long term, DumpControl and GlueLTA will probably
+have to be more tightly integrated into the LTA suite.
+
+
+
+I wanted to maintain consistency between chunks of code, so the utility
 code is in the import files
 IMPORT_db.py	For mysql accesses
 IMPORT_utils.py For everything else
@@ -15,8 +44,11 @@ e.g.
 python preproc.py BundleScanner.py.base
  creates BundleScanner.py
 
-The advantage to using this rather than a local environment is
-ease of setup: I only need a single python file at NERSC.
+The advantages to using this rather than a local environment are
+ease of setup at the remote sites (e.g. I only need a single 
+python file at NERSC), and more readable code.  In practice this 
+doesn't matter enough to keep it, and I'll be changing it to
+use python include's.  Nice try.
 
 The stripped-down code is in the py.base files
 BundleScanner.py.base
@@ -38,11 +70,15 @@ Dirinfo.py.base
     in the rest DB
 
 ManualBundle.py.base
-   Delete bundles that have gone to NERSC safely
+   Delete bundles that have gone to NERSC safely.  This will be
+    integrated into BundleScanner.
 
 ManualFiles.py.base
    Delete the files that went into the bundles that went to NERSC
-    safely.  Run after ManualBundle
+    safely.  Run after ManualBundle.  This will NOT be integrated
+    into anything else until I have a solid handle on what will
+    be kept in warehouse and what won't, and some authentication
+    in the REST server--i.e. probably never.
 
 Monitoring.py.base
    Tell what's going on with the to-NERSC pipeline.  E.g.
