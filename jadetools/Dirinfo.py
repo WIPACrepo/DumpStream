@@ -1,8 +1,10 @@
 # Dirinfo.py (.base)
 import sys
-#SUPERIMPORT IMPORT_utils.py
+import json
+import copy
 
-#SUPERIMPORT CODE_utils.py
+import Utils as U
+
 
 DEBUGIT = False
 
@@ -13,12 +15,12 @@ DEBUGIT = False
 
 def Phase1(pcarg):
     #
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundleslike + mangle('%25' + pcarg + '%25'))
-    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetfindbundleslike + U.mangle('%25' + pcarg + '%25'))
+    answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+    answer = U.massage(answer1)
     if len(answer) == 0:
-        print('No answer for', pcarg, answer)
+        print('No answer for', pcarg, answer, erro, code)
         return
     try:
         janswer = json.loads(singletodouble(answer))

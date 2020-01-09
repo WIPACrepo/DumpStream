@@ -30,6 +30,10 @@ have to be more tightly integrated into the LTA suite.
 
 
 
+The only module in this directory that hasn't been
+migrated to proper import syntax is BundleScanner.py,
+and I'll be moving that one as soon as the test works.
+
 I wanted to maintain consistency between chunks of code, so the utility
 code is in the import files
 IMPORT_db.py	For mysql accesses
@@ -50,37 +54,37 @@ python file at NERSC), and more readable code.  In practice this
 doesn't matter enough to keep it, and I'll be changing it to
 use python include's.  Nice try.
 
-The stripped-down code is in the py.base files
-BundleScanner.py.base
+BundleScanner.py
   This runs on jade-lta, and handles bundles appearing that
    need to be shipped to NERSC.
 
-ChainInfo.py.base
+TrainOK.sh
   This will be (in progress) a tool to tell what the overall
    chain of operations looks like.  Right now it simply checks
    the to-NERSC pipeline, and determines how much space the
    to-NERSC buffer has.  Later this will include the processing
    space, the dump space, and any info from NERSC we think useful
+   It talks to nagios/check_mk
 
-Command.py.base
+Command.py
    Tell the to-NERSC pipeline to Run or Halt or Drain
 
-Dirinfo.py.base
+Dirinfo.py
    Tell me about what bundles are associated with what directories
     in the rest DB
 
-ManualBundle.py.base
+ManualBundle.py
    Delete bundles that have gone to NERSC safely.  This will be
     integrated into BundleScanner.
 
-ManualFiles.py.base
+ManualFiles.py
    Delete the files that went into the bundles that went to NERSC
     safely.  Run after ManualBundle.  This will NOT be integrated
     into anything else until I have a solid handle on what will
     be kept in warehouse and what won't, and some authentication
     in the REST server--i.e. probably never.
 
-Monitoring.py.base
+Monitoring.py
    Tell what's going on with the to-NERSC pipeline.  E.g.
 NERSCStatus=   Run |  | 48420 | 2019-11-21 13:31:03  7
 NERSCToken=   NULL at 2019-11-21 13:31:04  7
