@@ -1,327 +1,10 @@
 # DumpControl.py.base
 import sys
-# IMPORT_utils.py
-# Assumes "import sys"
 import datetime
-import site
 import json
-import urllib.parse
-import subprocess
 import copy
 import os
-import uuid
-#
-# IMPORT CODE_utils.py
-#####
-# Define some constants
-REPLACESTRING = '+++'
-REPLACENOT = '==='
-REPLACECURLLEFT = '+=+=+'
-REPLACECURLRIGHT = '=+=+='
-NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
-LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
-BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
-               'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
-               'RetrieveRequest', 'RetrievePending', 'ExportReady',
-               'Downloading', 'DownloadDone', 'RemoteCleaned']
-DEBUGPROCESS = False
-# WARN if free scratch space is low
-FREECUTLOCAL = 50000000
-FREECUTNERSC = 500
-# How long can we wait before halting if NERSC_Client isn't running?
-# For now, call it 2 hours
-WAITFORNERSCAFTER = 120
-# How many slurm jobs can go at once?
-SLURMCUT = 14
-sbatch = '/usr/bin/sbatch'
-rm = '/usr/bin/rm'
-hpss_avail = '/usr/common/mss/bin/hpss_avail'
-df = '/usr/bin/df'
-mv = '/usr/bin/mv'
-squeue = '/usr/bin/squeue'
-myquota = '/usr/bin/myquota'
-logdir = '/global/homes/i/icecubed/SLURMLOGS'
-logdirold = '/global/homes/i/icecubed/SLURMLOGS/OLD'
-SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
-HSIROOT = '/home/projects/icecube'
-hsibase = ['/usr/common/mss/bin/hsi', '-q']
-BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
-
-curlcommand = '/usr/bin/curl'
-curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
-
-# I will have to figure out how to pack these in a command,
-#  but for the moment here they are.  I drop 2 defaults,
-#  the Partition and the #Nodes, since I don't care about
-#  those.  I don't need the %.8u option either,
-#  since I already know whose jobs they are.
-# I can't be sure that mine will be the only icecubed jobs,
-#  so I retain the %.8j for the job name
-# The -h option means no headers printed, which should
-#  simplify parsing.
-SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
-# This will be associated with a sbatch option which I will
-#  use as sbatchoption = SBATCHOPTIONS.format(filename, logdir, filename)
-SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
-
-targetfindbundles = curltargethost + 'bundles/specified/'
-targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
-targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
-targettaketoken = curltargethost + 'nersctokentake/'
-targetreleasetoken = curltargethost + 'nersctokenrelease/'
-targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
-targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
-targetnerscinfo = curltargethost + 'nersccontrol/info/'
-targetsetnerscstatus = curltargethost + '/nersccontrol/update/status/'
-targettokeninfo = curltargethost + 'nersctokeninfo'
-targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
-targetupdatebundle = curltargethost + 'updatebundle/'
-targetupdatebundlestatus = curltargethost + 'updatebundle/status/'
-targetupdatebundleerr = curltargethost + 'updatebundleerr/'
-targetaddbundle = curltargethost + 'addbundle/'
-targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
-targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
-targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
-targettree = curltargethost + '/tree/'
-targetuntouchedall = curltargethost + '/bundles/alluntouched/'
-targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
-targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
-targetbundlesworking = curltargethost + '/bundles/working'
-targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
-targetbundleget = curltargethost + '/bundles/get/'
-targetbundlepatch = curltargethost + '/bundles/patch/'
-targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
-
-targetdumpingstate = curltargethost + '/dumping/state'
-targetdumpingcount = curltargethost + '/dumping/state/count/'
-targetdumpingnext = curltargethost + '/dumping/state/nextaction/'
-targetdumpingstatus = curltargethost + '/dumping/state/status/'
-targetdumpingpoledisk = curltargethost + '/dumping/poledisk'
-targetdumpingpolediskslot = curltargethost + '/dumping/poledisk/infobyslot/'
-targetdumpingpolediskuuid = curltargethost + '/dumping/poledisk/infobyuuid/'
-targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
-targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
-targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
-targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
-targetdumpingpoledisksetstatus = curltargethost + '/dumping/poledisk/setstatus/'
-targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
-targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
-targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
-targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
-targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
-targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
-targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
-targetdumpinggetactive = curltargethost + '/dumping/activeslots'
-targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
-targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
-targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
-targetdumpingcountready = curltargethost + '/dumping/countready'
-
-targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
-targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
-targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
-targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
-
-basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
-basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
-
-scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
-snames = ['KiB', 'MiB', 'GiB', 'TiB']
-
-GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror_cache'
-GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror_queue'
-GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror_old'
-GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
-GLOBUS_INFLIGHT_LIMIT = 3
-
-BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
-
-PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
-DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
-DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
-
-# The backplane limit is about 2 Pole disks dumping at once.
-DUMPING_LIMIT = 2
-# 3 days worth of minutes
-DUMPING_TIMEOUT = 4320
-# Where do log files go?
-DUMPING_LOG_SPACE = '/tmp/'
-# Where do master log files go?
-DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
-# Where do scripts live?
-DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
-
-# String manipulation stuff
-def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
-
-def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
-
-def unmangle(strFromPost):
-    # dummy for now.  Final thing has to fix missing spaces,
-    # quotation marks, commas, slashes, and so on.
-    #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
-
-def mangle(strFromPost):
-    # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
-
-def tojsonquotes(strFromPost):
-    # Turn single into double quotes
-    return strFromPost.replace("\'", "\"")
-
-def fromjsonquotes(strFromPost):
-    # Turn double into single quotes.  Won't use it much
-    # here, but the remote jobs that feed this will
-    return strFromPost.replace("\"", "\'")
-
-def singletodouble(stringTo):
-    return stringTo.replace('\'', '\"')
-
-# timeout is in seconds
-def getoutputerrorsimplecommand(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        returncode = proc.returncode
-        return output.decode('utf-8'), error, returncode
-    except subprocess.CalledProcessError:
-        print(cmd, " Failed to spawn")
-        return "", "", 1
-    except subprocess.TimeoutExpired:
-        return 'TIMEOUT', 'TIMEOUT', 1
-    except Exception:
-        print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", "", 1
-
-######
-# Write out information.  Utility in case I want to do
-# something other than simply print
-def logit(string1, string2):
-    print(string1 + '  ' + string2)
-
-
-####
-# Test parse byte-stream of list of dicts back into a list of strings
-# each of which can be unpacked later into a dict
-def stringtodict(instring):
-    if len(instring) <= 1:
-        return []
-    countflag = 0
-    initial = -1
-    basic = []
-    for num, character in enumerate(instring):
-        if character == '{':
-            countflag = countflag + 1
-            if countflag == 1:
-                initial = num
-        if character == '}':
-            countflag = countflag - 1
-            if countflag == 0:
-                basic.append(instring[initial:num+1])
-    return basic
-
-
-def massage(answer):
-    try:
-        relaxed = str(answer.decode("utf-8"))
-    except:
-        try:
-            relaxed = str(answer)
-        except:
-            relaxed = answer
-    return relaxed
-
-
-def globusjson(localuuid, localdir, remotesystem, idealdir): 
-    outputinfo = '{\n'
-    outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
-    outputinfo = outputinfo + '  \"version\": 1,\n'
-    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(localuuid)
-    outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
-    outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
-    outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
-    outputinfo = outputinfo + '  \"dstLocation\": \"{}\",\n'.format(remotesystem)
-    outputinfo = outputinfo + '  \"dstDir\": \"{}\",\n'.format(idealdir)
-    outputinfo = outputinfo + '  \"label\": \"Jade-LTA mirror lustre to {}\",\n'.format(remotesystem)
-    outputinfo = outputinfo + '  \"notifyOnSucceeded\": false,\n'
-    outputinfo = outputinfo + '  \"notifyOnFailed\": true,\n'
-    outputinfo = outputinfo + '  \"notifyOnInactive\": true,\n'
-    outputinfo = outputinfo + '  \"encryptData\": false,\n'
-    outputinfo = outputinfo + '  \"syncLevel\": 1,\n'
-    outputinfo = outputinfo + '  \"verifyChecksum\": false,\n'
-    outputinfo = outputinfo + '  \"preserveTimestamp\": false,\n'
-    outputinfo = outputinfo + '  \"deleteDestinationExtra\": false,\n'
-    outputinfo = outputinfo + '  \"persistent\": true\n'
-    outputinfo = outputinfo + '}'
-    return outputinfo
-
-# Set a bundle's status
-def flagBundleStatus(key, newstatus):
-    if str(newstatus) not in BUNDLESTATI:
-        return 'Failure', newstatus + ' is not allowed', '1'
-    fbposturl = copy.deepcopy(basicposturl)
-    comstring = mangle(str(newstatus) + ' ' + str(key))
-    fbposturl.append(targetupdatebundlestatus + comstring)
-    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
-    if len(foutp) > 0:
-        print('Failure in updating Bundlestatus to ' + str(newstatus)
-              + 'for key ' + str(key) + ' : ' + str(foutp))
-    return foutp, ferro, fcode
-
-#
-def deltaT(oldtimestring):
-    current = datetime.datetime.now()
-    try:
-        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
-        difference = current - oldt
-        delta = int(difference.seconds/60 + difference.days*60*24)
-    except:
-        delta = -1
-    return delta
-
-###
-# Make changes in the BundleStatus specified
-# 2-step process:
-# Get the number of entries that will be touched
-# If zero, return 'None'
-# If one, do it and return 'OK'
-# IF more than 1,
-# If the flag says do them all, do them all, otherwise
-# don't do anything at all and return 'TooMany'
-def patchBundle(bundleid, columntype, newvalue, manyok):
-    #
-    geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(str(bundleid)))
-    ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
-    if len(ansx) <= 0:
-        print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
-        sys.exit(0)
-    try:
-        my_jsonx = json.loads(singletodouble(massage(ansx)))
-    except:
-        print('patchBundle initial query got junk', ansx, bundleid)
-        sys.exit(0)
-    if len(my_jsonx) == 0:
-        return 'None'
-    if len(my_jsonx) > 1 and not manyok:
-        return 'TooMany'
-    #
-    posturlx = copy.deepcopy(basicposturl)
-    comm = str(bundleid) + ':' + str(columntype)+ ':' + str(newvalue)
-    posturlx.append(targetbundlepatch + mangle(comm))
-    ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
-    if 'OK' not in ansx:
-        print('patchBundle update failed', ansx, errx, codx, comm)
-        sys.exit(0)
-    return 'OK'
-#
+import Utils as U
 
 ##########
 # Utilities:
@@ -357,13 +40,13 @@ def GiveTops(desiredtrees):
 ###
 # Return the target directory for copying "to"
 def GiveTarget():
-    gtgeturl = copy.deepcopy(basicgeturl)
-    gtgeturl.append(targetdumpingdumptarget)
-    gtoutp, gterro, gtcode = getoutputerrorsimplecommand(gtgeturl, 1)
+    gtgeturl = copy.deepcopy(U.basicgeturl)
+    gtgeturl.append(U.targetdumpingdumptarget)
+    gtoutp, gterro, gtcode = U.getoutputerrorsimplecommand(gtgeturl, 1)
     if int(gtcode) != 0 or 'FAILURE' in str(gtoutp):
-        print('Get Target directory failed', gtoutp)
+        print('Get Target directory failed', gtoutp, gterro)
         sys.exit(0)
-    dump_json = json.loads(singletodouble(gtoutp))
+    dump_json = json.loads(U.singletodouble(gtoutp))
     try:
         directory = dump_json[0]['target']
     except:
@@ -376,7 +59,7 @@ def GiveTarget():
 #   with the expected number
 def CountFilesInDir(cfidname, cfidexpectedcount):
     cfidcommand = ['/bin/ls', cfidname]
-    cfidoutp, cfiderro, cfidcode = getoutputerrorsimplecommand(cfidcommand, 1)
+    cfidoutp, cfiderro, cfidcode = U.getoutputerrorsimplecommand(cfidcommand, 1)
     if int(cfidcode) != 0:
         print('CountFilesInDir failed to see', cfidname, cfiderro)
         sys.exit(0)
@@ -393,14 +76,14 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
 
 def InventoryOneFull(slotlocation):
     # First find out what trees we want to read
-    i1geturl = copy.deepcopy(basicgeturl)
-    i1geturl.append(targetdumpingwantedtrees)
-    i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
+    i1geturl = copy.deepcopy(U.basicgeturl)
+    i1geturl.append(U.targetdumpingwantedtrees)
+    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
     if int(i1code) != 0 or 'FAILURE' in str(i1outp):
-        print('Get trees failure', i1geturl, i1outp)
+        print('Get trees failure', i1geturl, i1outp, i1erro)
         sys.exit(0)
     desiredtrees = []
-    my_json = json.loads(singletodouble(i1outp))
+    my_json = json.loads(U.singletodouble(i1outp))
     for js in my_json:
         h = js['dataTree']
         desiredtrees.append(h)
@@ -417,9 +100,9 @@ def InventoryOneFull(slotlocation):
     # Bail if it is empty--probably not mounted
     #
     command = ['/bin/ls', slotlocation]
-    i2outp, i2erro, i2code = getoutputerrorsimplecommand(command, 1)
+    i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(command, 1)
     if int(i2code) != 0 or len(i2outp) <= 1:
-        print('Cannot read the disk in', slotlocation)
+        print('Cannot read the disk in', slotlocation, i2erro)
         return []       # Do I want to set an error?
     answer = str(i2outp)
     for toplevel in answer.split():
@@ -434,7 +117,7 @@ def InventoryOneFull(slotlocation):
     for tip in toplist:
         if tip in answer.split():
             command = ['/bin/ls', slotlocation + '/' + tip]
-            i3outp, i3erro, i3code = getoutputerrorsimplecommand(command, 1)
+            i3outp, i3erro, i3code = U.getoutputerrorsimplecommand(command, 1)
             if int(i3code) != 0:
                 continue        # May not be present, do not worry about it
             tipyearlist = []
@@ -453,7 +136,7 @@ def InventoryOneFull(slotlocation):
         for y in ylist:
             vtop = slotlocation + '/' + words[0] + y + words[1]
             command = ['/bin/ls', vtop]
-            i3outp, i3erro, i3code = getoutputerrorsimplecommand(command, 1)
+            i3outp, i3erro, i3code = U.getoutputerrorsimplecommand(command, 1)
             if int(i3code) != 0 or len(i3outp) <= 0:
                 continue        # May not be present, do not worry about it
             subdirs = str(i3outp).split()
@@ -467,9 +150,9 @@ def InventoryOneFull(slotlocation):
 def InventoryOne(slotlocation):
     #
     command = ['/bin/ls', slotlocation]
-    i1outp, i1erro, i1code = getoutputerrorsimplecommand(command, 1)
+    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(command, 1)
     if int(i1code) != 0 or len(i1outp) <= 1:
-        print('Cannot read the disk in', slotlocation)
+        print('Cannot read the disk in', slotlocation, i1erro)
         return []	# Do I want to set an error?
     answer = str(i1outp)
     diskuuid = ''
@@ -482,12 +165,12 @@ def InventoryOne(slotlocation):
 ####
 # Set the Poleid for a given slot#
 def SetSlotsPoleID(slotnum, poleidnum):
-    case = mangle(str(slotnum) + ' ' + str(poleidnum))
-    ssposturl = copy.deepcopy(basicposturl)
-    ssposturl.append(targetdumpingsetslotcontents + case)
-    s1outp, s1err, s2code = getoutputerrorsimplecommand(ssposturl, 1)
+    case = U.mangle(str(slotnum) + ' ' + str(poleidnum))
+    ssposturl = copy.deepcopy(U.basicposturl)
+    ssposturl.append(U.targetdumpingsetslotcontents + case)
+    s1outp, s1err, s2code = U.getoutputerrorsimplecommand(ssposturl, 1)
     if len(s1outp) != 0 or s2code != 0:
-        print('SetSlotsPoleID failed', case)
+        print('SetSlotsPoleID failed', case, s1err)
         sys.exit(0)
 
 
@@ -496,20 +179,20 @@ def SetSlotsPoleID(slotnum, poleidnum):
 # Connect information between SlotContents and PoleDisk
 #  entries
 def InventoryAll():
-    i1geturl = copy.deepcopy(basicgeturl)
-    i1geturl.append(targetdumpingslotcontents)
-    i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
+    i1geturl = copy.deepcopy(U.basicgeturl)
+    i1geturl.append(U.targetdumpingslotcontents)
+    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
     if int(i1code) != 0:
-        print('SlotContents failure', i1geturl, i1outp)
+        print('SlotContents failure', i1geturl, i1outp, i1erro)
         sys.exit(0)
-    my_json = json.loads(singletodouble(i1outp))
-    i1geturl = copy.deepcopy(basicgeturl)
-    i1geturl.append(targetdumpingdumptarget)
-    i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
+    my_json = json.loads(U.singletodouble(i1outp))
+    i1geturl = copy.deepcopy(U.basicgeturl)
+    i1geturl.append(U.targetdumpingdumptarget)
+    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
     if int(i1code) != 0 or 'FAILURE' in str(i1outp):
         print('get dump target failure', i1geturl, i1outp)
         sys.exit(0)
-    targetareaj = json.loads(singletodouble(str(i1outp)))[0]
+    targetareaj = json.loads(U.singletodouble(str(i1outp)))[0]
     targetarea = targetareaj['target']
     #
     for js in my_json:
@@ -518,7 +201,7 @@ def InventoryAll():
             continue
         # Now inventory the slot--get the UUID of the disk, if available
         diskuuid = InventoryOne(js['name'])
-        if diskuuid == '' or diskuuid == []:
+        if diskuuid in ('', []):
             print('Got nothing for', js['slotnumber'])
             SetSlotsPoleID(js['slotnumber'], 0)
             continue
@@ -529,9 +212,9 @@ def InventoryAll():
         except:
             print('FAILS', diskuuid, targetarea)
             sys.exit(0)
-        i1posturl = copy.deepcopy(basicposturl)
-        i1posturl.append(targetdumpingpolediskloadfrom + mangle(stuffforpd))
-        i2outp, i2erro, i2code = getoutputerrorsimplecommand(i1posturl, 1)
+        i1posturl = copy.deepcopy(U.basicposturl)
+        i1posturl.append(U.targetdumpingpolediskloadfrom + U.mangle(stuffforpd))
+        i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i1posturl, 1)
         if int(i2code) != 0 or 'FAILURE' in str(i2outp) or '404 Not Found' in str(i2outp):
             print('Load new PoleDisk failed', i1posturl)
             print(i2outp, i2erro, i2code)
@@ -539,15 +222,15 @@ def InventoryAll():
             sys.exit(0)
         #
         # OK, now I want to read back what I wrote so I get the new poledisk_id
-        i2geturl = copy.deepcopy(basicgeturl)
-        i2geturl.append(targetdumpingpolediskuuid + mangle(diskuuid))
-        i2outp, i2erro, i2code = getoutputerrorsimplecommand(i2geturl, 1)
+        i2geturl = copy.deepcopy(U.basicgeturl)
+        i2geturl.append(U.targetdumpingpolediskuuid + U.mangle(diskuuid))
+        i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i2geturl, 1)
         if len(i2outp) == 0 or 'FAILURE' in str(i2outp):
             print('Retrive PoleDisk info failed', i2geturl, i2outp, i2erro, i2code)
             sys.exit(0)
         soutp = i2outp
         try:
-            djson = json.loads(singletodouble(soutp))
+            djson = json.loads(U.singletodouble(soutp))
             js = djson[0]
             cslot = str(js['slotnumber'])
             cpole = str(js['poledisk_id'])
@@ -556,20 +239,18 @@ def InventoryAll():
             sys.exit(0)
         SetSlotsPoleID(cslot, cpole)
 
-    return
-
 #########################################################
 # JOB CHECK CODE
 def JobInspectAll():
     # First get a list of all the nominally active slots
-    jigeturl = copy.deepcopy(basicgeturl)
-    jigeturl.append(targetdumpinggetactive)
-    jioutp, jierro, jicode = getoutputerrorsimplecommand(jigeturl, 1)
+    jigeturl = copy.deepcopy(U.basicgeturl)
+    jigeturl.append(U.targetdumpinggetactive)
+    jioutp, jierro, jicode = U.getoutputerrorsimplecommand(jigeturl, 1)
     if int(jicode) != 0:
-        print('JobInspectAll: active slots check failure', jigeturl, jioutp)
+        print('JobInspectAll: active slots check failure', jigeturl, jioutp, jierro)
         sys.exit(0)
     try:
-        my_json = json.loads(singletodouble(jioutp))
+        my_json = json.loads(U.singletodouble(jioutp))
     except:
         print('JobInspectAll:  cannot parse ', jioutp)
         sys.exit(0)
@@ -582,21 +263,21 @@ def JobInspectAll():
     #
     #  I expect that the active slot info will be a superset
     #  of the jobs found.  If they match, and the count is
-    #  equal to or higher than DUMPING_LIMIT,
+    #  equal to or higher than U.DUMPING_LIMIT,
     #  don't bother doing anything.
     #  Inspecting the dateBegun vs today might be useful, though
     #
     # Now find out what jobs are active
     #commandj = ['/usr/bin/ps', 'aux']
     commandj = ['/bin/ps', 'aux']
-    listing, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
+    listing, jerro, jcode = U.getoutputerrorsimplecommand(commandj, 1)
     if int(jcode) != 0:
         print('JobInspectAll: pstree failed', listing, jerro, jcode)
         sys.exit(0)
     candidate = []
     wlisting = str(listing).split()
     for line in wlisting:
-        if 'DUMPING' in line:
+        if 'U.DUMPING' in line:
             candidate.append(line)
     # Inspect if the expected jobs are still running
     matching = []
@@ -619,11 +300,11 @@ def JobInspectAll():
 ####
 # Check if the log space is getting full
 def CheckLogSpace():
-    #commandc = ['/usr/bin/df', '-h', DUMPING_LOG_SPACE]
-    commandc = ['/bin/df', '-h', DUMPING_LOG_SPACE]
-    coutp, cerro, ccode = getoutputerrorsimplecommand(commandc, 1)
+    #commandc = ['/usr/bin/df', '-h', U.DUMPING_LOG_SPACE]
+    commandc = ['/bin/df', '-h', U.DUMPING_LOG_SPACE]
+    coutp, cerro, ccode = U.getoutputerrorsimplecommand(commandc, 1)
     if int(ccode) != 0:
-        print('CheckLogSpace failed', coutp, cerro, ccode, DUMPING_LOG_SPACE)
+        print('CheckLogSpace failed', coutp, cerro, ccode, U.DUMPING_LOG_SPACE)
         sys.exit(0)
     percent = int(coutp.split()[-2].split('%')[0])
     return percent < 90
@@ -639,16 +320,16 @@ def JobDecisionCompleted(notmatched):
     #
     for jdone in notmatched:
         # First make sure nothing is wrong
-        # I expect a script in DUMPING_MASTER_LOG_SPACE/DUMPING_${UUID} and a log file
-        # in DUMPING_MASTER_LOG_SPACE/DUMPING_${UUID}.log
+        # I expect a script in U.DUMPING_MASTER_LOG_SPACE/U.DUMPING_${UUID} and a log file
+        # in U.DUMPING_MASTER_LOG_SPACE/U.DUMPING_${UUID}.log
         # Note that the master logs are short, just holding the commands that
         # were executed.
         jid = jdone[3]
-        tentative = DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + jdone[0] + '.log'
+        tentative = U.DUMPING_MASTER_LOG_SPACE + 'U.DUMPING_' + jdone[0] + '.log'
         commandj = ['/usr/bin/tail', '-n1', tentative]
-        answerline, jerro, jcode = getoutputerrorsimplecommand(commandj, 1)
+        answerline, jerro, jcode = U.getoutputerrorsimplecommand(commandj, 1)
         if int(jcode) != 0:
-            print('JobDecisionCompleted failed to tail', tentative, 'X')
+            print('JobDecisionCompleted failed to tail', tentative, 'X', jerro)
             sys.exit(0)
         #
         # If the file is still empty, presumably it is not yet done
@@ -670,11 +351,11 @@ def JobDecisionCompleted(notmatched):
             print('JobDecisionCompleted summary line info shows problems for', tentative, summaryinfo)
             print('Rerun the rsync?', answerline, 'X')
             sys.exit(0)
-        jdposturl = copy.deepcopy(basicposturl)
-        jdposturl.append(targetdumpingpolediskdone + mangle(str(jid)))
-        jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdposturl, 1)
+        jdposturl = copy.deepcopy(U.basicposturl)
+        jdposturl.append(U.targetdumpingpolediskdone + U.mangle(str(jid)))
+        jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
         if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-            print('JobDecisionCompleted: Set status of PoleDisk failed', jid)
+            print('JobDecisionCompleted: Set status of PoleDisk failed', jid, jderro)
             sys.exit(0)
         donelist.append(jdone)
     # Done flagging completed jobs
@@ -683,30 +364,30 @@ def JobDecisionCompleted(notmatched):
 ###
 # Set the PoleDisk status
 def SetPoleDiskStatus(spid, sstatus):
-    if sstatus not in PoleDiskStatusOptions:
+    if sstatus not in U.PoleDiskStatusOptions:
         print('SetPoleDiskStatus:  bad status', sstatus)
         sys.exit(0)
-    sarg = mangle(str(spid) + ' ' + sstatus)
-    spposturl = copy.deepcopy(basicposturl)
-    spposturl.append(targetdumpingpoledisksetstatus + sarg)
-    spoutp, sperro, spcode = getoutputerrorsimplecommand(spposturl, 1)
+    sarg = U.mangle(str(spid) + ' ' + sstatus)
+    spposturl = copy.deepcopy(U.basicposturl)
+    spposturl.append(U.targetdumpingpoledisksetstatus + sarg)
+    spoutp, sperro, spcode = U.getoutputerrorsimplecommand(spposturl, 1)
     if int(spcode) != 0 or 'FAILURE' in str(spoutp):
-        print('SetPoleDiskStatus: Set status failed', sarg)
+        print('SetPoleDiskStatus: Set status failed', sarg, sperro)
         sys.exit(0)
 
 ###
 # Get the expected count from the DB
 def GetExpectedCount(trialdirname):
     #  This checks whether the fragment matches anything in the DB
-    gegeturl = copy.deepcopy(basicgeturl)
-    gegeturl.append(targetdumpinggetexpected + mangle(trialdirname))
-    geoutp, geerro, gecode = getoutputerrorsimplecommand(gegeturl, 1)
+    gegeturl = copy.deepcopy(U.basicgeturl)
+    gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
+    geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)
     if gecode != 0 or len(geoutp) <= 0:
         return -1
     try:
-        gejson = json.loads(singletodouble(geoutp))
+        gejson = json.loads(U.singletodouble(geoutp))
     except:
-        print('No expected counts for directory', trialdirname)
+        print('No expected counts for directory', trialdirname, geerro)
         return -1
     try:
         genumber = gejson[0]['number']
@@ -742,11 +423,11 @@ def DirectoryCheckFull(donelist):
             dtarg = dtargetdir + '/' + tentativedir
             if CountFilesInDir(dtarg, numberexpect):
                 dcok.append(dtarg)
-                dcposturl = copy.deepcopy(basicposturl)
-                dcposturl.append(targetdumpingenteredreadydir + mangle(dtarg))
-                dcoutp, dcerro, dccode = getoutputerrorsimplecommand(dcposturl, 1)
+                dcposturl = copy.deepcopy(U.basicposturl)
+                dcposturl.append(U.targetdumpingenteredreadydir + U.mangle(dtarg))
+                dcoutp, dcerro, dccode = U.getoutputerrorsimplecommand(dcposturl, 1)
                 if dccode != 0 or 'FAILURE' in str(dcoutp):
-                    print('DirectoryCheckFull could not load', dtarg)
+                    print('DirectoryCheckFull could not load', dtarg, dcerro)
                     continue
     return
 
@@ -776,7 +457,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
         dateBegun = datetime.datetime.strptime(str(jdrunning[2]), '%Y-%m-%d %H:%M:%S')
         # Since all the times are local, I can use something simple
         minutes = (datetime.datetime.today() - dateBegun).total_seconds() / 60
-        if minutes > DUMPING_TIMEOUT:
+        if minutes > U.DUMPING_TIMEOUT:
             print('JobDecision:  job for', jdrunning[0], 'has run long')
             # Don't bail, this might be OK
     #
@@ -785,7 +466,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
         return
     #
     # See if the jobcount is low enough to let me add another dump
-    if len(candidate) >= DUMPING_LIMIT:
+    if len(candidate) >= U.DUMPING_LIMIT:
         return
     #
     # Got room for another...
@@ -793,15 +474,15 @@ def JobDecision(dumperstatus, jdumpnextAction):
         print('JobDecision:  log space running short')
         return
     # Pick up the next one
-    jdgeturl = copy.deepcopy(basicgeturl)
-    jdgeturl.append(targetdumpinggetwaiting)
-    jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdgeturl, 1)
+    jdgeturl = copy.deepcopy(U.basicgeturl)
+    jdgeturl.append(U.targetdumpinggetwaiting)
+    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
     if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-        print('Get next undone disk failed', jdoutp)
+        print('Get next undone disk failed', jdoutp, jderro)
         sys.exit(0)
     if len(jdoutp) <= 2:
         return		# Nothing left to do here
-    my_json = json.loads(singletodouble(jdoutp))
+    my_json = json.loads(U.singletodouble(jdoutp))
     try:
         juuid = my_json[0]['diskuuid']
         jid = my_json[0]['poledisk_id']
@@ -810,19 +491,19 @@ def JobDecision(dumperstatus, jdumpnextAction):
         print('JobDecision:  cannot unpack next disk', my_json)
         sys.exit(0)
     #
-    #commandx = ['/usr/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_LOG_SPACE + 'DUMPING_' + str(juuid)]
-    commandx = ['/bin/cp', DUMPING_SCRIPTS + 'dumpscript', DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + str(juuid)]
-    xoutp, xerro, xcode = getoutputerrorsimplecommand(commandx, 1)
+    #commandx = ['/usr/bin/cp', U.DUMPING_SCRIPTS + 'dumpscript', U.DUMPING_LOG_SPACE + 'U.DUMPING_' + str(juuid)]
+    commandx = ['/bin/cp', U.DUMPING_SCRIPTS + 'dumpscript', U.DUMPING_MASTER_LOG_SPACE + 'U.DUMPING_' + str(juuid)]
+    xoutp, xerro, xcode = U.getoutputerrorsimplecommand(commandx, 1)
     if int(xcode) != 0:
-        print('JobDecision: failed to copy to new script')
+        print('JobDecision: failed to copy to new script', xoutp, xerro)
         sys.exit(0)
-    jdgeturl = copy.deepcopy(basicgeturl)
-    jdgeturl.append(targetdumpingslotcontents)
-    jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdgeturl, 1)
+    jdgeturl = copy.deepcopy(U.basicgeturl)
+    jdgeturl.append(U.targetdumpingslotcontents)
+    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
     if int(jdcode) != 0:
         print('JobDecision: SlotContents failure', jdgeturl, jdoutp)
         sys.exit(0)
-    sl_json = json.loads(singletodouble(jdoutp))
+    sl_json = json.loads(U.singletodouble(jdoutp))
     for js in sl_json:
         if js['slotnumber'] == slotnumber:
             slotlocation = js['name']
@@ -838,21 +519,21 @@ def JobDecision(dumperstatus, jdumpnextAction):
         # nothing we want here, call it done.
         SetPoleDiskStatus(jid, 'Done')
         return
-    commandy = [DUMPING_SCRIPTS + 'submitdumper', DUMPING_MASTER_LOG_SPACE + 'DUMPING_' + str(juuid)]
+    commandy = [U.DUMPING_SCRIPTS + 'submitdumper', U.DUMPING_MASTER_LOG_SPACE + 'U.DUMPING_' + str(juuid)]
     for source in dirstoscan:
         commandy.append(slotlocation + '/' + source)
         # Create the target directory...
         reducedsource = os.path.dirname(source)
         commandy.append(targetdir + '/' + reducedsource)
-    youtp, yerro, ycode = getoutputerrorsimplecommand(commandy, 1)
+    youtp, yerro, ycode = U.getoutputerrorsimplecommand(commandy, 1)
     if int(ycode) != 0:
-        print('JobDecision: submitdumper failed ')
+        print('JobDecision: submitdumper failed ', youtp, yerro)
         sys.exit(0)
     #
     # Update PoleDisk info
-    jdposturl = copy.deepcopy(basicposturl)
-    jdposturl.append(targetdumpingpolediskstart + mangle(str(jid)))
-    jdoutp, jderro, jdcode = getoutputerrorsimplecommand(jdposturl, 1)
+    jdposturl = copy.deepcopy(U.basicposturl)
+    jdposturl.append(U.targetdumpingpolediskstart + U.mangle(str(jid)))
+    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
     if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
         print('JobDecision:  update PoleDisk w/ start time failed', jdoutp)
         sys.exit(0)
@@ -866,37 +547,37 @@ def JobDecision(dumperstatus, jdumpnextAction):
 ####
 # State of the Dumper: query and set routines
 def DumperTodo():
-    dtgeturl = copy.deepcopy(basicgeturl)
-    dtgeturl.append(targetdumpingstate)
-    dtoutp, dterro, dtcode = getoutputerrorsimplecommand(dtgeturl, 1)
+    dtgeturl = copy.deepcopy(U.basicgeturl)
+    dtgeturl.append(U.targetdumpingstate)
+    dtoutp, dterro, dtcode = U.getoutputerrorsimplecommand(dtgeturl, 1)
     if int(dtcode) != 0 or 'FAILURE' in str(dtoutp):
-        print('Get Dumper state failed', dtoutp)
+        print('Get Dumper state failed', dtoutp, dterro)
         sys.exit(0)
     # status, nextAction
-    dump_json = json.loads(singletodouble(dtoutp))
+    dump_json = json.loads(U.singletodouble(dtoutp))
     status = dump_json[0]['status']
     nextAction = dump_json[0]['nextAction']
     return status, nextAction
-#DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
-#DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+#U.DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
+#U.DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
 #
 def DumperSetState(value):
-    if value not in DumperStatusOptions:
+    if value not in U.DumperStatusOptions:
         print('DumperSetState:  invalid state to set', value)
         sys.exit(0)
-    dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingstatus + mangle(value))
-    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    dposturl = copy.deepcopy(U.basicposturl)
+    dposturl.append(U.targetdumpingstatus + U.mangle(value))
+    doutp, derro, dcode = U.getoutputerrorsimplecommand(dposturl, 1)
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetState: failed to set', value, doutp, derro)
         sys.exit(0)
 def DumperSetNext(value):
-    if value not in DumperNextOptions:
+    if value not in U.DumperNextOptions:
         print('DumperSetNext:  invalid state to set', value)
         sys.exit(0)
-    dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingnext + mangle(value))
-    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    dposturl = copy.deepcopy(U.basicposturl)
+    dposturl.append(U.targetdumpingnext + U.mangle(value))
+    doutp, derro, dcode = U.getoutputerrorsimplecommand(dposturl, 1)
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetNext: failed to set', value, doutp, derro)
         sys.exit(0)
@@ -918,7 +599,7 @@ if dumpNextAction == 'Inventory':
 
 # Note that the Idle status still allows us to check whether old
 # jobs have completed.
-if dumpstatus == 'Error' or dumpstatus == 'Inventorying':
+if dumpstatus in ('Error', 'Inventorying'):
     sys.exit(0)
 
 if dumpNextAction == 'Dump' and dumpstatus == 'Idle':

@@ -170,6 +170,20 @@ def ParseParams():
     #  Or not.
     # For initial testing, don't bother
 
+
+def DebugTesting():
+    ''' Some initial testing stuff '''
+    if DEBUG:
+        dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
+        print(GetWorkCount())
+        inserted = InsertWork(dummydirs)
+        print(GetWorkCount())
+        print(PurgeWork())
+        print(GetWorkCount())
+        xx = UpdateWork(dummydirs[0])
+        print(GetWorkCount())
+
+
 def Phase0():
     ''' Initial program configuration '''
     # Parse parameters, if any
@@ -210,18 +224,6 @@ def Phase0():
     #
     # Get rid of old stuff in the WorkingTable
     PurgeWork()
-
-
-def DebugTesting():
-    if DEBUG:
-        dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
-        print(GetWorkCount())
-        inserted = InsertWork(dummydirs)
-        print(GetWorkCount())
-        print(PurgeWork())
-        print(GetWorkCount())
-        xx = UpdateWork(dummydirs[0])
-        print(GetWorkCount())
 
 def Phase1():
     ''' Get the directories TODO (returned) '''
