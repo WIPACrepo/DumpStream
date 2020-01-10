@@ -1,431 +1,10 @@
 # BundleScanner.py (.base)
 import sys
 import uuid
-# IMPORT_utils.py
-# Assumes "import sys"
-import datetime
 import json
-import subprocess
 import copy
 import os
-# IMPORT_db.py 
-# Assumes we have "import sys" as well
-import pymysql
-
-# IMPORT CODE_utils.py
-#####
-# Define some constants
-REPLACESTRING = '+++'
-REPLACENOT = '==='
-REPLACECURLLEFT = '+=+=+'
-REPLACECURLRIGHT = '=+=+='
-NERSCSTATI = ['Run', 'Halt', 'DrainNERSC', 'Error']
-LOCALSTATI = ['Run', 'Halt', 'Drain', 'Error']
-BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
-               'NERSCRunning', 'NERSCDone', 'NERSCProblem', 'NERSCClean',
-               'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
-               'RetrieveRequest', 'RetrievePending', 'ExportReady',
-               'Downloading', 'DownloadDone', 'RemoteCleaned']
-DEBUGPROCESS = False
-# WARN if free scratch space is low
-FREECUTLOCAL = 50000000
-FREECUTNERSC = 500
-# How long can we wait before halting if NERSC_Client isn't running?
-# For now, call it 2 hours
-WAITFORNERSCAFTER = 120
-# How many slurm jobs can go at once?
-SLURMCUT = 14
-sbatch = '/usr/bin/sbatch'
-rm = '/usr/bin/rm'
-hpss_avail = '/usr/common/mss/bin/hpss_avail'
-df = '/usr/bin/df'
-mv = '/usr/bin/mv'
-squeue = '/usr/bin/squeue'
-myquota = '/usr/bin/myquota'
-logdir = '/global/homes/i/icecubed/SLURMLOGS'
-logdirold = '/global/homes/i/icecubed/SLURMLOGS/OLD'
-SCRATCHROOT = '/global/cscratch1/sd/icecubed/jade-disk'
-HSIROOT = '/home/projects/icecube'
-hsibase = ['/usr/common/mss/bin/hsi', '-q']
-BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
-
-curlcommand = '/usr/bin/curl'
-curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
-
-# I will have to figure out how to pack these in a command,
-#  but for the moment here they are.  I drop 2 defaults,
-#  the Partition and the #Nodes, since I don't care about
-#  those.  I don't need the %.8u option either,
-#  since I already know whose jobs they are.
-# I can't be sure that mine will be the only icecubed jobs,
-#  so I retain the %.8j for the job name
-# The -h option means no headers printed, which should
-#  simplify parsing.
-SQUEUEOPTIONS = '-h -o \"%.18i %.8j %.2t %.10M %.42k %R\"'
-# This will be associated with a sbatch option which I will
-#  use as sbatchoption = SBATCHOPTIONS.format(filename, logdir, filename)
-SBATCHOPTIONS = '--comment=\"{}\" --output={}/slurm_%j_{}.log'
-
-targetfindbundles = curltargethost + 'bundles/specified/'
-targetfindbundlesin = curltargethost + 'bundles/specifiedin/'
-targetfindbundleslike = curltargethost + '/bundles/specifiedlike/'
-targettaketoken = curltargethost + 'nersctokentake/'
-targetreleasetoken = curltargethost + 'nersctokenrelease/'
-targetupdateerror = curltargethost + 'nersccontrol/update/nerscerror/'
-targetnerscpool = curltargethost + 'nersccontrol/update/poolsize/'
-targetnerscinfo = curltargethost + 'nersccontrol/info/'
-targetsetnerscstatus = curltargethost + '/nersccontrol/update/status/'
-targettokeninfo = curltargethost + 'nersctokeninfo'
-targetdumpinfo = curltargethost + 'dumpcontrol/info'
-targetheartbeatinfo = curltargethost + 'heartbeatinfo/'
-targetupdatebundle = curltargethost + 'updatebundle/'
-targetupdatebundlestatus = curltargethost + 'updatebundle/status/'
-targetupdatebundleerr = curltargethost + 'updatebundleerr/'
-targetaddbundle = curltargethost + 'addbundle/'
-targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
-targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
-targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
-targettree = curltargethost + '/tree/'
-targetuntouchedall = curltargethost + '/bundles/alluntouched/'
-targetupdatebundlestatusuuid = curltargethost + '/updatebundle/statusuuid/'
-targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
-targetbundlesworking = curltargethost + '/bundles/working'
-targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
-targetbundleget = curltargethost + '/bundles/get/'
-targetbundlepatch = curltargethost + '/bundles/patch/'
-targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
-
-targetdumpingstate = curltargethost + '/dumping/state'
-targetdumpingcount = curltargethost + '/dumping/state/count/'
-targetdumpingnext = curltargethost + '/dumping/state/nextaction/'
-targetdumpingstatus = curltargethost + '/dumping/state/status/'
-targetdumpingpoledisk = curltargethost + '/dumping/poledisk'
-targetdumpingpolediskslot = curltargethost + '/dumping/poledisk/infobyslot/'
-targetdumpingpolediskuuid = curltargethost + '/dumping/poledisk/infobyuuid/'
-targetdumpingpolediskid = curltargethost + '/dumping/poledisk/infobyid/'
-targetdumpingpolediskstart = curltargethost + '/dumping/poledisk/start/'
-targetdumpingpolediskdone = curltargethost + '/dumping/poledisk/done/'
-targetdumpingpolediskloadfrom = curltargethost + '/dumping/poledisk/loadfrom/'
-targetdumpingpoledisksetstatus = curltargethost + '/dumping/poledisk/setstatus/'
-targetdumpingdumptarget = curltargethost + '/dumping/dumptarget'
-targetdumpingsetdumptarget = curltargethost + '/dumping/dumptarget/'
-targetdumpingoldtargets = curltargethost + '/dumping/olddumptarget/'
-targetdumpingslotcontents = curltargethost + '/dumping/slotcontents'
-targetdumpingsetslotcontents = curltargethost + '/dumping/slotcontents/'
-targetdumpingwantedtrees = curltargethost + '/dumping/wantedtrees'
-targetdumpingsetwantedtree = curltargethost + '/dumping/wantedtrees/'
-targetdumpinggetactive = curltargethost + '/dumping/activeslots'
-targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
-targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
-targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
-targetdumpingcountready = curltargethost + '/dumping/countready'
-
-targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
-targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
-targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
-targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
-
-targetgluestatus = curltargethost + 'glue/status/'
-targetglueworkload = curltargethost + 'glue/workload/'
-targetglueworkupdate = curltargethost + 'glue/workupdate/'
-targetglueworkcount = curltargethost + 'glue/workcount'
-targetglueworkpurge = curltargethost + 'glue/workpurge'
-targetgluetimeset = curltargethost + 'glue/timeset/'
-targetgluetimediff = curltargethost + 'glue/timediff'
-
-basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
-basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
-
-scales = {'B':0, 'KiB':0, 'MiB':.001, 'GiB':1., 'TiB':1000.}
-snames = ['KiB', 'MiB', 'GiB', 'TiB']
-
-GLOBUS_PROBLEM_SPACE = '/mnt/data/jade/problem_files/globus-mirror'
-GLOBUS_DONE_SPACE = '/mnt/data/jade/mirror_cache'
-GLOBUS_RUN_SPACE = '/mnt/data/jade/mirror_queue'
-GLOBUS_DONE_HOLDING = '/mnt/data/jade/mirror_old'
-GLOBUS_PROBLEM_HOLDING = '/mnt/data/jade/mirror_problem_files'
-GLOBUS_INFLIGHT_LIMIT = 3
-
-BundleStatusOptions = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone', 'NERSCRunning', 'NERSCDone', \
-        'NERSCProblem', 'NERSCClean', 'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry']
-
-PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
-DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
-DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
-
-# The backplane limit is about 2 Pole disks dumping at once.
-DUMPING_LIMIT = 2
-# 3 days worth of minutes
-DUMPING_TIMEOUT = 4320
-# Where do log files go?
-DUMPING_LOG_SPACE = '/tmp/'
-# Where do master log files go?
-DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
-# Where do scripts live?
-DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
-
-# String manipulation stuff
-def unslash(strWithSlashes):
-    return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
-
-def reslash(strWithoutSlashes):
-    return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
-
-def unmangle(strFromPost):
-    # dummy for now.  Final thing has to fix missing spaces,
-    # quotation marks, commas, slashes, and so on.
-    #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
-    return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
-
-def mangle(strFromPost):
-    # Remote jobs will use this more than we will here.
-    return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
-
-def tojsonquotes(strFromPost):
-    # Turn single into double quotes
-    return strFromPost.replace("\'", "\"")
-
-def fromjsonquotes(strFromPost):
-    # Turn double into single quotes.  Won't use it much
-    # here, but the remote jobs that feed this will
-    return strFromPost.replace("\"", "\'")
-
-def singletodouble(stringTo):
-    return stringTo.replace('\'', '\"')
-
-# timeout is in seconds
-def getoutputerrorsimplecommand(cmd, Timeout):
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
-        returncode = proc.returncode
-        return output.decode('utf-8'), error, returncode
-    except subprocess.CalledProcessError:
-        print(cmd, " Failed to spawn")
-        return "", "", 1
-    except subprocess.TimeoutExpired:
-        return 'TIMEOUT', 'TIMEOUT', 1
-    except Exception:
-        print(cmd, " Unknown error", sys.exc_info()[0])
-        return "", "", 1
-
-######
-# Write out information.  Utility in case I want to do
-# something other than simply print
-def logit(string1, string2):
-    print(string1 + '  ' + string2)
-
-
-####
-# Test parse byte-stream of list of dicts back into a list of strings
-# each of which can be unpacked later into a dict
-def stringtodict(instring):
-    if len(instring) <= 1:
-        return []
-    countflag = 0
-    initial = -1
-    basic = []
-    for num, character in enumerate(instring):
-        if character == '{':
-            countflag = countflag + 1
-            if countflag == 1:
-                initial = num
-        if character == '}':
-            countflag = countflag - 1
-            if countflag == 0:
-                basic.append(instring[initial:num+1])
-    return basic
-
-
-def massage(answer):
-    try:
-        relaxed = str(answer.decode("utf-8"))
-    except:
-        try:
-            relaxed = str(answer)
-        except:
-            relaxed = answer
-    return relaxed
-
-
-def globusjson(localuuid, localdir, remotesystem, idealdir): 
-    outputinfo = '{\n'
-    outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
-    outputinfo = outputinfo + '  \"version\": 1,\n'
-    outputinfo = outputinfo + '  \"referenceUuid\": \"{}\",\n'.format(localuuid)
-    outputinfo = outputinfo + '  \"mirrorType\": \"bundle\",\n'
-    outputinfo = outputinfo + '  \"srcLocation\": \"IceCube Gridftp Server\",\n'
-    outputinfo = outputinfo + '  \"srcDir\": \"{}\",\n'.format(localdir)
-    outputinfo = outputinfo + '  \"dstLocation\": \"{}\",\n'.format(remotesystem)
-    outputinfo = outputinfo + '  \"dstDir\": \"{}\",\n'.format(idealdir)
-    outputinfo = outputinfo + '  \"label\": \"Jade-LTA mirror lustre to {}\",\n'.format(remotesystem)
-    outputinfo = outputinfo + '  \"notifyOnSucceeded\": false,\n'
-    outputinfo = outputinfo + '  \"notifyOnFailed\": true,\n'
-    outputinfo = outputinfo + '  \"notifyOnInactive\": true,\n'
-    outputinfo = outputinfo + '  \"encryptData\": false,\n'
-    outputinfo = outputinfo + '  \"syncLevel\": 1,\n'
-    outputinfo = outputinfo + '  \"verifyChecksum\": false,\n'
-    outputinfo = outputinfo + '  \"preserveTimestamp\": false,\n'
-    outputinfo = outputinfo + '  \"deleteDestinationExtra\": false,\n'
-    outputinfo = outputinfo + '  \"persistent\": true\n'
-    outputinfo = outputinfo + '}'
-    return outputinfo
-
-# Set a bundle's status
-def flagBundleStatus(key, newstatus):
-    if str(newstatus) not in BUNDLESTATI:
-        return 'Failure', newstatus + ' is not allowed', '1'
-    fbposturl = copy.deepcopy(basicposturl)
-    comstring = mangle(str(newstatus) + ' ' + str(key))
-    fbposturl.append(targetupdatebundlestatus + comstring)
-    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
-    if len(foutp) > 0:
-        print('Failure in updating Bundlestatus to ' + str(newstatus)
-              + 'for key ' + str(key) + ' : ' + str(foutp))
-    return foutp, ferro, fcode
-
-#
-def deltaT(oldtimestring):
-    current = datetime.datetime.now()
-    try:
-        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
-        difference = current - oldt
-        delta = int(difference.seconds/60 + difference.days*60*24)
-    except:
-        delta = -1
-    return delta
-
-###
-# Make changes in the BundleStatus specified
-# 2-step process:
-# Get the number of entries that will be touched
-# If zero, return 'None'
-# If one, do it and return 'OK'
-# IF more than 1,
-# If the flag says do them all, do them all, otherwise
-# don't do anything at all and return 'TooMany'
-def patchBundle(bundleid, columntype, newvalue, manyok):
-    #
-    geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(str(bundleid)))
-    ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
-    if len(ansx) <= 0:
-        print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
-        sys.exit(0)
-    try:
-        my_jsonx = json.loads(singletodouble(massage(ansx)))
-    except:
-        print('patchBundle initial query got junk', ansx, bundleid)
-        sys.exit(0)
-    if len(my_jsonx) == 0:
-        return 'None'
-    if len(my_jsonx) > 1 and not manyok:
-        return 'TooMany'
-    #
-    posturlx = copy.deepcopy(basicposturl)
-    comm = str(bundleid) + ':' + str(columntype)+ ':' + str(newvalue)
-    posturlx.append(targetbundlepatch + mangle(comm))
-    ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
-    if 'OK' not in ansx:
-        print('patchBundle update failed', ansx, errx, codx, comm)
-        sys.exit(0)
-    return 'OK'
-#
-DBdatabase = None
-DBcursor = None
-######################################################
-######
-# DB connection established
-def getdbgen():
-    global DBdatabase
-    global DBcursor
-    try:
-        # https://stackoverflow.com/questions/27203902/cant-connect-to-database-pymysql-using-a-my-cnf-file
-        DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
-    except pymysql.OperationalError:
-        print(['ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
-        sys.exit(1)
-    try:
-        #DBcursor = DBdatabase.cursor()
-        DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
-    except pymysql.OperationalError:
-        print(['ERROR: could not get cursor for database.'])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
-        sys.exit(1)
-
-####
-def returndbgen():
-    return DBcursor
-
-####
-def closedbgen():
-    DBcursor.close()
-    DBdatabase.close()
-
-####
-# Commit changes to DB specified
-def doCommitDB():
-    try:
-        DBdatabase.commit()
-    except pymysql.OperationalError:
-        DBdatabase.rollback()
-        print(['doCommitDB: ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
-    except Exception:
-        DBdatabase.rollback()
-        print(['doCommitDB: Failed to execute the commit'])
-        sys.exit(1)
-
-
-
-############################################
-######  Execute a command.  Crash if it fails, otherwise return silently
-def doOperationDB(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        return
-    except pymysql.OperationalError:
-        print(['ERROR: doOperationDB could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
-    except Exception:
-        print(['ERROR: doOperationDB undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
-    return
-
-############################################
-######  Execute a command.  Crash if it fails, return False if it didn't work right, True if it was OK
-def doOperationDBWarn(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        return True
-    except pymysql.OperationalError:
-        print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
-    except pymysql.IntegrityError:
-        print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
-        return False
-    except Exception:
-        print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
-    return True
-
-############################################
-######  Execute a command, return the answer.  Or error messages if it failed
-def doOperationDBTuple(dbcursor, command, string):
-    try:
-        dbcursor.execute(command)
-        expectedtuple = dbcursor.fetchall()
-        return expectedtuple		#Assume you know what you want to do with this
-    except pymysql.OperationalError:
-        return ['ERROR: doOperationDBTuple could not connect to MySQL ', string, ' database.', command]
-    except Exception:
-        return ['ERROR: doOperationDBTuple undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command]
-    return [[]]
+import Utils as U
 
 DEBUGIT = False
 
@@ -478,18 +57,18 @@ def movelocal(local, ideal, bid):
     # We've got work to do.
     localdir = os.path.dirname(newlocal)
     command = ['/bin/mkdir', '-p', localdir]
-    ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
+    ansx, errx, codx = U.getoutputerrorsimplecommand(command, 1)
     if codx != 0:
         print('Failure to create new directory', localdir)
         sys.exit(0)
     #
     command = ['/bin/mv', local, newlocal]
-    ansx, errx, codx = getoutputerrorsimplecommand(command, 1)
+    ansx, errx, codx = U.getoutputerrorsimplecommand(command, 1)
     if codx != 0:
         print('Failure to move', local, 'to', newlocal, errx, codx)
         sys.exit(0)
     #
-    ansx = patchBundle(bid, 'localName', newlocal, False)
+    ansx = U.patchBundle(bid, 'localName', newlocal, False)
     if 'OK' not in ansx:
         print('movelocal DB update failed', ansx)
         sys.exit(0)
@@ -508,7 +87,7 @@ def Phase0():
     storageArea = '/mnt/lfss'
     command = ['/bin/df', '-BG', storageArea]
     ErrorString = ''
-    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
         ErrorString = ErrorString + ' Failed to df '
     else:
@@ -525,16 +104,16 @@ def Phase0():
     #
     # Check NERSC: is the client running there?  If not, we've no idea
     # how big the pool size is there and we should stop
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetnerscinfo)
-    outp, erro, code = getoutputerrorsimplecommand(geturl, 1)
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetnerscinfo)
+    outp, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
     if int(code) != 0:
         ErrorString = ErrorString + ' Failed to get NERSC info'
     else:
         try:
-            my_json = json.loads(singletodouble(outp))
-            lastscan = deltaT(str(my_json['lastChangeTime']))
-            if lastscan > WAITFORNERSCAFTER:
+            my_json = json.loads(U.singletodouble(str(outp)))
+            lastscan = U.deltaT(str(my_json['lastChangeTime']))
+            if lastscan > U.WAITFORNERSCAFTER:
                 ErrorString = ErrorString + ' No NERSC activity'
             if str(my_json['status']) != 'Run':
                 ErrorString = ErrorString + ' NERSC not running'
@@ -543,41 +122,41 @@ def Phase0():
     #
     # Check for errors
     if len(ErrorString) > 0:
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle(ErrorString))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         return
-    posturl = copy.deepcopy(basicposturl)
-    posturl.append(targetsetdumppoolsize + str(size))
-    answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
-    danswer = massage(answer)
+    posturl = copy.deepcopy(U.basicposturl)
+    posturl.append(U.targetsetdumppoolsize + str(size))
+    answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
+    danswer = U.massage(answer)
     if 'OK' not in danswer:
         print(answer)
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle('Failed to set poolsize'))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle('Failed to set poolsize'))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         return
 
-#targetsetdumperror = curltargethost + '/dumpcontrol/update/bundleerror/'
-#targetsetdumpstatus = curltargethost + '/dumpcontrol/update/status/'
-#targetsetdumppoolsize = curltargethost + '/dumpcontrol/update/poolsize/'
+#U.targetsetdumperror = curlU.targethost + '/dumpcontrol/update/bundleerror/'
+#U.targetsetdumpstatus = curlU.targethost + '/dumpcontrol/update/status/'
+#U.targetsetdumppoolsize = curlU.targethost + '/dumpcontrol/update/poolsize/'
 # 
 # Phase 1	Look for problem files
 # ls /mnt/data/jade/problem_files/globus-mirror
-# If GLOBUS_PROBLEM_SPACE
+# If U.GLOBUS_PROBLEM_SPACE
 # If alert file is only file present, delete it and we're done
 # foreach .json file in the list
 #    Update BundleStatus for each with 'PushProblem'
 # Update CandC with status='Error', bundleError='problem_files'
 # Done with phase 1
 def Phase1():
-    command = ['/bin/ls', GLOBUS_PROBLEM_SPACE]
+    command = ['/bin/ls', U.GLOBUS_PROBLEM_SPACE]
     ErrorString = ''
-    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_PROBLEM_SPACE))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle(' Failed to ls ' + U.GLOBUS_PROBLEM_SPACE))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         return
     # If here, ls worked ok.
     lines = outp.splitlines()
@@ -587,10 +166,10 @@ def Phase1():
         if '.json' in str(line):
             words = str(line).split('.json')
             filefragment = words[0]
-            geturl = copy.deepcopy(basicgeturl)
-            geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
-            answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
-            danswer = massage(answer)
+            geturl = copy.deepcopy(U.basicgeturl)
+            geturl.append(U.targetbundleinfobyjade + U.mangle(filefragment + ' JsonMade'))
+            answer, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+            danswer = U.massage(answer)
             if danswer == '':
                 continue
             if 'FAILURE' in str(danswer):
@@ -598,7 +177,7 @@ def Phase1():
                 break
             #
             # What happens if I get multiple returns?????  DEBUG
-            janswer = json.loads(singletodouble(danswer))
+            janswer = json.loads(U.singletodouble(danswer))
             if len(janswer) <= 0:
                 continue   # Not relevant to our activity
                 #ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
@@ -606,32 +185,32 @@ def Phase1():
                 ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
                 break
             bsid = janswer[0]['bundleStatus_id']
-            answer, erro, code = flagBundleStatus(str(bsid), 'PushProblem')
-            command = ['/bin/mv', GLOBUS_PROBLEM_SPACE + '/' + str(line), GLOBUS_PROBLEM_HOLDING]
-            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            answer, erro, code = U.flagBundleStatus(str(bsid), 'PushProblem')
+            command = ['/bin/mv', U.GLOBUS_PROBLEM_SPACE + '/' + str(line), U.GLOBUS_PROBLEM_HOLDING]
+            outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
             if int(code) != 0:
                 ErrorString = ErrorString + ' Failed to move ' + str(line)
 
     if ErrorString != '':
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle(ErrorString))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
     #
     # I have not implemented the rm of the Alert file
     return
 
 # Phase 2	Look for transferred files
-# ls GLOBUS_DONE_SPACE
-# When you find some, move them to GLOBUS_DONE_HOLDING and
+# ls U.GLOBUS_DONE_SPACE
+# When you find some, move them to U.GLOBUS_DONE_HOLDING and
 # update their DB entries to PushDone
 def Phase2():
-    command = ['/bin/ls', GLOBUS_DONE_SPACE]
+    command = ['/bin/ls', U.GLOBUS_DONE_SPACE]
     ErrorString = ''
-    outp, erro, code = getoutputerrorsimplecommand(command, 1)
+    outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
     if int(code) != 0:
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(' Failed to ls ' + GLOBUS_DONE_SPACE))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle(' Failed to ls ' + U.GLOBUS_DONE_SPACE))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         return
     # If here, ls worked ok.
     lines = outp.splitlines()
@@ -642,10 +221,10 @@ def Phase2():
             continue
         words = str(line).split('.json')
         filefragment = words[0]
-        geturl = copy.deepcopy(basicgeturl)
-        geturl.append(targetbundleinfobyjade + mangle(filefragment + ' JsonMade'))
-        answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
-        danswer = massage(answer)
+        geturl = copy.deepcopy(U.basicgeturl)
+        geturl.append(U.targetbundleinfobyjade + U.mangle(filefragment + ' JsonMade'))
+        answer, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+        danswer = U.massage(answer)
         if danswer == '':
             continue
         if 'FAILURE' in str(danswer):
@@ -654,7 +233,7 @@ def Phase2():
         #
         # What happens if I get multiple returns?????  DEBUG
         #print(type(danswer),danswer)
-        janswer = json.loads(singletodouble(danswer))
+        janswer = json.loads(U.singletodouble(danswer))
         if len(janswer) <= 0:
             continue   # Not relevant to our activity
             #ErrorString = ErrorString + ' No DB info for ' + str(filefragment) + ' as JsonMade'
@@ -662,16 +241,16 @@ def Phase2():
             ErrorString = ErrorString + ' Multiple active versions of ' + str(filefragment)
             break
         bsid = janswer[0]['bundleStatus_id']
-        answer, erro, code = flagBundleStatus(str(bsid), 'PushDone')
-        command = ['/bin/mv', GLOBUS_DONE_SPACE + '/' + str(line), GLOBUS_DONE_HOLDING]
-        outp, erro, code = getoutputerrorsimplecommand(command, 1)
+        answer, erro, code = U.flagBundleStatus(str(bsid), 'PushDone')
+        command = ['/bin/mv', U.GLOBUS_DONE_SPACE + '/' + str(line), U.GLOBUS_DONE_HOLDING]
+        outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
         if int(code) != 0:
             ErrorString = ErrorString + ' Failed to move ' + str(line)
 
     if ErrorString != '':
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetsetdumperror + mangle(ErrorString))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetsetdumperror + U.mangle(ErrorString))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
     #
     return
 
@@ -679,27 +258,27 @@ def Phase2():
 # Phase 3	Look for new local files
 # Get list of local bundle tree locations relevant to NERSC transfers
 def Phase3():
-    geturl = copy.deepcopy(basicgeturl)
+    geturl = copy.deepcopy(U.basicgeturl)
     ultimate = 'NERSC'
-    geturl.append(targettree + mangle(ultimate))
-    answer, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    danswer = massage(answer)
+    geturl.append(U.targettree + U.mangle(ultimate))
+    answer, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+    danswer = U.massage(answer)
     ErrorString = ''
     candidateList = []
     if danswer == '':
         print('No place to search')
         return		# Dunno, maybe this was deliberate
     if 'FAILURE' in danswer:
-        print(danswer)
+        print(danswer, erro, code)
         return
-    jdiranswer = json.loads(singletodouble(danswer))
+    jdiranswer = json.loads(U.singletodouble(danswer))
     #
     # jdiranswer is the list of directories to search for zip bundles
     #
     for js in jdiranswer:
         dirs = js['treetop']
         command = ['/bin/find', dirs, '-type', 'f']
-        outp, erro, code = getoutputerrorsimplecommand(command, 30)
+        outp, erro, code = U.getoutputerrorsimplecommand(command, 30)
         if int(code) != 0:
             print(' Failed to find/search ' + str(dirs))
             ErrorString = ErrorString + ' Failed to find/search ' + str(dirs)
@@ -734,17 +313,17 @@ def Phase3():
             inchunkCount = 0
             # replace the last comma with a right parenthesis
             bigq = bigquery[::-1].replace(',', '', 1)[::-1]
-            geturl = copy.deepcopy(basicgeturl)
-            geturl.append(targetfindbundlesin + mangle(bigq))
-            answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
-            danswer = massage(answer)
+            geturl = copy.deepcopy(U.basicgeturl)
+            geturl.append(U.targetfindbundlesin + U.mangle(bigq))
+            answer, erro, code = U.getoutputerrorsimplecommand(geturl, 3)
+            danswer = U.massage(answer)
             if len(danswer) < 1:
                 continue
             if 'Not Found' in danswer:
                 print('Not Found', danswer)
                 continue
             try:
-                jjanswer = json.loads(singletodouble(danswer))
+                jjanswer = json.loads(U.singletodouble(danswer))
             except:
                 print('Failed to translate json code A', danswer, geturl)
                 return
@@ -753,16 +332,16 @@ def Phase3():
         #
     if inchunkCount > 0:
         bigq = bigquery[::-1].replace(',', '', 1)[::-1]
-        geturl = copy.deepcopy(basicgeturl)
-        geturl.append(targetfindbundlesin + mangle(bigq))
-        answer, erro, code = getoutputerrorsimplecommand(geturl, 3)
-        danswer = massage(answer)
+        geturl = copy.deepcopy(U.basicgeturl)
+        geturl.append(U.targetfindbundlesin + U.mangle(bigq))
+        answer, erro, code = U.getoutputerrorsimplecommand(geturl, 3)
+        danswer = U.massage(answer)
         if len(danswer) > 1:
             if 'Not Found' in danswer:
                 print('Not Found', danswer)
                 return
             try:
-                jjanswer = json.loads(singletodouble(danswer))
+                jjanswer = json.loads(U.singletodouble(danswer))
             except:
                 print('Failed to translate json code B', danswer, geturl)
                 return
@@ -789,14 +368,14 @@ def Phase3():
     #
     # OK, now check that the info is in the database.  Connect to
     # jade-lta-db now.  Use the .my.cnf so I don't expose passwords
-    getdbgen()
-    cursor = returndbgen()
+    U.getdbgen()
+    cursor = U.returndbgen()
     #
     # It seems reasonable to think that a particular file will only
     # exist once in the jade-lta-db.  Unique UUID and all..
     for filex in nomatch:
         mybasename = os.path.basename(filex)
-        reply = doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
+        reply = U.doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
         try:
@@ -811,9 +390,9 @@ def Phase3():
         insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
         insdict = insdict + ' \'checksum\' : \'' + checksum + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','
         insdict = insdict + ' \'useCount\' : \'1\', \'status\' : \'Untouched\'\}'
-        posturl = copy.deepcopy(basicposturl)
-        posturl.append(targetaddbundle + mangle(str(insdict)))
-        answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        posturl = copy.deepcopy(U.basicposturl)
+        posturl.append(U.targetaddbundle + U.mangle(str(insdict)))
+        answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         if 'OK' not in str(answer):
             print(str(insdict), answer)
         continue
@@ -833,19 +412,20 @@ def Phase3():
 ###########
 # Phase 4	Submit new files
 def Phase4():
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetdumpinfo)
-    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
-    janswer = json.loads(singletodouble(answer))
-    # I know a priori there is only one return line
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetdumpinfo)
+    answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+    # Sanity check needed here.
+    answer = U.massage(answer1)
+    janswer = json.loads(U.singletodouble(answer))
+    # I know a priori there can be only one return line
     status = janswer['status']
     if status != 'Run':
         return		# Don't load more in the globus pipeline
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetuntouchedall)
-    answer1, erro, code = getoutputerrorsimplecommand(geturl, 1)
-    answer = singletodouble(massage(answer1))
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetuntouchedall)
+    answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+    answer = U.singletodouble(U.massage(answer1))
     if len(answer) <= 0:
         return	# silence
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
@@ -862,21 +442,21 @@ def Phase4():
     if numwaiting <= 0:
         #print('None waiting')
         return		# Nothing to do
-    command = ['/bin/ls', GLOBUS_RUN_SPACE]
-    answerlsb, errorls, codels = getoutputerrorsimplecommand(command, 1)
+    command = ['/bin/ls', U.GLOBUS_RUN_SPACE]
+    answerlsb, errorls, codels = U.getoutputerrorsimplecommand(command, 1)
     #print('code=', str(codels))
     if int(codels) != 0:
-        print('Cannot ls the', GLOBUS_RUN_SPACE, errorls)
+        print('Cannot ls the', U.GLOBUS_RUN_SPACE, errorls)
         return		# Something went wrong, try later
-    answerls = massage(answerlsb)
+    answerls = U.massage(answerlsb)
     if 'TIMEOUT' in answerls:
         print('ls timed out')
         return		# Something went wrong, try later
     lines = answerls.splitlines()
-    if len(lines) >= GLOBUS_INFLIGHT_LIMIT:
+    if len(lines) >= U.GLOBUS_INFLIGHT_LIMIT:
         #print('Too busy')
         return		# Too busy for more
-    limit = GLOBUS_INFLIGHT_LIMIT - len(lines)
+    limit = U.GLOBUS_INFLIGHT_LIMIT - len(lines)
     if limit > numwaiting:
         limit = numwaiting
     #print('limit=', str(limit), str(len(lines)), str(numwaiting))
@@ -894,27 +474,27 @@ def Phase4():
         localDir = os.path.dirname(newlocal) + '/'
         idealDir = os.path.dirname(idealName) + '/'
         remotesystem = 'NERSC'
-        jsonContents = globusjson(jadeuuid, localDir, remotesystem, idealDir)
+        jsonContents = U.globusjson(jadeuuid, localDir, remotesystem, idealDir)
         jsonName = jadeuuid + '.json'
         try:
-            fileout = open(GLOBUS_RUN_SPACE + '/' + jsonName, 'w')
+            fileout = open(U.GLOBUS_RUN_SPACE + '/' + jsonName, 'w')
             fileout.write(jsonContents)
             fileout.close()
         except:
             print('Failed to open/write/close ' + jsonName)
             return	# Try again later
         # Now update the BundleStatus
-        panswer = patchBundle(str(bundle_id), 'status', 'JsonMade', False)
+        panswer = U.patchBundle(str(bundle_id), 'status', 'JsonMade', False)
         if 'FAILURE' in panswer:
             print('Phase4: bundle update failed', panswer, bundle_id)
             continue
-        panswer = patchBundle(str(bundle_id), 'UUIDJade', jadeuuid, False)
+        panswer = U.patchBundle(str(bundle_id), 'UUIDJade', jadeuuid, False)
         if 'FAILURE' in panswer:
             print('Phase4: bundle update failed uuidjade', panswer, bundle_id)
             continue
-        #posturl = copy.deepcopy(basicposturl)
-        #posturl.append(targetupdatebundlestatusuuid + mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
-        #answer, erro, code = getoutputerrorsimplecommand(posturl, 1)
+        #posturl = copy.deepcopy(U.basicposturl)
+        #posturl.append(U.targetupdatebundlestatusuuid + U.mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
+        #answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
         # Not checking answer is probably a bad thing hereJNB
         continue
     return
@@ -924,10 +504,10 @@ def Phase4():
 # starting with the oldest
 # If == 0, done w/ phase 4
 # Query BundleStatus for the count of JsonMade bundles
-# If > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
+# If > U.GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
 # foreach bundle in the bundlelist
-#   if the running count > GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
-#   Create a .json file for this bundle in GLOBUS_RUN_SPACE
+#   if the running count > U.GLOBUS_INFLIGHT_LIMIT, done w/ phase 4
+#   Create a .json file for this bundle in U.GLOBUS_RUN_SPACE
 #   update the BundleStatus for this bundle to 'JsonMade' 
 #
 # Check CandC for Run or Drain
@@ -938,16 +518,16 @@ def Phase4():
 #     reset the status to LocalDeleted
 def Phase5():
     #
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetfindbundles + mangle('NERSCClean'))
-    answer1, erro1, code1 = getoutputerrorsimplecommand(geturl, 1)
-    answer = massage(answer1)
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetfindbundles + U.mangle('NERSCClean'))
+    answer1, erro1, code1 = U.getoutputerrorsimplecommand(geturl, 1)
+    answer = U.massage(answer1)
     if 'DOCTYPE HTML PUBLIC' in answer or 'FAILURE' in answer:
         print('Phase 5 failure with', geturl, answer, erro1, code1)
         return
     if len(answer) == 0:
         return	# Nothing to do
-    jjanswer = json.loads(singletodouble(answer))
+    jjanswer = json.loads(U.singletodouble(answer))
     numwaiting = len(jjanswer)
     # Sanity check
     if numwaiting <= 0:
@@ -972,10 +552,10 @@ def Phase5():
             continue
         try:
             command = ['/usr/bin/ls', localname]
-            outp, erro, code = getoutputerrorsimplecommand(command, 1)
+            outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
             if int(code) == 0:
                 command = ['/usr/bin/rm', localname]
-                outp, erro, code = getoutputerrorsimplecommand(command, 1)
+                outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
                 if int(code) != 0:
                     print('Failed to delete', localname, outp, erro)
                     continue
@@ -983,7 +563,7 @@ def Phase5():
             print('Phase 5: I do not see the file, or else deleting it fails', localname)
             continue
         key = js['bundleStatus_id']
-        outp, erro, code = flagBundleStatus(key, 'LocalDeleted')
+        outp, erro, code = U.flagBundleStatus(key, 'LocalDeleted')
         if len(outp) > 0:
             print('Phase 5: failed to set status=LocalDeleted for', localname, outp, erro, code)
             continue 
