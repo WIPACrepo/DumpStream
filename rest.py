@@ -1330,15 +1330,15 @@ def addwantedtrees(estring):
 @app.route("/dumping/expectedir/<estring>", methods=["GET"])
 def getcountexpected(estring):
     directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    query = 'SELECT number from expected WHERE directory LIKE \"%?%\"'
-    params = (str(directoryfragment), )
+    query = 'SELECT number from expected WHERE directory LIKE ?'
+    params = ('%' + str(directoryfragment) + '%', )
     cc = -1
     try:
         stuff = query_db_final(query, params)
-        cc = int(stuff)
+        cc = int(stuff[0]['number'])
     except:
         print('getcountexpected failed to get info for', directoryfragment, stuff)
-    return cc
+    return str(cc)
 
 ####
 # Get the list of directories that we think are complete, for handing

@@ -42,7 +42,7 @@ def SetStatus(gnewstatus):
         gmy_json = json.loads(U.singletodouble(goutp))[0]
         grevised = str(gmy_json['status'])
     except:
-        print(goutp)
+        print(goutp, gerro, gcode)
         return 'Failure to make json:  bad url?'
     #
     if gnewstatus == 'Query':
@@ -55,7 +55,7 @@ def PurgeWork():
     gposturl.append(U.targetglueworkpurge)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
     if 'FAILURE' in goutp:
-        print('PurgeWork could not empty WorkingTable')
+        print('PurgeWork could not empty WorkingTable', goutp, gerro, gcode)
 
 def GetWorkCount():
     ''' Get the count of 'Unpicked' in WorkingTable '''
@@ -78,8 +78,7 @@ def UpdateWork(idir):
     gposturl.append(U.targetglueworkupdate + U.mangle(idir))
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
     if len(str(goutp)) > 1:
-        print('UpdateWork failed with ', idir, str(goutp))
-    return ''
+        print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
 
 def InsertWork(idir_array):
     ''' Insert the directories in WorkingTable '''
@@ -99,7 +98,7 @@ def InsertWork(idir_array):
         gposturl.append(U.targetglueworkload + U.mangle(istring))
         goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
         if 'FAILURE' in str(goutp):
-            print('InsertWork failure at chunk ', iw, ' of ', ichunks, ' with ', gposturl, goutp)
+            print('InsertWork failure at chunk ', iw, ' of ', ichunks, ' with ', gposturl, goutp, gerro, gcode)
             breakdown = str(goutp).split()
             number_inserted = number_inserted + int(breakdown[1])
             return number_inserted
@@ -161,7 +160,7 @@ def ParseParams():
         SCAN_ONLY = bool(data['SCAN_ONLY'])
         SUB_TREES = []
         for tree in data['SUB_TREES']:
-            SUB_TREES.append(tree)
+            SUB_TREES.append(tree['tree'])
         FORCE = bool(data['FORCE'])
         FORCE_LIST = []
         FORBID = bool(data['FORBID'])
@@ -170,6 +169,99 @@ def ParseParams():
     #  Or not.
     # For initial testing, don't bother
 
+def GetBundleNamesLike(pcarg):
+    ''' Retrieve bundles which are like the specified directory '''
+    # This is pretty generic.  If you want a bundle, you can give
+    # it the whole ideal name.  If you want all the e.g. PFRaw
+    # bundles for a year, feed it "/data/exp/IceCube/2018/unbiased/PFRaw"
+    # You can get swamped if you are greedy
+    ggeturl = copy.deepcopy(U.basicgeturl)
+    ggeturl.append(U.targetfindbundleslike + U.mangle('%25' + pcarg + '%25'))
+    ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    ganswer = U.massage(ganswer1)
+    if len(ganswer) <= 2:
+        #print('DEBUGGING: GetBundleNamesLike: No answer for', pcarg, ganswer, gerro, gcode)
+        return []
+    try:
+        ggans = U.singletodouble(ganswer).replace(' None,', ' \"None\",')
+        gjanswer = json.loads(ggans)
+    except ValueError as err:
+        print('GetBundleNamesLike: Failed to create json:', pcarg.replace('//', '/'), ganswer, err)
+        return []
+    except:
+        print('GetBundleNamesLike: Failed to create json:', pcarg.replace('//', '/'), ganswer)
+        return []
+    greturn = []
+    for j in gjanswer:
+        try:
+            if str(j['status']) != 'Abort':
+                greturn.append(j['idealName'])
+        except:
+            print('GetBundleNamesLike: j=', j)
+    #
+    return greturn
+
+def GetBundleDirsLike(pcarg):
+    ''' Retrieve bundle directories like the given directory '''
+    got_bundles = GetBundleNamesLike(pcarg)
+    if len(got_bundles) == 0:
+        return []
+    #
+    dreturn = []
+    for bname in got_bundles:
+        if os.path.dirname(bname) not in dreturn:
+            dreturn.append(os.path.dirname(bname))
+    return dreturn
+
+def FullToFrag(dname, lYEAR):
+    ''' Turn the real or ideal name into a YEAR-prefixed fragment '''
+    dword = dname.split('/' + str(lYEAR) + '/')
+    if len(dword) != 2:
+        print('The name is not in ideal warehouse form wrt year', dname, lYEAR)
+        return 'FAILURE'
+    return ('/' + str(lYEAR) + '/' + dword[1]).replace('//', '/')
+
+def SubdirInList(directory, directoryList, lYEAR) -> bool:
+    ''' I want to compare ideal and real directory names.
+        Does the given directory match one in the list? '''
+    #
+    if len(directoryList) == 0:
+        return False
+    rdir = FullToFrag(directory, lYEAR)
+    #DEBUG
+    #if directoryList[0] == '/data/exp/IceCube/2018/unbiased/PFRaw/0626':
+    #    print(rdir, FullToFrag(directoryList[0], lYEAR))
+    if rdir == 'FAILURE':
+        return False
+    for sdir in directoryList:
+        ldir = FullToFrag(sdir, lYEAR)
+        if ldir == 'FAILURE':
+            return False
+        if ldir == rdir:
+            return True
+    return False
+
+def listdir_fullpath(d):
+    ''' Stolen from stackoverflow '''
+    try:
+        pd = os.listdir(d)
+    except:
+        return []
+    if len(pd) <= 0:
+        return []
+    return [os.path.join(d, f) for f in pd]
+
+def GetExpectedFromFrag(gfrag):
+    ''' Get the expected # of files from the expected table for gfrag '''
+    ggeturl = copy.deepcopy(U.basicgeturl)
+    ggeturl.append(U.targetdumpinggetexpected + U.mangle(gfrag))
+    ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    ganswer = U.massage(ganswer1)
+    if len(ganswer) == 0:
+        print('GetExpectedFromFrag: No answer for', gfrag, ganswer, gerro, gcode)
+        return -1
+    return int(ganswer)
+    
 
 def DebugTesting():
     ''' Some initial testing stuff '''
@@ -177,10 +269,11 @@ def DebugTesting():
         dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
         print(GetWorkCount())
         inserted = InsertWork(dummydirs)
+        print('inserted=', inserted)
         print(GetWorkCount())
         print(PurgeWork())
         print(GetWorkCount())
-        xx = UpdateWork(dummydirs[0])
+        UpdateWork(dummydirs[0])
         print(GetWorkCount())
 
 
@@ -220,7 +313,7 @@ def Phase0():
         if not FORCE:
             sys.exit(0)
         else:
-            print('WARNING: Forcing run w/ old dump')
+            print('WARNING:  Forcing run w/ old dump')
     #
     # Get rid of old stuff in the WorkingTable
     PurgeWork()
@@ -243,16 +336,24 @@ def Phase1():
     else:
         TODO = []
     Bulk_tocheck = []
-    file_count = {}
     for p in SUB_TREES:
         parts = p.split('YEAR')
-        tentative = ROOT + '/' + YEAR + '/' + parts[1] + '/*'
-        subdirlisting = glob.glob(tentative).sort()
+        lower_part = (parts[0] + YEAR + parts[1]).replace('//', '/')
+        done_or_working = GetBundleDirsLike(lower_part)  # ideal names
+        tentative = (ROOT + '/' + parts[0] + '/' + YEAR + '/' + parts[1]).replace('//', '/')  # on-disk
+        subdirlisting = listdir_fullpath(tentative)
+        #print(tentative)
+        if subdirlisting is None:
+            print('Nothing for this?')
+            continue
+        #print(len(subdirlisting))
         for d in subdirlisting:
-            if d not in FORBID_LIST:
+            if not SubdirInList(d, FORBID_LIST, YEAR) and not SubdirInList(d, done_or_working, YEAR):
                 Bulk_tocheck.append(d)
     if len(Bulk_tocheck) <= 0:
         return TODO
+    #  Somehow I need to map the real directory into the ideal
+    # so I can retrieve the expected counts.
     # BFI is ugly.  This represents thousands of calls!
     # Can I pull from my DB to exclude some of these?
     # select status,idealName from BundleStatus where idealName
@@ -260,8 +361,17 @@ def Phase1():
     # Take the below and put it in the loop above after vetting
     # the individual directories in BundleStatus
     for pdir in Bulk_tocheck:
-        pcount = glob.glob(pdir + '/*')
-        filecount[pdir] = pcount
+        pcount = len(glob.glob(pdir + '/*'))
+        if pcount <= 0:
+            continue
+        pdir_frag = FullToFrag(pdir, YEAR)
+        fcount = int(GetExpectedFromFrag(pdir_frag))
+        if pcount == fcount:
+            TODO.append(pdir)
+            continue
+        if pcount > fcount and fcount > 0:
+            print('Number of files in ', pdir, 'is greater than expected', fcount, pcount)
+        #
     #
     return TODO
 
@@ -269,3 +379,9 @@ def Phase1():
 ####
 #
 Phase0()
+mytodo = Phase1()
+
+if DEBUG:
+    print(len(mytodo))
+    for todo in mytodo:
+        print(todo)
