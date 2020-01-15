@@ -375,6 +375,24 @@ def Phase1():
     #
     return TODO
 
+def Phase2(lTODO):
+    ''' Do the submission stuff here '''
+    #  if lTODO is empty, just log the run time and quit
+    # Create a working list file
+    #  [DEFINE DIRECTORY framework for this stuff]
+    # NEED A LIMIT FOR THE NUMBER OF JOBS TO SUBMIT AT ONCE!
+    # For each directory in lTODO
+    #    Double-log info in case of a crash
+    #    Append the directory to the working list file
+    #    Set the already-picked flag to "in process" and set the date
+    #     in WorkingTable
+    #    Up until the limit of jobs
+    # Create a condor dag job to run these
+    # The condor job is responsible for resetting the "already picked"
+    #  to "Picked"  This lets me monitor whether condor jobs crashed
+    # Record the condor job info in WorkingTable
+    #
+    return
 
 ####
 #

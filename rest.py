@@ -817,6 +817,31 @@ def getallbundleinfo():
         print('getallbundleinfo problem:', query, str(stuff))
         return ''
 
+###
+#ActiveDirectory (idealDir TEXT PRIMARY KEY, lastChangeTime TEXT);
+@app.route("/bundles/gactive/add/<estring>", methods=["POST"])
+def activediradd(estring):
+    ''' Add the directory to ActiveDirectory table: timestamp for debugging '''
+    newdir = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
+    query = 'INSERT INTO ActiveDirectory (idealDir, lastChangeTime) VALUES '
+    query = query + '(?, datetime(\'now\', \'localtime\')'
+    params = (newdir, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        # Might already exist
+        print('activediradd:  did not add', newdir)
+        return str(stuff)
+    return ''
+
+#@app.route("/bundles/gactive/remove/<estring>", methods=["POST"])
+#def activedirremove(estring):
+# remove the estring
+#@app.route("/bundles/gactive/find/<estring>", methods=["GET"])
+#def activedirfind(estring):
+# return stuff like the estring
+
+
 ### Insertion methods for bundles.  These aren't updates, but new bundles
 # This needs some debugging yet.
 @app.route("/addbundle/<estring>", methods=["POST"])
