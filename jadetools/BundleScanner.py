@@ -510,10 +510,13 @@ def Phase4():
             bundle_id = js['bundleStatus_id']
             localName = js['localName']
             idealName = js['idealName']
-            idealDir = os.path.dirname(idealName)
+            idealDirA = os.path.dirname(idealName)
         except:
             print('Failure in unpacking json info for #', str(countup))
             return
+        found_dir_list = FindActiveDir(idealDirA)
+        if len(found_dir_list) > 2:
+            continue
         jadeuuid = str(uuid.uuid4())
         newlocal = movelocal(localName, idealName, bundle_id)
         localDir = os.path.dirname(newlocal) + '/'
@@ -537,9 +540,9 @@ def Phase4():
         if 'FAILURE' in panswer:
             print('Phase4: bundle update failed uuidjade', panswer, bundle_id)
             continue
-        also_list = U.FindBundlesWithDir(idealDir, 'Unknown')
+        also_list = U.FindBundlesWithDir(idealDirA, 'Unknown')
         if len(also_list) > 0:
-            UpdateBundlesWithDirToJsonMade(idealDir)
+            UpdateBundlesWithDirToJsonMade(idealDirA)
         #posturl = copy.deepcopy(U.basicposturl)
         #posturl.append(U.targetupdatebundlestatusuuid + U.mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
         #answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
