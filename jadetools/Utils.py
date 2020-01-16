@@ -91,8 +91,14 @@ targetbundlestatuscount = curltargethost + '/bundles/statuscount/'
 targetbundlesworking = curltargethost + '/bundles/working'
 targetbundleinfobyjade = curltargethost + '/bundles/infobyjade/'
 targetbundleget = curltargethost + '/bundles/get/'
+targetbundlegetlike = curltargethost + '/bundles/getlike/'
 targetbundlepatch = curltargethost + '/bundles/patch/'
 targetallbundleinfo = curltargethost + '/bundles/allbundleinfo'
+
+targetbundleactivediradd = curltargethost + '/bundles/gactive/add/'
+targetbundleactivedirremove = curltargethost + '/bundles/gactive/remove/'
+targetbundleactivedirfind = curltargethost + '/bundles/gactive/find/'
+targetbundleactivedirclean = curltargethost + '/bundles/gactive/clean'
 
 targetdumpingstate = curltargethost + '/dumping/state'
 targetdumpingcount = curltargethost + '/dumping/state/count/'
@@ -245,6 +251,13 @@ def massage(answer):
         except:
             relaxed = answer
     return relaxed
+
+def unNone(u_answer):
+    ''' Get rid of DB bare "None" and replace w/ quotes '''
+    try:
+        return u_answer.replace(' None ', ' \"None\" ')
+    except:
+        return u_answer
 
 
 def globusjson(localuuid, localdir, remotesystem, idealdir): 
@@ -412,6 +425,72 @@ def doOperationDBWarn(dbcursor, command, string):
         print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
         sys.exit(1)
     return True
+
+###
+# Globus transfers go by directory, not bundle; at least in our
+# sync-up paradigm
+def AddActiveDir(a_dirname):
+    ''' Add the name to ActiveDirectory '''
+    posturl = copy.deepcopy(basicposturl)
+    posturl.append(targetbundleactivediradd + mangle(a_dirname))
+    try:
+        a_ans, a_err, a_code = getoutputerrorsimplecommand(posturl, 20)
+        if len(ans) > 2:
+            print('AddActiveDir returned', a_dirname, str(ans))
+    except:
+        print('AddActiveDir error', a_dirname, str(a_ans), a_err, a_code)
+    return ''
+
+def RemoveActiveDir(a_dirname):
+    ''' Remove the name from ActiveDirectory '''
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetbundleactivedirremove + mangle(a_dirname))
+    try:
+        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
+        if len(ans) > 2:
+            print('RemoveActiveDir returned', a_dirname, str(a_ans))
+    except:
+        print('RemoveActiveDir error', a_dirname, str(a_ans), a_err, a_code)
+    return ''
+
+def FindActiveDir(a_dirname):
+    ''' Look for this name in ActiveDirectory '''
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetbundleactivedirfind + mangle(a_dirname))
+    try:
+        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
+        return singletodouble(massage(a_ans))
+    except:
+        print('FindActiveDir error', a_dirname, str(a_ans), a_err, a_code)
+    return []
+
+###
+#
+def FindBundlesWithDir(a_dirname, a_status='Unknown'):
+    ''' Find bundles from BundleStatus with this directory name and status '''
+    geturl = copy.deepcopy(basicgeturl)
+    geturl.append(targetbundlegetlike + mangle(a_dirname + ' ' + str(a_status)))
+    try:
+        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
+    except:
+        print('FindBundlesWithDir error', a_dirname, str(a_ans), a_err, a_code)
+        return []
+    if len(a_ans) < 2:
+        return []
+    try:
+        janswer = json.loads(unNone(singletodouble(massage(a_ans))))
+    except:
+        print('FindBundlesWithDir: failed to get json info', a_ans)
+        return []
+    good_stuff = []
+    # sanity check--is this the right directory?  Do not go too high!
+    for my_json in janswer:
+        if a_dirname == os.path.dirname(my_json['idealName']):
+            m_id = my_json['bundleStatus_id']
+            m_name = my_json['idealName']
+            m_status = my_json['status']
+            good_stuff.append([m_id, m_name, m_status])
+    return good_stuff
 
 ############################################
 ######  Execute a command, return the answer.  Or error messages if it failed

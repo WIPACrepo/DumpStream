@@ -638,6 +638,34 @@ def bundleget(estring):
         print('bundleget failed:', unstring, stuff)
         return ''
 
+# Get the bundles like the string, with optional status as well
+@app.route("/bundles/getlike/<estring>", methods=["GET"])
+def bundlegetlike(estring):
+    if not estring:
+        return ""
+    unstring = kludgequote(unmangle(estring))
+    # ASSUMING NO SPACES IN FILE NAMES!!
+    wstring = split(unstring)
+    if len(wstring) == 1:
+        qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE ?'
+        params = ('%' + unstring + '%', )
+    else:
+        if len(wstring) == 2:
+            qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE ? AND status = ?'
+            params = ('%' + wstring[0] + '%', wstring[1])
+        else:
+            print('bundlegetlike: Bad number of arguments', unstring)
+            return 'FAILURE'
+    #
+    try:
+        stuff = query_db_final(qstring, params)
+        if len(str(stuff)) > 0:
+            return str(stuff)
+        return ''
+    except:
+        print('bundlesgetlike failed:', unstring, stuff)
+        return ''
+
 # Patch the specified bundle.  String format is 'id:type:value'
 @app.route("/bundles/patch/<estring>", methods=["POST"])
 def bundlepatch(estring):
@@ -654,8 +682,10 @@ def bundlepatch(estring):
     try:
         bid = int(words[0])
         bkey = 'bundleStatus_id=? '
+        param2 = words[0]
     except:
-        bkey = 'localName LIKE \"%?%\" '
+        bkey = 'localName LIKE ? '
+        param2 = '%' + words[0] + '%'
     #
     if words[1] not in BUNDLECOLS:
         print('bundlepatch bad argument', words)
@@ -666,7 +696,7 @@ def bundlepatch(estring):
     #qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
     #
     #params = (words[1], words[2], words[0])
-    params = (words[2], words[0])
+    params = (words[2], param2)
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:
@@ -834,13 +864,78 @@ def activediradd(estring):
         return str(stuff)
     return ''
 
-#@app.route("/bundles/gactive/remove/<estring>", methods=["POST"])
-#def activedirremove(estring):
-# remove the estring
-#@app.route("/bundles/gactive/find/<estring>", methods=["GET"])
-#def activedirfind(estring):
-# return stuff like the estring
+@app.route("/bundles/gactive/remove/<estring>", methods=["POST"])
+def activedirremove(estring):
+    ''' remove the directory from ActiveDirectory '''
+    newdir = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
+    query = 'DELETE FROM ActiveDirectory WHERE idealDir=?'
+    params = (newdir, )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        # Might not exist:  bad name or already done
+        print('activedirremove:  did not remove', newdir)
+        return str(stuff)
+    return ''
 
+
+@app.route("/bundles/gactive/find/<estring>", methods=["GET"])
+def activedirfind(estring):
+    ''' Return the information about this directory.  It need not exist '''
+    newdir = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
+    query = 'SELECT FROM ActiveDirectory WHERE idealDir LIKE ?'
+    params = ('%' + newdir + '%', )
+    try:
+        stuff = query_db_final(query, params)
+    except:
+        print('activedirfind: failed to execute', query, params, stuff)
+        return ''
+    # Might not exist.  That is not an error.
+    return str(stuff)
+
+@app.route("/bundles/gactive/clean", methods=["POST"])
+def activedirclean():
+    ''' Clean out completed ActiveDirectory entries '''
+    # When a bundle arrives at NERSC its status changes from
+    # JsonMade to something else
+    # Provided that isn't a NERSCProblem, that means done.
+    # If all the Bundle's associated with this directory have
+    # status other than JsonMade or NERSCProblem, delete the row
+    query = 'SELECT idealDir FROM ActiveDirectory'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('activedirclean: initial query failed', stuff)
+        return 'FAILURE'
+    if len(stuff) < 2:
+        return ''    # nothing to do
+    for ad_row in stuff:
+        #
+        idealDir = str(ad_row['idealDir'])
+        query2 = 'SELECT bundleStatus_id,idealName,status FROM BundleStatus '
+        query2 = query2 + 'WHERE idealName LIKE ?'
+        params2 = ('%' + idealDir + '%', )
+        try:
+            bstuff = query_db_final(query2, params2)
+        except:
+            print('activedirclean: bundle query failed', query2, param2, bstuff)
+            return 'FAILURE 2'
+        count = 0
+        for bun_row in bstuff:
+            #
+            if os.path.dirname(str(bun_row['idealName'])) != idealDir:
+                continue
+            if bun_row['status'] in ['JsonMade', 'NERSCProblem']:
+                count = count + 1
+        if count == 0:
+            query3 = 'DELETE FROM ActiveDirectory WHERE idealDir=?'
+            params3 = (ad_row, )
+            try:
+                dstuff = insert_db_final(query3, params3)
+            except:
+                print('activedirclean: row delete failed', query3, param3, dstuff)
+        #
+    return ''
 
 ### Insertion methods for bundles.  These aren't updates, but new bundles
 # This needs some debugging yet.
