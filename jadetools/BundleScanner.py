@@ -37,6 +37,47 @@ def backcompare(local, ideal):
     return danswer	# constructed match
 
 ###
+# Quick utility for finding DumpCandC status
+def FindDumpCandC():
+    ''' Get control info for Bundle dump control '''
+    geturl = copy.deepcopy(U.basicgeturl)
+    geturl.append(U.targetdumpinfo)
+    answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
+    # Sanity check needed here.
+    answer = U.massage(answer1)
+    janswer = json.loads(U.singletodouble(answer))
+    # I know a priori there can be only one return line
+    status = janswer['status']
+    return status
+
+###
+# Check all bundles w/ the same directory and Unknown status
+#  and update them to JsonMade
+def UpdateBundlesWithDirToJsonMade(a_dirname):
+    ''' Update all bundles w/ a_dirname and Unknown to JsonMade '''
+    info_array = U.FindBundlesWithDir(a_dirname, 'Unknown')
+    if len(info_array) <= 0:
+        return ''
+    for row in info_array:
+        bid = row[0]
+        l_ok = U.patchBundle(bid, 'status', 'JsonMade', False)
+        if l_ok != 'OK':
+            print('UpdateBundlesWithDirToJsonMade:', row, l_ok)
+    return ''
+
+###
+#
+def CleanActiveDir():
+    ''' Ask for ActiveDirectory rows with no active transfers to be deleted '''
+    # Most of the work happens in the REST server--less to and fro that way
+    posturl = copy.deepcopy(U.basicposturl)
+    posturl.append(U.targetbundleactivedirclean)
+    answer1, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
+    if 'FAILURE' in str(answer1):
+        print('CleanActiveDir got a failure:', answer1, erro, code)
+    return ''
+
+###
 # Check if the localname tree matches the ideal name tree
 # If not, make it so.
 def movelocal(local, ideal, bid):
@@ -83,6 +124,7 @@ def movelocal(local, ideal, bid):
 # Log the space usage and date
 # Done w/ phase 0
 def Phase0():
+    ''' Check space usage, is NERSC running, should we run? '''
     #storageArea = '/var/log'
     storageArea = '/mnt/lfss'
     command = ['/bin/df', '-BG', storageArea]
@@ -150,6 +192,7 @@ def Phase0():
 # Update CandC with status='Error', bundleError='problem_files'
 # Done with phase 1
 def Phase1():
+    ''' Phase1 look for problem files '''
     command = ['/bin/ls', U.GLOBUS_PROBLEM_SPACE]
     ErrorString = ''
     outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
@@ -204,6 +247,7 @@ def Phase1():
 # When you find some, move them to U.GLOBUS_DONE_HOLDING and
 # update their DB entries to PushDone
 def Phase2():
+    ''' Phase2 Look in transfer-done area for transferred files '''
     command = ['/bin/ls', U.GLOBUS_DONE_SPACE]
     ErrorString = ''
     outp, erro, code = U.getoutputerrorsimplecommand(command, 1)
@@ -258,6 +302,7 @@ def Phase2():
 # Phase 3	Look for new local files
 # Get list of local bundle tree locations relevant to NERSC transfers
 def Phase3():
+    ''' Phase3 Look for new local bundles '''
     geturl = copy.deepcopy(U.basicgeturl)
     ultimate = 'NERSC'
     geturl.append(U.targettree + U.mangle(ultimate))
@@ -412,16 +457,14 @@ def Phase3():
 ###########
 # Phase 4	Submit new files
 def Phase4():
-    geturl = copy.deepcopy(U.basicgeturl)
-    geturl.append(U.targetdumpinfo)
-    answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
-    # Sanity check needed here.
-    answer = U.massage(answer1)
-    janswer = json.loads(U.singletodouble(answer))
-    # I know a priori there can be only one return line
-    status = janswer['status']
+    ''' Phase4 submit new files '''
+    # Should I be running?
+    status = FindDumpCandC()
     if status != 'Run':
         return		# Don't load more in the globus pipeline
+    # Do a little cleanup
+    CleanActiveDir()
+    #
     geturl = copy.deepcopy(U.basicgeturl)
     geturl.append(U.targetuntouchedall)
     answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
@@ -442,6 +485,7 @@ def Phase4():
     if numwaiting <= 0:
         #print('None waiting')
         return		# Nothing to do
+    #
     command = ['/bin/ls', U.GLOBUS_RUN_SPACE]
     answerlsb, errorls, codels = U.getoutputerrorsimplecommand(command, 1)
     #print('code=', str(codels))
@@ -466,6 +510,7 @@ def Phase4():
             bundle_id = js['bundleStatus_id']
             localName = js['localName']
             idealName = js['idealName']
+            idealDir = os.path.dirname(idealName)
         except:
             print('Failure in unpacking json info for #', str(countup))
             return
@@ -492,6 +537,9 @@ def Phase4():
         if 'FAILURE' in panswer:
             print('Phase4: bundle update failed uuidjade', panswer, bundle_id)
             continue
+        also_list = U.FindBundlesWithDir(idealDir, 'Unknown')
+        if len(also_list) > 0:
+            UpdateBundlesWithDirToJsonMade(idealDir)
         #posturl = copy.deepcopy(U.basicposturl)
         #posturl.append(U.targetupdatebundlestatusuuid + U.mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
         #answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
