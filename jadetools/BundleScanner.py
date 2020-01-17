@@ -78,6 +78,34 @@ def CleanActiveDir():
     return ''
 
 ###
+# Check for the number of running jobs and determine how many
+# we can submit
+def CheckRunningGlobus() -> int:
+    ''' How many globus jobs can I run? '''
+    command = ['/bin/ls', U.GLOBUS_RUN_SPACE]
+    try:
+        answerlsb, errorls, codels = U.getoutputerrorsimplecommand(command, 1)
+    except:
+        print('CheckRunningGlobus failure', answerlsb, errorls, codels)
+        return 0
+    #
+    if int(codels) != 0:
+        print('Cannot ls the', U.GLOBUS_RUN_SPACE, errorls)
+        return 0        # Something went wrong, try later
+    answerls = U.massage(answerlsb)
+    if 'TIMEOUT' in answerls:
+        print('ls timed out')
+        return 0        # Something went wrong, try later
+    lines = answerls.splitlines()
+    if len(lines) >= U.GLOBUS_INFLIGHT_LIMIT:
+        #print('Too busy')
+        return 0        # Too busy for more
+    limit = U.GLOBUS_INFLIGHT_LIMIT - len(lines)
+    if limit > numwaiting:
+        limit = numwaiting
+    return limit
+
+###
 # Check if the localname tree matches the ideal name tree
 # If not, make it so.
 def movelocal(local, ideal, bid):
@@ -486,37 +514,26 @@ def Phase4():
         #print('None waiting')
         return		# Nothing to do
     #
-    command = ['/bin/ls', U.GLOBUS_RUN_SPACE]
-    answerlsb, errorls, codels = U.getoutputerrorsimplecommand(command, 1)
-    #print('code=', str(codels))
-    if int(codels) != 0:
-        print('Cannot ls the', U.GLOBUS_RUN_SPACE, errorls)
-        return		# Something went wrong, try later
-    answerls = U.massage(answerlsb)
-    if 'TIMEOUT' in answerls:
-        print('ls timed out')
-        return		# Something went wrong, try later
-    lines = answerls.splitlines()
-    if len(lines) >= U.GLOBUS_INFLIGHT_LIMIT:
-        #print('Too busy')
-        return		# Too busy for more
-    limit = U.GLOBUS_INFLIGHT_LIMIT - len(lines)
-    if limit > numwaiting:
-        limit = numwaiting
-    #print('limit=', str(limit), str(len(lines)), str(numwaiting))
+    # Given the number of globus sync jobs nominally running, how many can I do?
+    limit = CheckRunningGlobus()
+    if limit <= 0:
+        return		# Cannot do anything
+    #
     for countup in range(0, limit):
         try:
             js = jjanswer[countup]
             bundle_id = js['bundleStatus_id']
             localName = js['localName']
             idealName = js['idealName']
-            idealDirA = os.path.dirname(idealName)
+            idealDirA = os.path.dirname(idealName)  # Doesn't have a '/' at end
         except:
             print('Failure in unpacking json info for #', str(countup))
             return
-        found_dir_list = FindActiveDir(idealDirA)
+        found_dir_list = U.FindActiveDir(idealDirA)
         if len(found_dir_list) > 2:
-            continue
+            continue	# We are already syncing this directory.  Unless
+            # there's been a race, in which case we'll pick it up when the
+            # current set is done
         jadeuuid = str(uuid.uuid4())
         newlocal = movelocal(localName, idealName, bundle_id)
         localDir = os.path.dirname(newlocal) + '/'
@@ -531,6 +548,7 @@ def Phase4():
         except:
             print('Failed to open/write/close ' + jsonName)
             return	# Try again later
+        #
         # Now update the BundleStatus
         panswer = U.patchBundle(str(bundle_id), 'status', 'JsonMade', False)
         if 'FAILURE' in panswer:
@@ -540,13 +558,13 @@ def Phase4():
         if 'FAILURE' in panswer:
             print('Phase4: bundle update failed uuidjade', panswer, bundle_id)
             continue
+        #
+        # Flag the other bundles in this directory as having JsonMade, since
+        # they will also be sync-ed along with this one
+        # Bundles added later won't be
         also_list = U.FindBundlesWithDir(idealDirA, 'Unknown')
         if len(also_list) > 0:
             UpdateBundlesWithDirToJsonMade(idealDirA)
-        #posturl = copy.deepcopy(U.basicposturl)
-        #posturl.append(U.targetupdatebundlestatusuuid + U.mangle('JsonMade ' + jadeuuid + ' ' + str(bundle_id)))
-        #answer, erro, code = U.getoutputerrorsimplecommand(posturl, 1)
-        # Not checking answer is probably a bad thing hereJNB
         continue
     return
 # Check CandC for go/nogo
