@@ -1,4 +1,5 @@
 # rest.py
+import os
 import sys
 import site
 python_home = '/opt/testing/rest/venv'
@@ -646,7 +647,7 @@ def bundlegetlike(estring):
         return ""
     unstring = kludgequote(unmangle(estring))
     # ASSUMING NO SPACES IN FILE NAMES!!
-    wstring = split(unstring)
+    wstring = unstring.split()
     if len(wstring) == 1:
         qstring = 'SELECT * FROM BundleStatus WHERE idealName LIKE ?'
         params = ('%' + unstring + '%', )
@@ -919,7 +920,7 @@ def activedirclean():
         try:
             bstuff = query_db_final(query2, params2)
         except:
-            print('activedirclean: bundle query failed', query2, param2, bstuff)
+            print('activedirclean: bundle query failed', query2, params2, bstuff)
             return 'FAILURE 2'
         count = 0
         for bun_row in bstuff:
@@ -934,7 +935,7 @@ def activedirclean():
             try:
                 dstuff = insert_db_final(query3, params3)
             except:
-                print('activedirclean: row delete failed', query3, param3, dstuff)
+                print('activedirclean: row delete failed', query3, params3, dstuff)
         #
     return ''
 
