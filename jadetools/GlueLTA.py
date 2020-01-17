@@ -22,6 +22,8 @@ FORCE = False
 FORCE_LIST = []
 FORBID = False
 FORBID_LIST = []
+CROOT = '/tmp'
+CONDOR_LIMIT = 10
 
 DEBUG = False
 
@@ -151,6 +153,8 @@ def ParseParams():
     global FORCE_LIST
     global FORBID
     global FORBID_LIST
+    global CROOT
+    global CONDOR_LIMIT
     config_file = '/home/jbellinger/Glue.json'
     with open(config_file) as json_file:
         data = json.load(json_file)
@@ -165,6 +169,8 @@ def ParseParams():
         FORCE_LIST = []
         FORBID = bool(data['FORBID'])
         FORBID_LIST = []
+        CROOT = data['CROOT']
+        CONDOR_LIMIT = int(data['CONDOR_LIMIT'])
     # Now reload over these from the relevant arguments
     #  Or not.
     # For initial testing, don't bother
@@ -391,6 +397,22 @@ def Phase2(lTODO):
     # The condor job is responsible for resetting the "already picked"
     #  to "Picked"  This lets me monitor whether condor jobs crashed
     # Record the condor job info in WorkingTable
+    #
+    # Anything to do?
+    if len(lTODO) <= 0:
+        return
+    # Define and create a working directory
+    dire_day = str(int(datetime.datetime.timestamp(datetime.datetime.now())))
+    new_working_dir = CROOT + '/' + dire_day
+    command = ['/usr/bin/mkdir', new_working_dir]
+    try:
+        answer, erro, code = U.getoutputerrorsimplecommand(command, 1)
+        if code != 0:
+            print('Phase2: Failed to execute', command, answer, erro, code)
+            return
+    except:
+        print('Phase2: Failure to execute', command)
+        return
     #
     return
 

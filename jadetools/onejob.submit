@@ -1,0 +1,14 @@
+Executable = onedir.sh
+Arguments = $(DirSrc) $(Cluster)
+
+Output = $(DirLog)/$(Cluster).$(Process).$(NumJobStarts).out
+Error = $(DirLog)/$(Cluster).$(Process).$(NumJobStarts).out
+
++AccountingGroup="admin.$ENV(USER)"
+Notification = never
+
+#request_machine_token = 1
+
+max_retries = 0
+
+queue

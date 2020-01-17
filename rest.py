@@ -34,6 +34,7 @@ BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'LocalDeleted', 'LocalFilesDeleted', 'Abort', 'Retry',
                'RetrieveRequest', 'RetrievePending', 'ExportReady',
                'Downloading', 'DownloadDone', 'RemoteCleaned']
+WORKINGTABLESTATI = ['Unpicked', 'Preparing', 'Picked']
 BUNDLESTATUSCOLUMNS = []
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
@@ -1583,12 +1584,20 @@ def countgluework():
 # Set the WorkingTable entry to 'Picked'
 @app.route("/glue/workupdate/<estring>", methods=["POST"])
 def glueworkupdate(estring):
-    ''' Update directory as Picked '''
+    ''' Update directory as Picked or other specified '''
     # don't check for failure
     comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    # 1 at a time
-    query = 'UPDATE WorkingTable set status=\'Picked\' WHERE idealName=?'
-    params = (comm, )
+    word_pair = comm.split()
+    if len(word_pair) == 2:
+        if word_pair[1] not in WORKINGTABLESTATI:
+            print('glueworkupdate: status not valid', word_pair[1])
+            return 'FAILURE invalid status'
+        query = 'UPDATE WorkingTable SET status=? WHERE idealDir=?'
+        params = (word_pair[1], word_pair[0])
+    else:
+        # default is Picked
+        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE idealDir=?'
+        params = (comm, )
     try:
         stuff = insert_db_final(query, params)
     except:
@@ -1606,7 +1615,7 @@ def glueworkload(estring):
     if len(comm) <= 0:
         return str(0)
     individual_dirs = comm.split()
-    query = 'INSERT INTO WorkingTable (idealName,status) VALUES '
+    query = 'INSERT INTO WorkingTable (idealDir,status) VALUES '
     params = (str(individual_dirs[0]), )
     query = query + '(?,\'Unpicked\')'
     if len(individual_dirs) > 1:

@@ -1,3 +1,7 @@
+I need to keep track of which _bundles_ were shipped with a given directory,
+since later bundles may be added.  I have to notify LTA about them.  My own
+transfer stuff should be OK.
+
 If the bundle is skipped in globus, the json is moved to mirror_cache, not
 to problem_files
 BundleStatus thus thinks it is OK
