@@ -80,7 +80,7 @@ def CleanActiveDir():
 ###
 # Check for the number of running jobs and determine how many
 # we can submit
-def CheckRunningGlobus() -> int:
+def CheckRunningGlobus(l_numwaiting) -> int:
     ''' How many globus jobs can I run? '''
     command = ['/bin/ls', U.GLOBUS_RUN_SPACE]
     try:
@@ -101,8 +101,8 @@ def CheckRunningGlobus() -> int:
         #print('Too busy')
         return 0        # Too busy for more
     limit = U.GLOBUS_INFLIGHT_LIMIT - len(lines)
-    if limit > numwaiting:
-        limit = numwaiting
+    if limit > l_numwaiting:
+        limit = l_numwaiting
     return limit
 
 ###
@@ -509,13 +509,12 @@ def Phase4():
         print('Phase4 getting untouched failed', answer)
         sys.exit(0)
     numwaiting = len(jjanswer)
-    #print(numwaiting)
     if numwaiting <= 0:
         #print('None waiting')
         return		# Nothing to do
     #
     # Given the number of globus sync jobs nominally running, how many can I do?
-    limit = CheckRunningGlobus()
+    limit = CheckRunningGlobus(numwaiting)
     if limit <= 0:
         return		# Cannot do anything
     #
