@@ -1589,11 +1589,11 @@ def glueworkupdate(estring):
         if word_pair[1] not in WORKINGTABLESTATI:
             print('glueworkupdate: status not valid', word_pair[1])
             return 'FAILURE invalid status'
-        query = 'UPDATE WorkingTable SET status=? WHERE idealDir=?'
+        query = 'UPDATE WorkingTable SET status=? WHERE realDir=?'
         params = (word_pair[1], word_pair[0])
     else:
         # default is Picked
-        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE idealDir=?'
+        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir=?'
         params = (comm, )
     try:
         stuff = insert_db_final(query, params)
@@ -1612,8 +1612,8 @@ def glueworkload(estring):
     if len(comm) <= 0:
         return str(0)
     individual_dirs = comm.split()
-    query = 'INSERT INTO WorkingTable (idealDir,status) VALUES (?,\'Unpicked\')'
-    query0 = 'SELECT * FROM WorkingTable WHERE idealDir=?'
+    query = 'INSERT INTO WorkingTable (realDir,status) VALUES (?,\'Unpicked\')'
+    query0 = 'SELECT * FROM WorkingTable WHERE realDir=?'
     for indir in individual_dirs:
         param = (str(indir), )
         try:

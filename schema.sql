@@ -91,5 +91,4 @@ CREATE TABLE GlueStatus (
 CREATE TABLE GlueDump ( type TEXT PRIMARY KEY, lastChangeTime TEXT);
 CREATE TABLE LTACatalog (idealName TEXT PRIMARY KEY, status TEXT, condorjob INTEGER);
 CREATE TABLE ActiveDirectory (idealDir TEXT PRIMARY KEY, lastChangeTime TEXT);
-CREATE TABLE WorkingTable ( idealDir TEXT PRIMARY KEY, status TEXT);
-
+CREATE TABLE WorkingTable ( realDir TEXT PRIMARY KEY, status TEXT);
