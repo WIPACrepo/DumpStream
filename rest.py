@@ -692,22 +692,18 @@ def bundlepatch(estring):
     if words[1] not in BUNDLECOLS:
         print('bundlepatch bad argument', words)
         return 'FAILURE'
-    else:
-        qstring = 'UPDATE BundleStatus SET ' + words[1] + '=? WHERE ' + bkey
     #
-    #qstring = 'UPDATE BundleStatus SET ?=? WHERE ' + bkey
-    #
-    #params = (words[1], words[2], words[0])
+    qstring = 'UPDATE BundleStatus SET ' + words[1] + '=? WHERE ' + bkey
     params = (words[2], param2)
     try:
         stuff = insert_db_final(qstring, params)
         if len(str(stuff)) > 0:
             if str(stuff) != '[]':
                 return 'FAILURE ' + str(stuff) + ' ' + qstring + str(params)
-        return "OK"
     except:
         print('bundlepatch problem:', qstring, params, str(stuff))
         return "FAILURE"
+    return "OK"
 
 # Update the specified bundle with new status and jade uuid
 @app.route("/updatebundle/statusuuid/<estring>", methods=["POST"])
@@ -1616,20 +1612,24 @@ def glueworkload(estring):
     if len(comm) <= 0:
         return str(0)
     individual_dirs = comm.split()
-    query = 'INSERT INTO WorkingTable (idealDir,status) VALUES '
-    params = (str(individual_dirs[0]), )
-    query = query + '(?,\'Unpicked\')'
-    if len(individual_dirs) > 1:
-        for mydir in individual_dirs[1:]:
-            query = query + ',(?,\'Unpicked\')'
-            params = params + (str(mydir), )
-    hline = ''
-    try:
-        stuff = insert_db_final(query, params)
-    except:
-        print('glueworkload: failed to insert entirety of ', query, params)
-        hline = 'FAILURE '
-    return hline + str(countgluework())
+    query = 'INSERT INTO WorkingTable (idealDir,status) VALUES (?,\'Unpicked\')'
+    query0 = 'SELECT * FROM WorkingTable WHERE idealDir=?'
+    for indir in individual_dirs:
+        param = (str(indir), )
+        try:
+            stuff = query_db_final(query0, param)
+        except:
+            print('glueworkload:  failed to select', param0)
+            return 'FAILURE'
+        #
+        if len(stuff) > 2:
+            continue	# This already exists, do not try to re-insert
+        try:
+            stuff = insert_db_final(query, param)
+        except:
+            print('glueworkload: failed to insert', param)
+            return 'FAILURE'
+    return ''
     
 
 ####
