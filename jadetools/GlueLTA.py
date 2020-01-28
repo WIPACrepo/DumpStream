@@ -6,6 +6,7 @@
 import datetime
 import json
 import subprocess
+import socket
 import copy
 import os
 import sys
@@ -24,11 +25,12 @@ FORBID = False
 FORBID_LIST = []
 CROOT = '/tmp'
 CONDOR_LIMIT = 10
+INITIAL_DIR = '/home/jbellinger/archiver/DumpStream/jadetools'
 
 DEBUG = False
 
 def SetStatus(gnewstatus):
-    ''' Set or get the GlueStatus.  Return status or empty '''
+    ''' Set or get the GlueStatus.  Return status or error or empty if set worked '''
     # Finite state system :-)
     # Run means currently running.  Ready means ready to run
     # The lastChangeTime is more for internal debugging than user
@@ -52,7 +54,7 @@ def SetStatus(gnewstatus):
     return 'Failure ' + grevised
 
 def PurgeWork():
-    ''' Empty out WorkingTable '''
+    ''' Empty out WorkingTable Picked entries '''
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetglueworkpurge)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -75,7 +77,7 @@ def GetWorkCount():
     return icount
 
 def UpdateWork(idir):
-    ''' Update the directory to have Picked status '''
+    ''' Update the directory entry in WorkingTable to have new status '''
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetglueworkupdate + U.mangle(idir))
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -83,7 +85,7 @@ def UpdateWork(idir):
         print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
 
 def InsertWork(idir_array):
-    ''' Insert the directories in WorkingTable '''
+    ''' Insert new directories in WorkingTable (default Unpicked) '''
     ilendir = len(idir_array)
     if ilendir <= 0:
         return 0
@@ -108,14 +110,19 @@ def InsertWork(idir_array):
         if ictest > 1:
             print('Insertwork failure at chunk ', iw, ' of ', ichunks, ' having ', goutp, ' from ', gposturl)
             return -1
-        number_inserted = number_inserted + int(str(goutp))
+        if len(goutp) > 0:
+            try:
+                number_inserted = number_inserted + int(str(goutp))
+            except:
+                print(number_inserted, str(goutp))
+                sys.exit(2)
     if number_inserted != ilendir:
         print('InsertWork failure: inserted ', number_inserted, ' out of ', ilendir)
     return number_inserted
 
 
 def DiffOldDumpTime():
-    ''' Is the most recent dump time newer than the most recent scan '''
+    ''' Is the most recent dump time newer than the most recent scan? '''
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetgluetimediff)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -127,7 +134,7 @@ def DiffOldDumpTime():
     return True
 
 def ParseParams():
-    ''' Parse out what the parameters tell us to do '''
+    ''' Parse out what the parameters tell this job to do '''
     # These will be globals
     # If not set by the parameters, take these globals from
     #  the configuration file
@@ -155,6 +162,7 @@ def ParseParams():
     global FORBID_LIST
     global CROOT
     global CONDOR_LIMIT
+    global INITIAL_DIR
     config_file = '/home/jbellinger/Glue.json'
     with open(config_file) as json_file:
         data = json.load(json_file)
@@ -174,6 +182,7 @@ def ParseParams():
     # Now reload over these from the relevant arguments
     #  Or not.
     # For initial testing, don't bother
+    #INITIAL_DIR = os.getcwd()
 
 def GetBundleNamesLike(pcarg):
     ''' Retrieve bundles which are like the specified directory '''
@@ -208,7 +217,7 @@ def GetBundleNamesLike(pcarg):
     return greturn
 
 def GetBundleDirsLike(pcarg):
-    ''' Retrieve bundle directories like the given directory '''
+    ''' Retrieve bundle directories like the specified directory '''
     got_bundles = GetBundleNamesLike(pcarg)
     if len(got_bundles) == 0:
         return []
@@ -267,7 +276,38 @@ def GetExpectedFromFrag(gfrag):
         print('GetExpectedFromFrag: No answer for', gfrag, ganswer, gerro, gcode)
         return -1
     return int(ganswer)
-    
+
+def GetToken():
+    ''' Get the token, if possible to let it run : gets 0, 1, 2'''
+    gposturl = copy.deepcopy(U.basicposturl)
+    gposturl.append(U.targetgluetoken + U.mangle(socket.gethostname()))
+    ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    try:
+        gmycode = int(ganswer)
+    except:
+        print('GetToken failure', ganswer)
+        return False
+    if gmycode == 1:
+        return False
+    if gmycode == 2:
+        print('GetToken failure code 2')
+        return False
+    return True
+
+def ReleaseToken():
+    ''' Release the token for running '''
+    gposturl = copy.deepcopy(U.basicposturl)
+    gposturl.append(U.targetgluetoken + U.mangle('RELEASE'))
+    ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    try:
+        gmycode = int(ganswer)
+    except:
+        print('ReleaseToken failure', ganswer)
+        return False
+    if gmycode == 0:
+        return True
+    return False
+
 
 def DebugTesting():
     ''' Some initial testing stuff '''
@@ -300,29 +340,30 @@ def Phase0():
     # Return the configuration data structure
     #
     # Test the utilities
+    if not GetToken():
+        return False
     ParseParams()
     #
     # Should we do anything?
     run_status = SetStatus('Query')
     if run_status in ['Run', 'Pause'] and not FORCE:
-        sys.exit(0)
+        return False
     #
     still_in_process = GetWorkCount()
     if still_in_process > 0:
         if not FORCE:
-            sys.exit(0)
-        else:
-            print('WARNING:  Forcing run w/ ongoing work!')
+            return False
+        print('WARNING:  Forcing run w/ ongoing work!')
     #
     new_dump = DiffOldDumpTime()
     if not new_dump:
         if not FORCE:
-            sys.exit(0)
-        else:
-            print('WARNING:  Forcing run w/ old dump')
+            return False
+        print('WARNING:  Forcing run w/ old dump')
     #
     # Get rid of old stuff in the WorkingTable
     PurgeWork()
+    return True
 
 def Phase1():
     ''' Get the directories TODO (returned) '''
@@ -345,6 +386,7 @@ def Phase1():
     for p in SUB_TREES:
         parts = p.split('YEAR')
         lower_part = (parts[0] + YEAR + parts[1]).replace('//', '/')
+        # Select from BundleStatus=>known bundles
         done_or_working = GetBundleDirsLike(lower_part)  # ideal names
         tentative = (ROOT + '/' + parts[0] + '/' + YEAR + '/' + parts[1]).replace('//', '/')  # on-disk
         subdirlisting = listdir_fullpath(tentative)
@@ -367,6 +409,7 @@ def Phase1():
     # Take the below and put it in the loop above after vetting
     # the individual directories in BundleStatus
     for pdir in Bulk_tocheck:
+        #print(pdir)
         pcount = len(glob.glob(pdir + '/*'))
         if pcount <= 0:
             continue
@@ -400,28 +443,45 @@ def Phase2(lTODO):
     #
     # Anything to do?
     if len(lTODO) <= 0:
-        return
-    # Define and create a working directory
-    dire_day = str(int(datetime.datetime.timestamp(datetime.datetime.now())))
-    new_working_dir = CROOT + '/' + dire_day
-    command = ['/usr/bin/mkdir', new_working_dir]
-    try:
-        answer, erro, code = U.getoutputerrorsimplecommand(command, 1)
+        return True
+    # Load the WorkingTable with the lTODO contents
+    lcount = InsertWork(lTODO)
+    if lcount != len(lTODO):
+        print('Duplication?', len(lTODO), lcount)
+    for ldirectory in lTODO:
+        print('About to try', ldirectory)
+        #
+        try:
+            command = [INITIAL_DIR + '/onedir.sh', ldirectory]
+            output, error, code = U.getoutputerrorsimplecommand(command, 86400)
+            #subprocess.run(command, shell=False, timeout=86400, check=True, capture_output=True)
+        except subprocess.TimeoutExpired:
+            print('Phase2: Timeout on onedir.sh on', ldirectory)
+            return False
+        except subprocess.CalledProcessError as e:
+            print('Phase2: Failure with onedir.sh on', ldirectory, 'with', e.stderr, e.output)
+            return False
+        except:
+            print('Phase2: Failed to execute onedir.sh on', ldirectory, error, code)
+            print(command)
+            return False
         if code != 0:
-            print('Phase2: Failed to execute', command, answer, erro, code)
-            return
-    except:
-        print('Phase2: Failure to execute', command)
-        return
+            print('Phase2: Problem with onedir.sh', output, error, code)
+        else:
+            if 'Error:' in str(output) or 'Error:' in str(error):
+                print('Phase2:', ldirectory, output, error, code)
     #
-    return
+    return True
 
 ####
 #
-Phase0()
+if not Phase0():
+    answer = ReleaseToken()
+    sys.exit()
 mytodo = Phase1()
-
-if DEBUG:
-    print(len(mytodo))
-    for todo in mytodo:
-        print(todo)
+#print(mytodo)
+if not Phase2(mytodo):
+    ans = ReleaseToken()
+    sys.exit(1)
+ans = ReleaseToken()
+sys.exit(0)

@@ -458,7 +458,11 @@ def Phase3():
             print('Phase3:  myjs did not unpack', reply, mybasename)
             continue
             #sys.exit(0)
-        idealName = str(myjs['destination']) + '/' + mybasename
+        workingw = str(myjs['destination']).split('/exp/')
+        if len(workingw) != 2:
+            print('Phase3: myjs had an unexpected destination name', str(myjs['destination']))
+            continue
+        idealName = '/data/exp/' + workingw[1] + '/' + mybasename
         checksum = str(myjs['checksum'])
         insdict = '\{\'localName\' : \'' + filex+ '\', \'idealName\' : \'' + idealName + '\', \'size\' : \'' + size + '\','
         insdict = insdict + ' \'checksum\' : \'' + checksum + '\', \'UUIDJade\' : \'\', \'UUIDGlobus\' : \'\','

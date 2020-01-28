@@ -36,7 +36,7 @@ BUNDLESTATI = ['Untouched', 'JsonMade', 'PushProblem', 'PushDone',
                'RetrieveRequest', 'RetrievePending', 'ExportReady',
                'Downloading', 'DownloadDone', 'RemoteCleaned']
 WORKINGTABLESTATI = ['Unpicked', 'Preparing', 'Picked']
-BUNDLESTATUSCOLUMNS = []
+BUNDLESTATUSCOLUMNS = ['bundleStatus_id', 'localName', 'idealName', 'UUIDJade', 'UUIDGlobus', 'size', 'status', 'useCount', 'checksum', 'LooseFileDir', 'DownloadDir', 'FileDate']
 PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Error']
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
@@ -939,6 +939,8 @@ def activedirclean():
 # This needs some debugging yet.
 @app.route("/addbundle/<estring>", methods=["POST"])
 def addbundle(estring):
+    ''' Add bundles '''
+    # Above is for 28-Jan-2020.  
     backagain = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
     #print(backagain)
     # crazy hack--getting rid of those excess backslashes is a pain
@@ -956,18 +958,8 @@ def addbundle(estring):
         lname = str(fjson['localName'])
     except:
         return "json does not include localName"
-    # Init if not done already--this is a global
-    if len(BUNDLESTATUSCOLUMNS) == 0:
-        schem = open('/opt/testing/rest/BundleStatus.schema', 'r')
-        for line in schem:
-            words = line.split()
-            if len(words) <= 1:
-                continue
-            if words[0] == 'CREATE' and words[1] == 'TABLE':
-                continue
-            BUNDLESTATUSCOLUMNS.append(words[0])
-        schem.close()
-    #
+    # BTW, check that BUNDLESTATUSCOLUMS is correct.
+    # It's ok as of 28-Jan-2020, but if the schema changes...
     params = (lname,)
     qstring = 'SELECT * FROM BundleStatus WHERE localName=?'
     try:
@@ -1619,7 +1611,7 @@ def glueworkload(estring):
         try:
             stuff = query_db_final(query0, param)
         except:
-            print('glueworkload:  failed to select', param0)
+            print('glueworkload:  failed to select', param)
             return 'FAILURE'
         #
         if len(stuff) > 2:
@@ -1668,8 +1660,40 @@ def gluetimediff():
     except:
         print('gluetimediff: failed to unpack times', stuff)
         return '2000000'
-        
+
 ####
+# Get or release token to operate
+@app.route("/glue/token/<estring>", methods=["POST"])
+def gluetoken(estring):
+    ''' Set the token if not taken.  Release if host=RELEASE 0 if ok, 1 if blocked, 2 if error '''
+    host = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    if host == 'RELEASE':
+        query = 'DELETE FROM ReviewDump'
+        try:
+            stuff = insert_db_final(query)
+        except:
+            print('gluetoken failed to release', stuff)
+            return '2'
+        return '0'
+    query = 'SELECT * FROM ReviewDump'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('gluetoken failed to query', query)
+        return '2'
+    if len(stuff) > 2:
+        return '1'
+    query = 'INSERT INTO ReviewDump (host,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
+    param = (host, )
+    try:
+        stuff = insert_db_final(query, host)
+    except:
+        print('gluetoken failed to insert', stuff, query, param)
+        return '2'
+    return '0'
+
+
+###y
 # Debug various things.  Only prints locally
 @app.route("/debugging/<estring>", methods=["GET", "POST"])
 def debugging(estring):
