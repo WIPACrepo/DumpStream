@@ -1,7 +1,8 @@
 # GlueLTA.py
 '''  Check whether the Dump has created full directories, and start
       condor jobs to load them into the LTA database and Picker/Bundler
-      them
+      them.  Dump works with Pole disks which have ideal names in the
+      /data/exp tree.
 '''
 import datetime
 import json
@@ -85,7 +86,8 @@ def UpdateWork(idir):
         print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
 
 def InsertWork(idir_array):
-    ''' Insert new directories in WorkingTable (default Unpicked) '''
+    ''' Insert new directories in WorkingTable (default Unpicked)
+         idir_array is a list of pairs of directories: [real,ideal]  '''
     ilendir = len(idir_array)
     if ilendir <= 0:
         return 0
@@ -96,7 +98,7 @@ def InsertWork(idir_array):
         ilow = iw * 20
         ihigh = min(ilendir + 1, ilow + 20)
         istring = ''
-        for idir in idir_array[ilow:ihigh]:
+        for idir in idir_array[ilow:ihigh][0]:
             istring = istring  + ' ' + idir
         gposturl = copy.deepcopy(U.basicposturl)
         gposturl.append(U.targetglueworkload + U.mangle(istring))
@@ -216,16 +218,47 @@ def GetBundleNamesLike(pcarg):
     #
     return greturn
 
+def GetStagedDirsLike(pcarg):
+    ''' Retrieve FullDirectories staged directories (to ignore them) '''
+    # This just keeps track of what has been done already.  There are
+    # 2 entries per directory:  the directory name (ideal) and the
+    # flag (in this case >0).  Originally the flag was going to tell
+    # whether the directory had been shipped as well as handed off to
+    # LTA, but there's no point in shoehorning that additional info in.
+    #
+    ggeturl = copy.deepcopy(U.basicgeturl)
+    ggeturl.append(U.tdargetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
+    ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    ganswer = U.massage(ganswer1)
+    greturn = []
+    if len(ganswer) <= 2:
+        #print('DEBUGGING: GetBundleNamesLike: No answer for', pcarg, ganswer, gerro, gcode)
+        return []
+    try:
+        ggans = U.singletodouble(ganswer).replace(' None,', ' \"None\",')
+        gjanswer = json.loads(ggans)
+        for j in gjanswer:
+            greturn.append(str(j['idealName']))
+    except:
+        print('GetStagedDirsLike failed with', pcarg, ganswer, gerro, gcode)
+    return greturn
+
+
 def GetBundleDirsLike(pcarg):
-    ''' Retrieve bundle directories like the specified directory '''
+    ''' Retrieve bundle directories like the specified directory
+         Get both from BundleStatus and FullDirectories '''
     got_bundles = GetBundleNamesLike(pcarg)
-    if len(got_bundles) == 0:
+    got_staged_dirs = GetStagedDirsLike(pcarg)
+    if len(got_bundles) == 0 and len(got_staged_dirs) == 0:
         return []
     #
     dreturn = []
     for bname in got_bundles:
         if os.path.dirname(bname) not in dreturn:
             dreturn.append(os.path.dirname(bname))
+    for dname in got_staged_dirs:
+        if dname not in dreturn:
+            dreturn.append(dname)
     return dreturn
 
 def FullToFrag(dname, lYEAR):
@@ -309,19 +342,6 @@ def ReleaseToken():
     return False
 
 
-def DebugTesting():
-    ''' Some initial testing stuff '''
-    if DEBUG:
-        dummydirs = ['/data/exp/Superice', '/data/exp/Subice']
-        print(GetWorkCount())
-        inserted = InsertWork(dummydirs)
-        print('inserted=', inserted)
-        print(GetWorkCount())
-        print(PurgeWork())
-        print(GetWorkCount())
-        UpdateWork(dummydirs[0])
-        print(GetWorkCount())
-
 
 def Phase0():
     ''' Initial program configuration '''
@@ -397,7 +417,10 @@ def Phase1():
         #print(len(subdirlisting))
         for d in subdirlisting:
             if not SubdirInList(d, FORBID_LIST, YEAR) and not SubdirInList(d, done_or_working, YEAR):
-                Bulk_tocheck.append(d)
+                # A PRIORI knowledge.  This is meant to work with dumps from Pole disks.  If you
+                # plan to expand this to other things, that's on you.
+                d_Ideal = d.replace(ROOT, '/data/exp', 1)
+                Bulk_tocheck.append([d, d_Ideal])
     if len(Bulk_tocheck) <= 0:
         return TODO
     #  Somehow I need to map the real directory into the ideal
@@ -408,7 +431,8 @@ def Phase1():
     #  LIKE p in SUB_TREES and status in (..)  
     # Take the below and put it in the loop above after vetting
     # the individual directories in BundleStatus
-    for pdir in Bulk_tocheck:
+    for ppair in Bulk_tocheck:
+        pdir = ppair[0]
         #print(pdir)
         pcount = len(glob.glob(pdir + '/*'))
         if pcount <= 0:
@@ -416,7 +440,7 @@ def Phase1():
         pdir_frag = FullToFrag(pdir, YEAR)
         fcount = int(GetExpectedFromFrag(pdir_frag))
         if pcount == fcount:
-            TODO.append(pdir)
+            TODO.append(ppair)
             continue
         if pcount > fcount and fcount > 0:
             print('Number of files in ', pdir, 'is greater than expected', fcount, pcount)
@@ -448,11 +472,12 @@ def Phase2(lTODO):
     lcount = InsertWork(lTODO)
     if lcount != len(lTODO):
         print('Duplication?', len(lTODO), lcount)
-    for ldirectory in lTODO:
+    for pair_directory in lTODO:
+        ldirectory = pair_directory[0]
         print('About to try', ldirectory)
         #
         try:
-            command = [INITIAL_DIR + '/onedir.sh', ldirectory]
+            command = [INITIAL_DIR + '/onedir.sh', ldirectory, pair_directory[1]]
             output, error, code = U.getoutputerrorsimplecommand(command, 86400)
             #subprocess.run(command, shell=False, timeout=86400, check=True, capture_output=True)
         except subprocess.TimeoutExpired:

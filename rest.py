@@ -1455,7 +1455,19 @@ def getcountexpected(estring):
 #  off to LTA
 @app.route("/dumping/readydir", methods=["GET"])
 def givereaddirs():
-    query = 'SELECT idealName,toLTA FROM FullDirectories'
+    query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA=0'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('givereaddirs:  cannot read query', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Get the list of directories that we consider handed off already
+@app.route("/dumping/handedoffdir", methods=["GET"])
+def givedonedirs():
+    query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0'
     try:
         stuff = query_db_final(query)
     except:
@@ -1581,17 +1593,26 @@ def glueworkupdate(estring):
         if word_pair[1] not in WORKINGTABLESTATI:
             print('glueworkupdate: status not valid', word_pair[1])
             return 'FAILURE invalid status'
-        query = 'UPDATE WorkingTable SET status=? WHERE realDir=?'
+        query = 'UPDATE WorkingTable SET status=? WHERE realDir LIKE %?%'
         params = (word_pair[1], word_pair[0])
     else:
         # default is Picked
-        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir=?'
+        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir LIKE %?%'
         params = (comm, )
     try:
         stuff = insert_db_final(query, params)
     except:
         print('glueworkupdate: failed to set status for', query, params)
         return 'FAILURE'
+    # ALSO:
+    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE %?%'
+    params = (word_pair[0], )
+    try:
+        stuff = insert_db_final(query, params)
+    except:
+        print('glueworkupdate: failed to set FullDirectories toLTA where idealName LIKE', params)
+        return 'FAILURE'
+    #
     return ''
 
 
