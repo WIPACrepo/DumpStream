@@ -14,6 +14,8 @@ import sys
 import glob
 import Utils as U
 
+####
+# Set some global stuff with default values
 config_file = '/home/jbellinger/Glue.json'
 YEAR = '2018'
 ROOT = '/mnt/lfs7/exp'
@@ -36,6 +38,16 @@ def SetStatus(gnewstatus):
     # Run means currently running.  Ready means ready to run
     # The lastChangeTime is more for internal debugging than user
     # operations, and is not returned via this interface.
+    #+
+    # Arguments:  new status or Query
+    # Returns:    status if Query
+    #             Error if bad argument
+    #             '' if change succeeded
+    #             Failure + stuff if something failed
+    # Side Effects:	Prints error if there was a problem
+    #			change in REST server info
+    # Relies on:	REST server working
+    #-
     if gnewstatus not in ['Pause', 'Run', 'Ready', 'Query']:
         return 'Error'
     ggeturl = copy.deepcopy(U.basicgeturl)
@@ -56,6 +68,13 @@ def SetStatus(gnewstatus):
 
 def PurgeWork():
     ''' Empty out WorkingTable Picked entries '''
+    #+
+    # Arguments:	None
+    # Returns:		None
+    # Side Effects:	Prints error if there was a problem
+    #			change in REST server
+    # Relies on:	REST server working
+    #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetglueworkpurge)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -64,6 +83,13 @@ def PurgeWork():
 
 def GetWorkCount():
     ''' Get the count of 'Unpicked' in WorkingTable '''
+    #+
+    # Arguments:	None
+    # Returns:		# of Unpicked if OK
+    #			0 or -1 if failure
+    # Side Effects:	Prints error if there was a problem
+    # Relies on:	REST server working
+    #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetglueworkcount)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -79,6 +105,13 @@ def GetWorkCount():
 
 def UpdateWork(idir):
     ''' Update the directory entry in WorkingTable to have new status '''
+    #+
+    # Arguments:	Directory to update
+    # Returns:		None
+    # Side Effects:	Prints error if there was a problem
+    #			change in REST server
+    # Relies on:	REST server working
+    #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetglueworkupdate + U.mangle(idir))
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -88,6 +121,15 @@ def UpdateWork(idir):
 def InsertWork(idir_array):
     ''' Insert new directories in WorkingTable (default Unpicked)
          idir_array is a list of pairs of directories: [real,ideal]  '''
+    #+
+    # Arguments:	list of pairs of directories [real, ideal]
+    # Returns:		number of directories successfully inserted
+    #			 (REST server info return; will silently refuse to
+    #			  insert duplicate directories)
+    # Side Effects:	Prints error if there was a problem
+    #			change in REST server (additions)
+    # Relies on:	REST server working
+    #-
     ilendir = len(idir_array)
     if ilendir <= 0:
         return 0
@@ -125,6 +167,12 @@ def InsertWork(idir_array):
 
 def DiffOldDumpTime():
     ''' Is the most recent dump time newer than the most recent scan? '''
+    #+
+    # Arguments:	None
+    # Returns:		Boolean
+    # Side Effects:	Prints error if there was a problem
+    # Relies on:	REST server working, and Dump and Interface times set
+    #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetgluetimediff)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -137,6 +185,13 @@ def DiffOldDumpTime():
 
 def ParseParams():
     ''' Parse out what the parameters tell this job to do '''
+    #+
+    # Arguments:	None [REVISIT THIS.  Probably want to take arguments from command line!]
+    # Returns:		None
+    # Side Effects:	Resets GLOBAL parameters from the configuration file
+    #                   Prints message and exit-3 if the reading fails
+    # Relies on:	Configuration file available and readable
+    #-
     # These will be globals
     # If not set by the parameters, take these globals from
     #  the configuration file
@@ -166,21 +221,25 @@ def ParseParams():
     global CONDOR_LIMIT
     global INITIAL_DIR
     config_file = '/home/jbellinger/Glue.json'
-    with open(config_file) as json_file:
-        data = json.load(json_file)
-        YEAR = data['YEAR']
-        ROOT = data['ROOT']
-        PARTIAL = bool(data['PARTIAL'])
-        SCAN_ONLY = bool(data['SCAN_ONLY'])
-        SUB_TREES = []
-        for tree in data['SUB_TREES']:
-            SUB_TREES.append(tree['tree'])
-        FORCE = bool(data['FORCE'])
-        FORCE_LIST = []
-        FORBID = bool(data['FORBID'])
-        FORBID_LIST = []
-        CROOT = data['CROOT']
-        CONDOR_LIMIT = int(data['CONDOR_LIMIT'])
+    try:
+        with open(config_file) as json_file:
+            data = json.load(json_file)
+            YEAR = data['YEAR']
+            ROOT = data['ROOT']
+            PARTIAL = bool(data['PARTIAL'])
+            SCAN_ONLY = bool(data['SCAN_ONLY'])
+            SUB_TREES = []
+            for tree in data['SUB_TREES']:
+                SUB_TREES.append(tree['tree'])
+            FORCE = bool(data['FORCE'])
+            FORCE_LIST = []
+            FORBID = bool(data['FORBID'])
+            FORBID_LIST = []
+            CROOT = data['CROOT']
+            CONDOR_LIMIT = int(data['CONDOR_LIMIT'])
+    except:
+        print('ParseParams:  failed to read the config file', config_file)
+        sys.exit(3)
     # Now reload over these from the relevant arguments
     #  Or not.
     # For initial testing, don't bother
@@ -192,6 +251,14 @@ def GetBundleNamesLike(pcarg):
     # it the whole ideal name.  If you want all the e.g. PFRaw
     # bundles for a year, feed it "/data/exp/IceCube/2018/unbiased/PFRaw"
     # You can get swamped if you are greedy
+    #+
+    # Arguments:	directory path fragment (be as specific as possible)
+    # Returns:		list of ideal name for bundles which match the path fragment
+    #			 (NOTE: information taken from MY NERSC transfer chain, not LTA)
+    #			  I want to know what has already been done, to exclude it
+    # Side Effects:	Print error if there was a problem
+    # Relies on:	REST server working
+    #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetfindbundleslike + U.mangle('%25' + pcarg + '%25'))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -226,6 +293,13 @@ def GetStagedDirsLike(pcarg):
     # whether the directory had been shipped as well as handed off to
     # LTA, but there's no point in shoehorning that additional info in.
     #
+    #+
+    # Arguments:	directory path fragment (be as specific as possible)
+    # Returns:		list of pairs of directory names [real, ideal] 
+    #			 for directories that have already been handed off to LTA
+    # Side Effects:	Print error if there was a problem
+    # Relies on:	REST server working
+    #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.tdargetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -247,6 +321,16 @@ def GetStagedDirsLike(pcarg):
 def GetBundleDirsLike(pcarg):
     ''' Retrieve bundle directories like the specified directory
          Get both from BundleStatus and FullDirectories '''
+    #+
+    # Arguments:	directory path fragment (be as specific as possible) 
+    # Returns:		list of pairs of directory names [real, ideal] 
+    #			 for directories that have already been handed off to LTA
+    #                    or bundled by my system
+    # Side Effects:	None
+    # Relies on:	REST server working
+    #                    GetBundleNamesLike
+    #                    GetStagedDirsLike
+    #-
     got_bundles = GetBundleNamesLike(pcarg)
     got_staged_dirs = GetStagedDirsLike(pcarg)
     if len(got_bundles) == 0 and len(got_staged_dirs) == 0:
@@ -262,7 +346,16 @@ def GetBundleDirsLike(pcarg):
     return dreturn
 
 def FullToFrag(dname, lYEAR):
-    ''' Turn the real or ideal name into a YEAR-prefixed fragment '''
+    ''' Turn the real or ideal file or directory name into a YEAR-prefixed fragment '''
+    #+
+    # Arguments:	name, real or ideal, in data warehouse format,
+    #			 with "YEAR" as placeholder for the year
+    #			name of year to prefix the fragment with
+    # Returns:		fragment of name string prefixed with the year
+    #			'Failure' if the format isn't right
+    # Side Effects:	Print error if the format isn't right
+    # Relies on:	Nothing
+    #-
     dword = dname.split('/' + str(lYEAR) + '/')
     if len(dword) != 2:
         print('The name is not in ideal warehouse form wrt year', dname, lYEAR)
@@ -272,6 +365,16 @@ def FullToFrag(dname, lYEAR):
 def SubdirInList(directory, directoryList, lYEAR) -> bool:
     ''' I want to compare ideal and real directory names.
         Does the given directory match one in the list? '''
+    #+
+    # Arguments:	generic directory name with YEAR as placeholder
+    #			list of [ideal,real] directory names already done
+    #			actual year to replace placeholder with
+    # Returns:		False if 'FAILURE' (fail in favor of processing)
+    #			False if the given directory isn't in the done list
+    #			True if the given directory _is_ in the done list
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     #
     if len(directoryList) == 0:
         return False
@@ -291,6 +394,12 @@ def SubdirInList(directory, directoryList, lYEAR) -> bool:
 
 def listdir_fullpath(d):
     ''' Stolen from stackoverflow '''
+    #+
+    # Arguments:	file name
+    # Returns:		directory name
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     try:
         pd = os.listdir(d)
     except:
@@ -301,6 +410,14 @@ def listdir_fullpath(d):
 
 def GetExpectedFromFrag(gfrag):
     ''' Get the expected # of files from the expected table for gfrag '''
+    #+
+    # Arguments:	directory fragment
+    # Returns:		-1 if problem
+    #			 Number of files expected in the directory
+    # Side Effects:	Print error if problem:
+    #			 IF the directory is expected to be empty, PROBLEM
+    # Relies on:	REST server working
+    #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetdumpinggetexpected + U.mangle(gfrag))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
@@ -311,7 +428,15 @@ def GetExpectedFromFrag(gfrag):
     return int(ganswer)
 
 def GetToken():
-    ''' Get the token, if possible to let it run : gets 0, 1, 2'''
+    ''' Get the token, if possible to let the Dump to LTA interface run : gets 0, 1, 2'''
+    #+
+    # Arguments:	None
+    # Returns:		True if we got the Token OK
+    #			False if we didn't
+    # Side Effects:	Print error if there was a problem
+    #			REST server status change if success
+    # Relies on:	REST server working
+    #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle(socket.gethostname()))
     ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -329,6 +454,14 @@ def GetToken():
 
 def ReleaseToken():
     ''' Release the token for running '''
+    #+
+    # Arguments:	None
+    # Returns:		True if we released the Token OK
+    #			False if we didn't
+    # Side Effects:	Print error if there was a problem
+    #			REST server status change if success
+    # Relies on:	REST server working
+    #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle('RELEASE'))
     ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -345,6 +478,21 @@ def ReleaseToken():
 
 def Phase0():
     ''' Initial program configuration '''
+    #+
+    # Arguments:	None
+    # Returns:		True if we can run
+    #			False if we should not
+    #			False if there's nothing to do
+    # Side Effects:	Print error/warning if there are problems
+    #			REST server status change
+    # Relies on:	GetToken
+    #			ReleaseToken
+    #			ParseParams
+    #			SetStatus
+    #			GetWorkCount
+    #			DiffOldDumpTime
+    #			PurgeWork
+    #-
     # Parse parameters, if any
     # If we aren't "Forcing" or "Partial" only, should we be running
     #   No if GlueStatus.status is not "Ready"
@@ -367,17 +515,23 @@ def Phase0():
     # Should we do anything?
     run_status = SetStatus('Query')
     if run_status in ['Run', 'Pause'] and not FORCE:
+        if not ReleaseToken():
+            print('Phase0: Failed to release token: A')
         return False
     #
     still_in_process = GetWorkCount()
     if still_in_process > 0:
         if not FORCE:
+            if not ReleaseToken():
+                print('Phase0: Failed to release token: B')
             return False
         print('WARNING:  Forcing run w/ ongoing work!')
     #
     new_dump = DiffOldDumpTime()
     if not new_dump:
         if not FORCE:
+            if not ReleaseToken():
+                print('Phase0: Failed to release token: C')
             return False
         print('WARNING:  Forcing run w/ old dump')
     #
@@ -398,6 +552,11 @@ def Phase1():
     #   If they agree, append to the TODO
     #   If # present > # expected, warn
     # Return the TODO
+    #+
+    # Arguments:	None
+    # Returns:		list of directories to be examined
+    # Side Effects:	Print errors if problem
+    #-
     if FORCE:
         TODO = copy.deepcopy(FORCE_LIST)
     else:

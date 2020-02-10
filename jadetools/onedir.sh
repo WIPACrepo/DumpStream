@@ -35,6 +35,7 @@ source env/bin/activate
 ./ltacmdjnb catalog load --path ${directory}
 if [[ $? != 0 ]]
   then
+     echo "First catalog load failed with ${directory}, trying again"
      # try again
      ./ltacmdjnb catalog load --path ${directory}
      if [[ $? != 0 ]]
