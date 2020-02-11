@@ -1,4 +1,6 @@
 # Utils.py (.base)
+''' Define a lot of constants and utility routines for my REST framework.
+    Some wheel-reinventing here:  I would do things differently now '''
 import sys
 # IMPORT_utils.py
 # Assumes "import sys"
@@ -13,7 +15,7 @@ import pymysql
 
 # IMPORT CODE_utils.py
 #####
-# Define some constants
+# Define some constants.  A whole bunch of constants.
 REPLACESTRING = '+++'
 REPLACENOT = '==='
 REPLACECURLLEFT = '+=+=+'
@@ -173,26 +175,67 @@ DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
 
 # String manipulation stuff
 def unslash(strWithSlashes):
+    ''' Replace '/' with special string '''
+    #+
+    # Arguments:	string to be massaged
+    # Returns:		string with '/' replaced with special string
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
+    ''' Replace special string with '/' w '''
+    #+
+    # Arguments:	string to be restored
+    # Returns:		string with special string replaced with '/'
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     return strWithoutSlashes.replace(REPLACESTRING, '/').replace(REPLACENOT, '!')
 
 def unmangle(strFromPost):
-    # dummy for now.  Final thing has to fix missing spaces,
-    # quotation marks, commas, slashes, and so on.
-    #return strFromPost.replace(REPLACESTRING, '/').replace('\,', ',').replace('\''', ''').replace('\@', ' ')
+    ''' Replace special tokens with the stuff that confuses curl '''
+    #+
+    # Arguments:        string to be restored
+    # Returns:          string with special tokens restored to curl confusers (e.g. spaces)
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
     return strFromPost.replace(REPLACESTRING, '/').replace(r'\,', ',').replace('@', ' ').replace(REPLACENOT, '!').replace(REPLACECURLLEFT, '{').replace(REPLACECURLRIGHT, '}')
 
 def mangle(strFromPost):
+    ''' Replace stuff that confuses curl with special tokens '''
+    #+
+    # Arguments:        string to be made curl-friendly
+    # Returns:          string with curl confusers (e.g. spaces) replace w/ tokens
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
     # Remote jobs will use this more than we will here.
     return strFromPost.replace('/', REPLACESTRING).replace(',', r'\,').replace(' ', '@').replace('!', REPLACENOT).replace('{', REPLACECURLLEFT).replace('}', REPLACECURLRIGHT)
 
 def tojsonquotes(strFromPost):
+    ''' replace single with double quotes '''
+    #+
+    # Arguments:        string with possible single quotes
+    # Returns:          string with double quotes only
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
+    # Remote jobs will use this more than we will here.
     # Turn single into double quotes
     return strFromPost.replace("\'", "\"")
 
 def fromjsonquotes(strFromPost):
+    ''' replace with single quotes '''
+    #+
+    # Arguments:        string with possible double quotes
+    # Returns:          string with single quotes only
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
+    # Remote jobs will use this more than we will here.
     # Turn double into single quotes.  Won't use it much
     # here, but the remote jobs that feed this will
     return strFromPost.replace("\"", "\'")
@@ -497,6 +540,19 @@ def FindBundlesWithDir(a_dirname, a_status='Unknown'):
 ############################################
 ######  Execute a command, return the answer.  Or error messages if it failed
 def doOperationDBTuple(dbcursor, command, string):
+    ''' Execute a database operation on a mysql database w/ dbcursor established
+        The command is command
+        string is info '''
+    #+
+    # Arguments:	dbcursor:  cursor established for mysql database
+    #			command:  mysql command to execute
+    #			string:	info to print in case of error
+    # Returns:		tuple, contents depend on the command
+    #			list with error info
+    # Side Effects:	mysql DB may change; depends on command
+    # Relies on:	mysql DB available, connection works
+    #			pymysql
+    #-
     try:
         dbcursor.execute(command)
         expectedtuple = dbcursor.fetchall()
