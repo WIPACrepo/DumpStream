@@ -172,6 +172,10 @@ DUMPING_LOG_SPACE = '/tmp/'
 DUMPING_MASTER_LOG_SPACE = '/opt/i3admin/shortlogs/'
 # Where do scripts live?
 DUMPING_SCRIPTS = '/opt/i3admin/dumpscripts/'
+#
+# MySQL database pointers
+DBdatabase = None
+DBcursor = None
 
 # String manipulation stuff
 def unslash(strWithSlashes):
@@ -185,7 +189,7 @@ def unslash(strWithSlashes):
     return strWithSlashes.replace('/', REPLACESTRING).replace('!', REPLACENOT)
 
 def reslash(strWithoutSlashes):
-    ''' Replace special string with '/' w '''
+    ''' Replace special string with '/' '''
     #+
     # Arguments:	string to be restored
     # Returns:		string with special string replaced with '/'
@@ -241,10 +245,28 @@ def fromjsonquotes(strFromPost):
     return strFromPost.replace("\"", "\'")
 
 def singletodouble(stringTo):
+    ''' Replace single quotes with double quotes '''
+    #+
+    # Arguments:	string
+    # Returns:		string with single quotes changed to double
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     return stringTo.replace('\'', '\"')
 
 # timeout is in seconds
 def getoutputerrorsimplecommand(cmd, Timeout):
+    ''' workhorse interface for sub-process spawning '''
+    #+
+    # Arguments:	command (as an array of strings)
+    #			timeout requested in seconds
+    # Returns:		output from subprocess operation
+    # 			stderr from subprocess operation
+    # 			returncode from subprocess operation
+    # Side Effects:	prints error if there was a failure
+    #			whatever the effect of the command was
+    # Relies on:	Nothing
+    #-
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = proc.communicate(Timeout)
@@ -263,6 +285,14 @@ def getoutputerrorsimplecommand(cmd, Timeout):
 # Write out information.  Utility in case I want to do
 # something other than simply print
 def logit(string1, string2):
+    ''' Place-holder for more sophisticated thing; prints '''
+    #+
+    # Arguments:	string1 (usually the calling procedure's name)
+    #			string2 (usually the error message)
+    # Returns:		None
+    # Side Effects:	prints out the message
+    # Relies on:	Nothing
+    #-
     print(string1 + '  ' + string2)
 
 
@@ -270,6 +300,13 @@ def logit(string1, string2):
 # Test parse byte-stream of list of dicts back into a list of strings
 # each of which can be unpacked later into a dict
 def stringtodict(instring):
+    ''' Attempt to parse byte-stream list of dicts into a list of strings '''
+    #+
+    # Arguments:	byte-stream string from REST server or ilk
+    # Returns:		list of strings delimited by { and }
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     if len(instring) <= 1:
         return []
     countflag = 0
@@ -288,6 +325,13 @@ def stringtodict(instring):
 
 
 def massage(answer):
+    ''' Decode byte-stream returned by web '''
+    #+
+    # Arguments:	byte-stream string from REST server or ilk
+    # Returns:		string decoded with utf-8
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     try:
         relaxed = str(answer.decode("utf-8"))
     except:
@@ -299,6 +343,12 @@ def massage(answer):
 
 def unNone(u_answer):
     ''' Get rid of DB bare "None" and replace w/ quotes '''
+    #+
+    # Arguments:	string that may have "None" in it
+    # Returns:		string with None replaced with quotes so python json doesn't barf
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     try:
         return u_answer.replace(' None ', ' \"None\" ')
     except:
@@ -306,6 +356,16 @@ def unNone(u_answer):
 
 
 def globusjson(localuuid, localdir, remotesystem, idealdir): 
+    ''' Create a json file for a globus sync job '''
+    #+
+    # Arguments:	local bundle uuid
+    #			local bundle directory
+    #			globus name of target system (usually at NERSC)
+    #			ideal directory of the bundle
+    # Returns:		json that jade-lta can use
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     outputinfo = '{\n'
     outputinfo = outputinfo + '  \"component\": \"globus-mirror\",\n'
     outputinfo = outputinfo + '  \"version\": 1,\n'
@@ -330,6 +390,17 @@ def globusjson(localuuid, localdir, remotesystem, idealdir):
 
 # Set a bundle's status
 def flagBundleStatus(key, newstatus):
+    ''' Change the bundle's status to the new one '''
+    #+
+    # Arguments:	bundle's id
+    #			new status (must be valid)
+    # Returns:		stdout from operation (or Failure)
+    #			stderr from operation (or my message)
+    #			errorcode from operation
+    # Side Effects:	print if problem
+    #			Change in REST server database
+    # Relies on:	REST server working
+    #-
     if str(newstatus) not in BUNDLESTATI:
         return 'Failure', newstatus + ' is not allowed', '1'
     fbposturl = copy.deepcopy(basicposturl)
@@ -343,6 +414,13 @@ def flagBundleStatus(key, newstatus):
 
 #
 def deltaT(oldtimestring):
+    ''' Return the difference in time between the given time and now '''
+    #+
+    # Arguments:	old time in '%Y-%m-%d %H:%M:%S' format
+    # Returns:		integer time difference in minutes
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     current = datetime.datetime.now()
     try:
         oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
@@ -362,18 +440,35 @@ def deltaT(oldtimestring):
 # If the flag says do them all, do them all, otherwise
 # don't do anything at all and return 'TooMany'
 def patchBundle(bundleid, columntype, newvalue, manyok):
+    ''' Modify info about the given bundle 
+         2-step process:  get # of entries that would be touched
+         if ==0, return 'None'
+         if ==1, do it, return 'OK'
+         if >1 && manyok, do them all, return 'OK', else return 'TooMany'
+        '''
+    #+
+    # Arguments:	bundle's id
+    #			column name
+    #			new value
+    #			do many at once?
+    # Returns:		'OK' or 'None' or 'TooMany'
+    # Side Effects:	print message if problem
+    #			crash if there was a problem
+    #			possible change in database
+    # Relies on:	REST server working
+    #-
     #
     geturlx = copy.deepcopy(basicgeturl)
     geturlx.append(targetbundleget + mangle(str(bundleid)))
     ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
     if len(ansx) <= 0:
         print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
-        sys.exit(0)
+        sys.exit(12)
     try:
         my_jsonx = json.loads(singletodouble(massage(ansx)))
     except:
         print('patchBundle initial query got junk', ansx, bundleid)
-        sys.exit(0)
+        sys.exit(12)
     if len(my_jsonx) == 0:
         return 'None'
     if len(my_jsonx) > 1 and not manyok:
@@ -385,15 +480,25 @@ def patchBundle(bundleid, columntype, newvalue, manyok):
     ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
     if 'OK' not in ansx:
         print('patchBundle update failed', ansx, errx, codx, comm)
-        sys.exit(0)
+        sys.exit(12)
     return 'OK'
 #
-DBdatabase = None
-DBcursor = None
 ######################################################
 ######
 # DB connection established
 def getdbgen():
+    ''' Open connection to mysql database '''
+    #+
+    # Arguments:	None
+    # Returns:		None
+    # Side Effects:	print message if problem
+    #			crash if problem
+    #			possible change in database
+    # Relies on:	mysql database working
+    #			~/.my.cnf has valid credentials
+    #			global DBdatabase
+    #			global DBcursor
+    #-
     global DBdatabase
     global DBcursor
     try:
@@ -401,74 +506,128 @@ def getdbgen():
         DBdatabase = pymysql.connect(read_default_file='~/.my.cnf',)
     except pymysql.OperationalError:
         print(['ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
+        sys.exit(11)
     except Exception:
         print(['ERROR: Generic failure to connect to MySQL archivedump database.', sys.exc_info()[0]])
-        sys.exit(1)
+        sys.exit(11)
     try:
         #DBcursor = DBdatabase.cursor()
         DBcursor = DBdatabase.cursor(pymysql.cursors.DictCursor)
     except pymysql.OperationalError:
         print(['ERROR: could not get cursor for database.'])
-        sys.exit(1)
+        sys.exit(11)
     except Exception:
         print(['ERROR: Generic failure to get cursor for database.', sys.exc_info()[0]])
-        sys.exit(1)
+        sys.exit(11)
 
 ####
 def returndbgen():
+    ''' Return cursor to mysql database '''
+    #+
+    # Arguments:	None
+    # Returns:		cursor to database.  Hope it is active!
+    # Side Effects:	None
+    # Relies on:	global DBcursor
+    #-
+    global DBcursor
+    #
     return DBcursor
 
 ####
 def closedbgen():
+    ''' Disconnect cursor and database connection to mysql database '''
+    #+
+    # Arguments:	None
+    # Returns:		None
+    # Side Effects:	Disconnects from database
+    # Relies on:	global DBcursor
+    #			global DBdatabase
+    #-
+    global DBdatabase
+    global DBcursor
+    #
     DBcursor.close()
     DBdatabase.close()
 
 ####
 # Commit changes to DB specified
 def doCommitDB():
+    ''' Commit changes to mysql database.  DumpStream code does not use this '''
+    #+
+    # Arguments:	None
+    # Returns:		None
+    # Side Effects:	print message if problem
+    #			crash if problem
+    #			possible change in database
+    # Relies on:	mysql database working
+    #			global DBdatabase
+    #-
+    global DBdatabase
+    #
     try:
         DBdatabase.commit()
     except pymysql.OperationalError:
         DBdatabase.rollback()
         print(['doCommitDB: ERROR: could not connect to MySQL archivedump database.'])
-        sys.exit(1)
+        sys.exit(11)
     except Exception:
         DBdatabase.rollback()
         print(['doCommitDB: Failed to execute the commit'])
-        sys.exit(1)
+        sys.exit(11)
 
 
 
 ############################################
 ######  Execute a command.  Crash if it fails, otherwise return silently
 def doOperationDB(dbcursor, command, string):
+    ''' Execute a mysql command, crash if failure, return nothing '''
+    #+
+    # Arguments:	active mysql db cursor
+    #			mysql command
+    #			string to print out if failure
+    # Returns:		None
+    # Side Effects:	print message if problem
+    #			crash if problem
+    #			possible change in database
+    # Relies on:	mysql database working
+    #-
     try:
         dbcursor.execute(command)
         return
     except pymysql.OperationalError:
         print(['ERROR: doOperationDB could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
+        sys.exit(11)
     except Exception:
         print(['ERROR: doOperationDB undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
+        sys.exit(11)
     return
 
 ############################################
 ######  Execute a command.  Crash if it fails, return False if it didn't work right, True if it was OK
 def doOperationDBWarn(dbcursor, command, string):
+    ''' Execute a mysql command, return success '''
+    #+
+    # Arguments:	active mysql db cursor
+    #			mysql command
+    #			string to print out if failure
+    # Returns:		boolean for success or failure
+    # Side Effects:	print message if problem
+    #			crash if connection failure
+    #			possible change in database
+    # Relies on:	mysql database working
+    #-
     try:
         dbcursor.execute(command)
         return True
     except pymysql.OperationalError:
         print(['ERROR: doOperationDBWarn could not connect to MySQL ', string, ' database.', command])
-        sys.exit(1)
+        sys.exit(11)
     except pymysql.IntegrityError:
         print(['ERROR: doOperationDBWarn \"IntegrityError\", probably duplicate key', string, ' database.', sys.exc_info()[0], command])
         return False
     except Exception:
         print(['ERROR: doOperationDBWarn undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command])
-        sys.exit(1)
+        sys.exit(11)
     return True
 
 ###
@@ -476,6 +635,13 @@ def doOperationDBWarn(dbcursor, command, string):
 # sync-up paradigm
 def AddActiveDir(a_dirname):
     ''' Add the name to ActiveDirectory '''
+    #+
+    # Arguments:        ideal directory name 
+    # Returns:          ''
+    # Side Effects:     print error if problem
+    #                   change entry in ActiveDirectory
+    # Relies on:        REST server working
+    #-
     posturl = copy.deepcopy(basicposturl)
     posturl.append(targetbundleactivediradd + mangle(a_dirname))
     try:
@@ -488,6 +654,13 @@ def AddActiveDir(a_dirname):
 
 def RemoveActiveDir(a_dirname):
     ''' Remove the name from ActiveDirectory '''
+    #+
+    # Arguments:        ideal directory name or fragment
+    # Returns:          ''
+    # Side Effects:     print error if problem
+    #                   change entry in ActiveDirectory
+    # Relies on:        REST server working
+    #-
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetbundleactivedirremove + mangle(a_dirname))
     try:
@@ -500,6 +673,12 @@ def RemoveActiveDir(a_dirname):
 
 def FindActiveDir(a_dirname):
     ''' Look for this name in ActiveDirectory '''
+    #+
+    # Arguments:        ideal directory name or fragment
+    # Returns:          [directory,changetime] if it exists in ActiveDirectory, else []
+    # Side Effects:     print error if problem
+    # Relies on:        REST server working
+    #-
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetbundleactivedirfind + mangle(a_dirname))
     try:
@@ -513,6 +692,14 @@ def FindActiveDir(a_dirname):
 #
 def FindBundlesWithDir(a_dirname, a_status='Unknown'):
     ''' Find bundles from BundleStatus with this directory name and status '''
+    #+
+    # Arguments:	directory name
+    #			status we are looking for (default=Unknown)
+    # Returns:		list of arrays of [id, idealName, status] of bundles
+    #			 in this directory
+    # Side Effects:	print error if problem
+    # Relies on:	REST server working
+    #-
     geturl = copy.deepcopy(basicgeturl)
     geturl.append(targetbundlegetlike + mangle(a_dirname + ' ' + str(a_status)))
     try:
