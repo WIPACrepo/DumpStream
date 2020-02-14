@@ -1,4 +1,5 @@
 # DumpControl.py.base
+''' Manage information about tapes in slots on jade03; submit dump jobs '''
 import sys
 import datetime
 import json
@@ -28,6 +29,15 @@ import Utils as U
 ###
 # Give top directories from a list
 def GiveTops(desiredtrees):
+    ''' Generate unique list of upper directories:
+         e.g. ['Icecube/2018/unbiased/PFRaw/0102', 'IceCube/2018/unbiased/PFRaw/0103'] 
+         returns ['IceCube/2018/unbiased/PFRaw']    '''
+    #+
+    # Arguments:	list of directory names
+    # Returns:		list of unique tree-tops from the argument
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
     if len(desiredtrees) <= 0:
         return []
     toplist = []
@@ -40,6 +50,13 @@ def GiveTops(desiredtrees):
 ###
 # Return the target directory for copying "to"
 def GiveTarget():
+    ''' Retrieve the target directory for dumping to '''
+    #+
+    # Arguments:	None
+    # Returns:		target directory
+    # Side Effects:	print and die on failure
+    # Relies on:	REST server working
+    #-
     gtgeturl = copy.deepcopy(U.basicgeturl)
     gtgeturl.append(U.targetdumpingdumptarget)
     gtoutp, gterro, gtcode = U.getoutputerrorsimplecommand(gtgeturl, 1)
@@ -58,6 +75,17 @@ def GiveTarget():
 #  Count the number of files in the specified directory and compare
 #   with the expected number
 def CountFilesInDir(cfidname, cfidexpectedcount):
+    ''' Count the files (beware of subdirectories!) in this directory,
+         compare with expected number '''
+    #+
+    # Arguments:	directory name to look in
+    # Returns:		boolean:  True if counts= expected, else False
+    # Side Effects:	print and die if the directory isn't visible
+    # Relies on:	FLAT DIRECTORY structure, all files at this level
+    #			 with no subdirectories
+    # NOTE:  May want to replace with a find in case I do need to traverse
+    #         trees
+    #-
     cfidcommand = ['/bin/ls', cfidname]
     cfidoutp, cfiderro, cfidcode = U.getoutputerrorsimplecommand(cfidcommand, 1)
     if int(cfidcode) != 0:
@@ -75,6 +103,20 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
 # replaced with the actual year(s) found
 
 def InventoryOneFull(slotlocation):
+    ''' Determine what is in the removable disk slot '''
+    #+
+    # Arguments:	path to slot's directory e.g. /mnt/slot6
+    # Returns:		[diskuuid, list of compositely named directories to view (simple views),
+    #                    detailed list for lower nested]
+    #			 based on wanted trees:
+    #			 e.g. /mnt/slot6/ARA/YEAR/unbiased/SPS-NUPHASE
+    #			 "YEAR" is replaced by what is found in the directory
+    #			 There may be 2 different years on view in one disk!
+    # Side Effects:	print message on error
+    #			multiple attempts to read the filesystem
+    # Relies on:	REST server working
+    #			GiveTops
+    #-		
     # First find out what trees we want to read
     i1geturl = copy.deepcopy(U.basicgeturl)
     i1geturl.append(U.targetdumpingwantedtrees)
@@ -179,6 +221,18 @@ def SetSlotsPoleID(slotnum, poleidnum):
 # Connect information between SlotContents and PoleDisk
 #  entries
 def InventoryAll():
+    ''' View all the slots available and check their UUIDs
+         Load the resulting info in SlotContents and PoleDisk tables '''
+    #+
+    # Arguments:	None
+    # Returns:		Nothing
+    # Side Effects:	print and die for failure
+    #			print for empty
+    #			Changes in REST server database
+    # Relies on:	REST server working
+    #			InventoryOne
+    #			SetSlotsPoleID
+    #-
     i1geturl = copy.deepcopy(U.basicgeturl)
     i1geturl.append(U.targetdumpingslotcontents)
     i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
@@ -242,6 +296,17 @@ def InventoryAll():
 #########################################################
 # JOB CHECK CODE
 def JobInspectAll():
+    ''' Check for activity '''
+    #+
+    # Arguments:	None
+    # Returns:		list of arrays of dump info
+    #			 [diskuuid, slot#, datestarted, pole disk id, slot name]
+    #			list of arrays of info from ps that match job names
+    #			list of arrays of dump info for still-running jobs
+    #			list of arrays of dump info for not-running jobs (done or dead)
+    # Side Effects:	ps executed
+    # Relies on:	REST server working
+    #-
     # First get a list of all the nominally active slots
     jigeturl = copy.deepcopy(U.basicgeturl)
     jigeturl.append(U.targetdumpinggetactive)
@@ -300,6 +365,13 @@ def JobInspectAll():
 ####
 # Check if the log space is getting full
 def CheckLogSpace():
+    ''' Check if log space is getting full '''
+    #+
+    # Arguments:	None
+    # Returns:		boolean; True if <90% full
+    # Side Effects:	df on filesystem
+    # Relies on:	Nothing
+    #-
     #commandc = ['/usr/bin/df', '-h', U.DUMPING_LOG_SPACE]
     commandc = ['/bin/df', '-h', U.DUMPING_LOG_SPACE]
     coutp, cerro, ccode = U.getoutputerrorsimplecommand(commandc, 1)
@@ -312,6 +384,18 @@ def CheckLogSpace():
 ####
 # Flag completed jobs as needed.  Sanity checking
 def JobDecisionCompleted(notmatched):
+    ''' Flag the completed jobs, check '''
+    #+
+    # Arguments:	list of arrays of info about jobs no longer running
+    #			 [diskuuid, slot#, datestarted, pole disk id, slot name]
+    # Returns:		list of arrays of info about jobs that completed
+    # Side Effects:	print and die for certain problems, e.g. job looks like
+    #			 it died.  This requires operator inspection!
+    #			tries to read log files
+    # Relies on:	REST server working
+    #			log files not purged
+    #			log file names have standardized format
+    #-
     # Look for completed jobs and flag them
     # First sanity check
     donelist = []
@@ -364,6 +448,14 @@ def JobDecisionCompleted(notmatched):
 ###
 # Set the PoleDisk status
 def SetPoleDiskStatus(spid, sstatus):
+    ''' Set the Pole Disk status '''
+    #+
+    # Arguments:	pole disk ID (in REST database)
+    #			new status
+    # Returns:		Nothing
+    # Side Effects:	Print and die if it fails
+    # Relies on:	REST server working
+    #-
     if sstatus not in U.PoleDiskStatusOptions:
         print('SetPoleDiskStatus:  bad status', sstatus)
         sys.exit(0)
@@ -378,6 +470,17 @@ def SetPoleDiskStatus(spid, sstatus):
 ###
 # Get the expected count from the DB
 def GetExpectedCount(trialdirname):
+    ''' Given the directory, how many files do we expect to find in it? '''
+    #+
+    # Arguments:	directory fragment
+    # Returns:		number expected, or -1 if there was a problem
+    # Side Effects:	None
+    # Relies on:	REST server working
+    #			"expected" table is already populated with the
+    #			 expected file count
+    #			NOTE:  not trivially retrieved from Pole DB; warehouser
+    #			 would know but we aren't warehousing these things
+    #-
     #  This checks whether the fragment matches anything in the DB
     gegeturl = copy.deepcopy(U.basicgeturl)
     gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
@@ -404,6 +507,19 @@ def GetExpectedCount(trialdirname):
 # Determine whether any of the directories are now full.  Return the
 # target directory in question if so
 def DirectoryCheckFull(donelist):
+    ''' Is any of the recently dumped directories full yet? '''
+    #+
+    # Arguments:	list of arrays of dump information
+    #			[uuid,slot#,datebegun,poledisk_id,slotname]
+    # Returns:		Nothing
+    # Side Effects:	Changes in REST server DB
+    #			print messages on failure
+    # Relies on:	REST server working
+    #			GiveTarget
+    #			InventoryOneFull
+    #			GetExpectedCount
+    #			CountFilesInDir
+    #-
     # Each entry in the array is an array with [uuid,slot#,datebegun,poledisk_id,slotname]
     dcok = []
     if len(donelist) <= 0:
@@ -438,6 +554,24 @@ def DirectoryCheckFull(donelist):
 # Decide whether a new job is needed, or whether an old job is done
 #  Do some cleanup too
 def JobDecision(dumperstatus, jdumpnextAction):
+    ''' Decide whether a new job is needed, or whether an old job is done '''
+    #+
+    # Arguments:	status of dumper system
+    #			next action dumper is to do
+    # Returns:		Nothing
+    # Side Effects:	change in REST server DB state
+    #			print message on surprises
+    #			print and die on failures
+    # Relies on:	REST server working
+    #			JobInspectAll
+    #			JobDecisionCompleted
+    #			DirectoryCheckFull
+    #			CheckLogSpace
+    #			InventoryOneFull
+    #			GiveTarget
+    #			SetPoleDiskStatus
+    #			DumperSetState
+    #-
     # Inspect what's out there
     expected, candidate, matching, notmatched = JobInspectAll()
     # Sanity check
@@ -547,6 +681,14 @@ def JobDecision(dumperstatus, jdumpnextAction):
 ####
 # State of the Dumper: query and set routines
 def DumperTodo():
+    ''' Query the state of the dumper system '''
+    #+
+    # Arguments:	None
+    # Returns:		current status
+    #			next action to do
+    # Side Effects:	print and die if failure
+    # Relies on:	REST server working
+    #-
     dtgeturl = copy.deepcopy(U.basicgeturl)
     dtgeturl.append(U.targetdumpingstate)
     dtoutp, dterro, dtcode = U.getoutputerrorsimplecommand(dtgeturl, 1)
@@ -558,10 +700,16 @@ def DumperTodo():
     status = dump_json[0]['status']
     nextAction = dump_json[0]['nextAction']
     return status, nextAction
-#U.DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
-#U.DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
+####
 #
 def DumperSetState(value):
+    ''' Set the state of the dumper system '''
+    #+
+    # Arguments:	new state
+    # Returns:		Nothing
+    # Side Effects:	print and die if bad state or failure
+    # Relies on:	REST server working
+    #-
     if value not in U.DumperStatusOptions:
         print('DumperSetState:  invalid state to set', value)
         sys.exit(0)
@@ -571,7 +719,16 @@ def DumperSetState(value):
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetState: failed to set', value, doutp, derro)
         sys.exit(0)
+####
+#
 def DumperSetNext(value):
+    ''' Set the next action for the dumper system when done with current action '''
+    #+
+    # Arguments:        new action
+    # Returns:          Nothing
+    # Side Effects:     print and die if bad action or failure
+    # Relies on:        REST server working
+    #-
     if value not in U.DumperNextOptions:
         print('DumperSetNext:  invalid state to set', value)
         sys.exit(0)

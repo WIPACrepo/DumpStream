@@ -554,8 +554,14 @@ def Phase1():
     # Return the TODO
     #+
     # Arguments:	None
-    # Returns:		list of directories to be examined
+    # Returns:		list of arrays of live and ideal directories
+    #			 for which the file count == expected
     # Side Effects:	Print errors if problem
+    # Relies on:	GetBundleDirsLike   (list of done or in process dirs)
+    #			listdir_fullpath
+    #			SubdirInList	(is this already accounted for)
+    #			FullToFrag	(pare down to sufficient fragment)
+    #			GetExpectedFromFrag (counts are keyed by directory fragment)
     #-
     if FORCE:
         TODO = copy.deepcopy(FORCE_LIST)
@@ -609,6 +615,15 @@ def Phase1():
 
 def Phase2(lTODO):
     ''' Do the submission stuff here '''
+    #+
+    # Arguments:	list of arrays of real and ideal directories to bundle
+    # Returns:		boolean:  True if OK or nothing to do, False otherwise
+    # Side Effects:	change WorkingTable
+    #			execute onedir.sh script
+    # Relies on:	InsertWork
+    #			REST server working
+    #			onedir.sh script (which relies on LTA environment)
+    #-
     #  if lTODO is empty, just log the run time and quit
     # Create a working list file
     #  [DEFINE DIRECTORY framework for this stuff]
@@ -659,6 +674,12 @@ def Phase2(lTODO):
 
 ####
 #
+#+
+# Main sequence: No arguments
+# Relies on:	ReleaseToken
+#		Phase0  (OK to run?)
+#		Phase1  (accumulate stuff to do)
+#		Phase2  (do the stuff)
 if not Phase0():
     answer = ReleaseToken()
     sys.exit()
