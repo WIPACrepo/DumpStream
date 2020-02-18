@@ -102,6 +102,28 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found
 
+def RetrieveDesiredTrees():
+    ''' Get the desired trees from the DB '''
+    #+
+    # Arguments:	None
+    # Returns:		list of wanted trees (e.g. ARA/YEAR/unbiased/SPS-NUPHASE
+    # Side Effects:	print and die on error
+    # Relies on:	REST server working
+    #-
+    i1geturl = copy.deepcopy(U.basicgeturl)
+    i1geturl.append(U.targetdumpingwantedtrees)
+    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
+    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
+        print('Get trees failure', i1geturl, i1outp, i1erro)
+        sys.exit(0)
+    desiredtrees = []
+    my_json = json.loads(U.singletodouble(i1outp))
+    for js in my_json:
+        h = js['dataTree']
+        desiredtrees.append(h)
+    return desiredtrees
+
+
 def InventoryOneFull(slotlocation):
     ''' Determine what is in the removable disk slot '''
     #+
@@ -116,20 +138,10 @@ def InventoryOneFull(slotlocation):
     #			multiple attempts to read the filesystem
     # Relies on:	REST server working
     #			GiveTops
+    #			RetrieveDesiredTrees
     #-		
     # First find out what trees we want to read
-    i1geturl = copy.deepcopy(U.basicgeturl)
-    i1geturl.append(U.targetdumpingwantedtrees)
-    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
-    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
-        print('Get trees failure', i1geturl, i1outp, i1erro)
-        sys.exit(0)
-    desiredtrees = []
-    my_json = json.loads(U.singletodouble(i1outp))
-    for js in my_json:
-        h = js['dataTree']
-        desiredtrees.append(h)
-
+    desiredtrees = RetrieveDesiredTrees()
     #
     # If no trees to read, why bother?
     if len(desiredtrees) <= 0:
@@ -190,6 +202,15 @@ def InventoryOneFull(slotlocation):
 # Get the UUID, if this is readable, for use with slot
 # management
 def InventoryOne(slotlocation):
+    ''' Get the UUID, if this location is readable, for use keeping
+        track of slot use '''
+    #+
+    # Arguments:	location of the slot.  e.g. /mnt/slot6
+    # Returns:		UUID of disk (exists as a file in top directory)
+    # Side Effects:	print error if failure
+    #			Does an ls of the slot (1-second timeout)
+    # Relies on:	disk has the usual jade format
+    #-
     #
     command = ['/bin/ls', slotlocation]
     i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(command, 1)
@@ -207,6 +228,14 @@ def InventoryOne(slotlocation):
 ####
 # Set the Poleid for a given slot#
 def SetSlotsPoleID(slotnum, poleidnum):
+    ''' Set the poleID for the given slot in the database '''
+    #+
+    # Arguments:	slotnumber (1-12)
+    #			pole id number (ID for that disk entry)
+    # Returns:		Nothing
+    # Side Effects:	Changes database
+    # Relies on:	REST server working
+    #-
     case = U.mangle(str(slotnum) + ' ' + str(poleidnum))
     ssposturl = copy.deepcopy(U.basicposturl)
     ssposturl.append(U.targetdumpingsetslotcontents + case)
