@@ -724,6 +724,52 @@ def FindBundlesWithDir(a_dirname, a_status='Unknown'):
             good_stuff.append([m_id, m_name, m_status])
     return good_stuff
 
+def RetrieveDesiredTrees():
+    ''' Get the desired trees from the DB '''
+    #+
+    # Arguments:        None
+    # Returns:          list of wanted trees (e.g. ARA/YEAR/unbiased/SPS-NUPHASE
+    # Side Effects:     print and die on error
+    # Relies on:        REST server working
+    #-
+    i1geturl = copy.deepcopy(basicgeturl)
+    i1geturl.append(targetdumpingwantedtrees)
+    i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
+    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
+        print('Get trees failure', i1geturl, i1outp, i1erro)
+        sys.exit(0)
+    desiredtrees = []
+    my_json = json.loads(singletodouble(i1outp))
+    for js in my_json:
+        h = js['dataTree']
+        desiredtrees.append(h)
+    return desiredtrees
+
+###
+# Return the target directory for copying "to"
+def GiveTarget():
+    ''' Retrieve the target directory for dumping to '''
+    #+
+    # Arguments:        None
+    # Returns:          target directory
+    # Side Effects:     print and die on failure
+    # Relies on:        REST server working
+    #-
+    gtgeturl = copy.deepcopy(basicgeturl)
+    gtgeturl.append(targetdumpingdumptarget)
+    gtoutp, gterro, gtcode = getoutputerrorsimplecommand(gtgeturl, 1)
+    if int(gtcode) != 0 or 'FAILURE' in str(gtoutp):
+        print('Get Target directory failed', gtoutp, gterro)
+        sys.exit(0)
+    dump_json = json.loads(singletodouble(gtoutp))
+    try:
+        directory = dump_json[0]['target']
+    except:
+        print('Cannot unpack', dump_json)
+        sys.exit(0)
+    return directory
+
+
 ############################################
 ######  Execute a command, return the answer.  Or error messages if it failed
 def doOperationDBTuple(dbcursor, command, string):
@@ -749,3 +795,29 @@ def doOperationDBTuple(dbcursor, command, string):
     except Exception:
         return ['ERROR: doOperationDBTuple undefined failure to connect to MySQL ', string, ' database.', sys.exc_info()[0], command]
     return [[]]
+
+####
+# Utility for paring off the jade file key prefix to a filename
+def NormalName(filename):
+    ''' Return the base file name without any ukey prefix.  May be expanded
+        with new prefixes to remove as needed '''
+    #+
+    # Arguments:        file name
+    # Returns:          base file name without cruft
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
+    # Assumption:  some files have ukey_${UUID}_rest-of-the-file-name
+    #   we want 'rest-of-the-file-name'
+    localstr = str(filename)
+    directorypart = os.path.dirname(localstr)
+    basepart = os.path.basename(localstr)
+    chunks = basepart.split('_')
+    nch = len(chunks)
+    if chunks[0] != 'ukey':
+        return localstr
+    nna = ''
+    for i in range(2, nch-1):
+        nna += chunks[i] + '_'
+    nna += chunks[nch-1]
+    return directorypart + '/' + nna

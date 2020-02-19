@@ -48,30 +48,6 @@ def GiveTops(desiredtrees):
     return toplist
 
 ###
-# Return the target directory for copying "to"
-def GiveTarget():
-    ''' Retrieve the target directory for dumping to '''
-    #+
-    # Arguments:	None
-    # Returns:		target directory
-    # Side Effects:	print and die on failure
-    # Relies on:	REST server working
-    #-
-    gtgeturl = copy.deepcopy(U.basicgeturl)
-    gtgeturl.append(U.targetdumpingdumptarget)
-    gtoutp, gterro, gtcode = U.getoutputerrorsimplecommand(gtgeturl, 1)
-    if int(gtcode) != 0 or 'FAILURE' in str(gtoutp):
-        print('Get Target directory failed', gtoutp, gterro)
-        sys.exit(0)
-    dump_json = json.loads(U.singletodouble(gtoutp))
-    try:
-        directory = dump_json[0]['target']
-    except:
-        print('Cannot unpack', dump_json)
-        sys.exit(0)
-    return directory
-
-###
 #  Count the number of files in the specified directory and compare
 #   with the expected number
 def CountFilesInDir(cfidname, cfidexpectedcount):
@@ -102,27 +78,6 @@ def CountFilesInDir(cfidname, cfidexpectedcount):
 # and the list of trees we want to archive.  YEAR must be
 # replaced with the actual year(s) found
 
-def RetrieveDesiredTrees():
-    ''' Get the desired trees from the DB '''
-    #+
-    # Arguments:	None
-    # Returns:		list of wanted trees (e.g. ARA/YEAR/unbiased/SPS-NUPHASE
-    # Side Effects:	print and die on error
-    # Relies on:	REST server working
-    #-
-    i1geturl = copy.deepcopy(U.basicgeturl)
-    i1geturl.append(U.targetdumpingwantedtrees)
-    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
-    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
-        print('Get trees failure', i1geturl, i1outp, i1erro)
-        sys.exit(0)
-    desiredtrees = []
-    my_json = json.loads(U.singletodouble(i1outp))
-    for js in my_json:
-        h = js['dataTree']
-        desiredtrees.append(h)
-    return desiredtrees
-
 
 def InventoryOneFull(slotlocation):
     ''' Determine what is in the removable disk slot '''
@@ -141,7 +96,7 @@ def InventoryOneFull(slotlocation):
     #			RetrieveDesiredTrees
     #-		
     # First find out what trees we want to read
-    desiredtrees = RetrieveDesiredTrees()
+    desiredtrees = U.RetrieveDesiredTrees()
     #
     # If no trees to read, why bother?
     if len(desiredtrees) <= 0:
@@ -553,7 +508,7 @@ def DirectoryCheckFull(donelist):
     dcok = []
     if len(donelist) <= 0:
         return
-    dtargetdir = GiveTarget()
+    dtargetdir = U.GiveTarget()
     for packet in donelist:
         # This repeats an earlier disk access!
         dstuff = InventoryOneFull(packet[4])
@@ -676,7 +631,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
         # nothing here--not sure why
         SetPoleDiskStatus(jid, 'Error')
         return
-    targetdir = GiveTarget()
+    targetdir = U.GiveTarget()
     dirstoscan = returnstuff[1]
     if len(dirstoscan) == 0:
         # nothing we want here, call it done.

@@ -15,15 +15,15 @@ def RetrieveNames():
     # Returns:		target, list of tops, name of slot
     # Side Effects:	None
     # Relies on:	REST server working
-    #			GiveTarget
-    #			RetrieveDesiredTrees
+    #			DumpControl.GiveTarget
+    #			DumpControl.RetrieveDesiredTrees
     #			program called with the name of a source directory
     #-
     #
     target = W.GiveTarget()
     listOfTops = W.RetrieveDesiredTrees()
     #
-    if len(sys.argv) <= 1:
+    if len(sys.argv) > 1:
         # parse loose the upper portion of the source directory
         chunks = str(sys.argv[1]).split('/')
         if len(chunks) < 3:
@@ -68,7 +68,7 @@ def FindOriginal(diskname, desiredtrees):
     # Side Effects:	executes a find in the specified directory
     #			It only takes 2 minutes to search the tree!
     #			print and die if error, exit 2
-    # Relies on:	Nothing
+    # Relies on:	Utils.getoutputsimplecommand
     #-
     # Sanity
     if len(desiredtrees) == 0:
@@ -101,6 +101,7 @@ def RenameOne(foundDiskFile, diskName, targetName):
     # Returns:		Nothing
     # Side Effects:	change the name of a file in the warehouse
     # Relies on:	NormalName
+    #			Utils.getoutputsimplecommand
     #-
     try:
         tempName = foundDiskFile.replace(diskName, targetName)
