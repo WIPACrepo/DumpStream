@@ -24,13 +24,14 @@ class renamer:
                 print('Cannot parse the slot name from ', sys.argv[1])
                 sys.exit(1)
             self.sourcedir = '/' + chunks[1] + '/' + chunks[2] + '/'
+            self.sourcedir.replace('//', '/')
         else:
             print('Need a directory based on the slot name')
             sys.exit(1)
-        self.target = U.GiveTarget()
+        self.target = U.GiveTarget() + '/'
+        self.target.replace('//', '/')
         self.listOfTops = U.RetrieveDesiredTrees()
 
-    
     
     def FindOriginal(self):
         ''' Run a find on the files in the disk '''
@@ -45,18 +46,31 @@ class renamer:
         # Sanity
         if len(self.listOfTops) == 0:
             return []
-        command = ['/usr/bin/find', '-f', self.sourcedir]
-        hugelist, foerror, focode = U.getoutputerrorsimplecommand(command, 120)
+        # Note that jade03 has /bin/find instead of /usr/bin/find
+        # Note that I need to exclude lost+found!
+        command = ['/bin/find', self.sourcedir, '-maxdepth', '1', '-mindepth', '1', '-type', 'd']
+        dirlist, foerror, focode = U.getoutputerrorsimplecommand(command, 1)
         if focode != 0:
-            print('FindOriginal failed to find the files in ', self.sourcedir, foerror, focode)
+            print('FindOriginal failed to find the top directories in', self.sourcedir, foerror, focode)
             sys.exit(2)
+        dirlists = dirlist.split()
+        hugelist = []
+        for directory in dirlists:
+            if directory == self.sourcedir + 'lost+found':
+                continue
+            command = ['/bin/find', directory, '-type', 'f']
+            biglist, foerror, focode = U.getoutputerrorsimplecommand(command, 120)
+            if focode != 0:
+                print('FindOriginal failed to find the files in ', directory, foerror, focode)
+                sys.exit(2)
+            hugelist = hugelist + biglist.split()
         #
         interesting = []
         if len(hugelist) <= 0:
             return interesting
         for entry in hugelist:
             for tree in self.listOfTops:
-                if tree in entry:
+                if U.TreeComp(tree, entry):
                     interesting.append(entry)
                     break
         return interesting
@@ -70,7 +84,8 @@ class renamer:
         # Arguments:	name of the file as found on the pole disk
         # Returns:	Nothing
         # Side Effects:	change the name of a file in the warehouse
-        # Relies on:	NormalName
+        #		print error on failure--don't die; might be intermittent
+        # Relies on:	Utils.NormalName
         #		Utils.getoutputsimplecommand (mv)
         #-
         try:
@@ -83,14 +98,15 @@ class renamer:
         if tempName == newName:
             return
         try:
-            command = ['/usr/bin/mv', tempName, newName]
+            # NOTE: jade03 has a different location for mv, not /usr/bin/mv
+            command = ['/bin/mv', tempName, newName]
             routp, rerr, rcode = U.getoutputerrorsimplecommand(command, 1)
             if rcode != 0:
                 print('RenameOne failed during rename', tempName, newName, routp, rerr, rcode)
-                sys.exit(3)
+                #sys.exit(3)
         except:
             print('RenameOne failed to rename', tempName, newName, routp, rerr, rcode)
-            sys.exit(3)
+            #sys.exit(3)
         return
     #
     def ExecuteJob(self):

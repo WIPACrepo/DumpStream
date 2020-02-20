@@ -821,3 +821,27 @@ def NormalName(filename):
         nna += chunks[i] + '_'
     nna += chunks[nch-1]
     return directorypart + '/' + nna
+
+####
+# Utility for determining if a file is in the generic
+# tree (with "YEAR" as placeholder) 
+def TreeComp(tctree, tcfile):
+    ''' Compare a desired tree (e.g. IceCube/YEAR/internal-system/pDAQ-2ndBld)
+        with a found file.  If it matches, return True '''
+    #-
+    # Arguments:    tree format (e.g. IceCube/YEAR/internal-system/pDAQ-2ndBld)
+    #               file name (e.g. /mnt/slot6/IceCube/2018/internal-system\
+    #                /pDAQ-2ndBld/1208/ukey_fffc0e97-c984-4faa-8d9c-ed60f2ccfe46\
+    #                _SPS-pDAQ-2ndBld-000_20181208_211302_000000.tar.gz
+    # Returns:      Boolean if the tree format matches the file name
+    # Side Effects: None
+    # Relies on:    Nothing
+    #-
+    chunks = tctree.split('YEAR')
+    firstindex = tcfile.find(chunks[0])
+    if firstindex < 0:
+        return False
+    secondindex = tcfile.find(chunks[1], firstindex)
+    if secondindex < 0:
+        return False
+    return True
