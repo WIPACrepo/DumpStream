@@ -1,3 +1,4 @@
+#!/bin/bash
 # Template script.  Copy to the name RSYNC${UUID} so we can identify
 #  which disk it is copying
 # Execute the rsync
@@ -8,7 +9,8 @@ echo "$@"
 ok=1
 donejobs=0
 expectedjobs=0
-uuidlogname=`echo $0 | awk '{n=split($1,a,"/");print "/tmp/"a[n]"copy.log";}'`
+firstargument=$1
+uuidlogname=$(echo $0 | awk '{n=split($1,a,"/");print "/tmp/"a[n]"copy.log";}')
 touch ${uuidlogname}
 while [[ ${ok} == 1 ]]
   do
@@ -19,14 +21,14 @@ while [[ ${ok} == 1 ]]
                shift 2
                continue
             fi
-          expectedjobs=$(( ${expectedjobs} + 1 ))
+          expectedjobs=$(( expectedjobs + 1 ))
           sudo rsync -av $1 $2 >> ${uuidlogname}
           if [[ $? != 0 ]]
             then
               echo "FAILURE at $1  to $2"
               continue
             else
-              donejobs=$(( ${donejobs} + 1 ))
+              donejobs=$(( donejobs + 1 ))
             fi
        else
           echo $1 "..." $2 ",,,"
@@ -40,4 +42,8 @@ while [[ ${ok} == 1 ]]
 http://archivecontrol.wipac.wisc.edu:80/glue/timeset/LastDumpEnded
 
 echo "SUMMARY ${expectedjobs} ${donejobs}"
+if [[ "${firstargument}" == "" ]]; then echo "Nothing to do/was done?"; exit 1; fi
+cd /opt/i3admin/dumpscripts
+source venv/bin/activate
+python renamer.py "${firstargument}"
 exit 0
