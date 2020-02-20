@@ -1,4 +1,4 @@
-''' Use post-processing as a separate file Poster.py 
+''' Use post-processing as a separate file renamer.py 
    Intended to be called at the end of the bash dump script,
    using an argument provided to the dump script '''
 import sys
@@ -13,10 +13,10 @@ class renamer:
         # Arguments:	"self"
         # Returns:	None
         # Side Effects:	None
-        # Relies on:	DumpControl.GiveTarget
-        #		DumpControl.RetrieveDesiredTrees
+        # Relies on:	Utils.GiveTarget  (REST request)
+        #		Utils.RetrieveDesiredTrees (REST request)
         #		program called with first argument matching
-        #		 the name of a source directory (begine with the disk name)
+        #		 the name of a source directory (begin with the disk name)
         #-
         if len(sys.argv) > 1:
             chunks = str(sys.argv[1]).split('/')
@@ -40,7 +40,7 @@ class renamer:
         # Side Effects:	executes a find in the specified directory
         #		It only takes 2 minutes to search the tree!
         #		print and die if error, exit 2
-        # Relies on:	Utils.getoutputsimplecommand
+        # Relies on:	Utils.getoutputsimplecommand (find)
         #-
         # Sanity
         if len(self.listOfTops) == 0:
@@ -68,10 +68,10 @@ class renamer:
             Otherwise attempt a mv of the old name to the new.  Die on failure '''
         #+
         # Arguments:	name of the file as found on the pole disk
-        # Returns:		Nothing
+        # Returns:	Nothing
         # Side Effects:	change the name of a file in the warehouse
         # Relies on:	NormalName
-        #			Utils.getoutputsimplecommand
+        #		Utils.getoutputsimplecommand (mv)
         #-
         try:
             tempName = foundDiskFile.replace(self.sourcedir, self.target)
@@ -97,18 +97,20 @@ class renamer:
         ''' Execute the rename operations '''
         #+
         # Arguments:	None
-        # Returns:		None
+        # Returns:	None
         # Side Effects:	Executes find and multiple mv's in filesystems
-        #			Print and die on failure
+        #		Print and die on failure
         # Relies on:	RetrieveNames
-        #			FindOriginal
-        #			RenameOne
-        #			sample directory on pole disk as argument
+        #		FindOriginal
+        #		RenameOne
+        #		sample directory on pole disk as argument (e.g. /mnt/slot8/IceCube/2018/etc)
         #-
         listOfFiles = self.FindOriginal()
         for fname in listOfFiles:
             self.RenameOne(fname)
-    #
-    #####
-    # main
-    #ExecuteJob()
+#
+#####
+# main
+if __name__ == '__main__':
+    app = renamer()
+    app.ExecuteJob()
