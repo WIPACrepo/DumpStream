@@ -99,7 +99,7 @@ class renamer:
             return
         try:
             # NOTE: jade03 has a different location for mv, not /usr/bin/mv
-            command = ['/bin/mv', tempName, newName]
+            command = ['/usr/bin/sudo', '/bin/mv', tempName, newName]
             routp, rerr, rcode = U.getoutputerrorsimplecommand(command, 1)
             if rcode != 0:
                 print('RenameOne failed during rename', tempName, newName, routp, rerr, rcode)
