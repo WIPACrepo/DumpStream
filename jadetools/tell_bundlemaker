@@ -1,0 +1,8 @@
+#!/bin/bash
+# tell_bundlemaker
+if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 2; fi
+
+cd /home/jade/lta
+source env/bin/activate
+
+./ltacmd catalog load --path "$1"
