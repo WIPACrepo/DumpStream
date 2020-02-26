@@ -1,0 +1,13 @@
+#/bin/bash
+# load_filecatalog
+#  Assumes we are running from the jade account with the filecatalog
+#   environment setup
+if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 1; fi
+
+cd /home/jade/filecatalog/file_catalog
+
+# Setup stuff
+eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
+source ./env/bin/activate
+# Run
+. ./resources/indexer_env.sh python `pwd`/resources/indexer.py -t `cat /home/jade/lta/service-token` --site WIPAC $1
