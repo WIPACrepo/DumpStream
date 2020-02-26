@@ -2,7 +2,7 @@
    Intended to be called at the end of the bash dump script,
    using an argument provided to the dump script '''
 import sys
-import Utils as U
+import dumper.Utils as U
 
 class renamer:
     ''' class renamer.  Look up the files, figure the right names, rename them '''
