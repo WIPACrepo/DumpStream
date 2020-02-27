@@ -629,7 +629,7 @@ def bundleget(estring):
         params = (str(bid), )
     except:
         # OK, must be a file name
-        qstring = 'SELECT * FROM BundleStatus where localName LIKE %?%'
+        qstring = 'SELECT * FROM BundleStatus where localName LIKE ?'
         params = (unstring, )
     try:
         stuff = query_db_final(qstring, params)
@@ -1493,7 +1493,7 @@ def enterreadydir(estring):
 @app.route("/dumping/notifiedreadydir/<estring>", methods=["POST"])
 def updatereadydir(estring):
     directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE %?%'
+    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
     params = (str(directoryfragment), )
     try:
         stuff = insert_db_final(query, params)
@@ -1593,11 +1593,11 @@ def glueworkupdate(estring):
         if word_pair[1] not in WORKINGTABLESTATI:
             print('glueworkupdate: status not valid', word_pair[1])
             return 'FAILURE invalid status'
-        query = 'UPDATE WorkingTable SET status=? WHERE realDir LIKE %?%'
+        query = 'UPDATE WorkingTable SET status=? WHERE realDir LIKE ?'
         params = (word_pair[1], word_pair[0])
     else:
         # default is Picked
-        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir LIKE %?%'
+        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir LIKE ?'
         params = (comm, )
     try:
         stuff = insert_db_final(query, params)
@@ -1605,7 +1605,7 @@ def glueworkupdate(estring):
         print('glueworkupdate: failed to set status for', query, params)
         return 'FAILURE'
     # ALSO:
-    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE %?%'
+    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
     params = (word_pair[0], )
     try:
         stuff = insert_db_final(query, params)
