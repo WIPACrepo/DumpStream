@@ -1465,13 +1465,15 @@ def givereaddirs():
 
 ####
 # Get the list of directories that we consider handed off already
-@app.route("/dumping/handedoffdir", methods=["GET"])
+@app.route("/dumping/handedoffdir/estring", methods=["GET"])
 def givedonedirs():
-    query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0'
+    directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0 AND idealName LIKE ?'
+    params = ('%' + str(directoryfragment) + '%', )
     try:
-        stuff = query_db_final(query)
+        stuff = query_db_final(query, params)
     except:
-        print('givereaddirs:  cannot read query', query)
+        print('givereaddirs:  cannot read query', query, params)
         return 'FAILURE'
     return str(stuff)
 

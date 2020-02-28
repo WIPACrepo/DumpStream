@@ -301,7 +301,7 @@ def GetStagedDirsLike(pcarg):
     # Relies on:	REST server working
     #-
     ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.tdargetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
+    ggeturl.append(U.targetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     greturn = []
