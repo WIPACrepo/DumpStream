@@ -24,7 +24,7 @@ if [[ $? != 0 ]]
   fi
 
 # Second execute the file catalog loading script
-if ! ./load_filecatalog "$1"
+if ! env -i ./load_filecatalog "$1"
    then
       echo "Giving up trying to load $1 into the file catalog"
       exit 1
@@ -32,7 +32,7 @@ if ! ./load_filecatalog "$1"
 
 # Third setup the request
 
-if ! ./tell_bundlemaker "$1"
+if ! env -i ./tell_bundlemaker "$1"
    then
       echo "Giving up trying to the bundler about $1"
       exit 2

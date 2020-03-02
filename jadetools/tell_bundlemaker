@@ -2,7 +2,8 @@
 # tell_bundlemaker
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 2; fi
 
-cd /home/jade/lta
+cd /home/jade/LTA/lta
 source env/bin/activate
 
 ./ltacmd request new --source WIPAC --dest NERSC --path "$1"
+if [[ $? != 0 ]]; then echo "Failed to request $1"; exit $?; fi

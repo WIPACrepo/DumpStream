@@ -28,7 +28,7 @@ FORBID = False
 FORBID_LIST = []
 CROOT = '/tmp'
 CONDOR_LIMIT = 10
-INITIAL_DIR = '/home/jbellinger/archiver/DumpStream/jadetools'
+INITIAL_DIR = '/home/jade/dumpcontrol/DumpStream/jadetools'
 
 DEBUG = False
 
@@ -301,7 +301,7 @@ def GetStagedDirsLike(pcarg):
     # Relies on:	REST server working
     #-
     ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.tdargetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
+    ggeturl.append(U.targetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     greturn = []
@@ -619,10 +619,10 @@ def Phase2(lTODO):
     # Arguments:	list of arrays of real and ideal directories to bundle
     # Returns:		boolean:  True if OK or nothing to do, False otherwise
     # Side Effects:	change WorkingTable
-    #			execute onedir.sh script
+    #			execute process_directory.sh script
     # Relies on:	InsertWork
     #			REST server working
-    #			onedir.sh script (which relies on LTA environment)
+    #			process_directory.sh script (which relies on LTA environment)
     #-
     #  if lTODO is empty, just log the run time and quit
     # Create a working list file
@@ -651,21 +651,21 @@ def Phase2(lTODO):
         print('About to try', ldirectory)
         #
         try:
-            command = [INITIAL_DIR + '/onedir.sh', ldirectory, pair_directory[1]]
+            command = [INITIAL_DIR + '/process_directory.sh', ldirectory, pair_directory[1]]
             output, error, code = U.getoutputerrorsimplecommand(command, 86400)
             #subprocess.run(command, shell=False, timeout=86400, check=True, capture_output=True)
         except subprocess.TimeoutExpired:
-            print('Phase2: Timeout on onedir.sh on', ldirectory)
+            print('Phase2: Timeout on process_directory.sh on', ldirectory)
             return False
         except subprocess.CalledProcessError as e:
-            print('Phase2: Failure with onedir.sh on', ldirectory, 'with', e.stderr, e.output)
+            print('Phase2: Failure with process_directory.sh on', ldirectory, 'with', e.stderr, e.output)
             return False
         except:
-            print('Phase2: Failed to execute onedir.sh on', ldirectory, error, code)
+            print('Phase2: Failed to execute process_directory.sh on', ldirectory, error, code)
             print(command)
             return False
         if code != 0:
-            print('Phase2: Problem with onedir.sh', output, error, code)
+            print('Phase2: Problem with process_directory.sh', output, error, code)
         else:
             if 'Error:' in str(output) or 'Error:' in str(error):
                 print('Phase2:', ldirectory, output, error, code)
