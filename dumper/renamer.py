@@ -1,6 +1,8 @@
 ''' Use post-processing as a separate file renamer.py 
    Intended to be called at the end of the bash dump script,
-   using an argument provided to the dump script '''
+   using an argument provided to the dump script.
+   This is called from the dumpscript bash script, after
+   the rsync's complete.  '''
 import sys
 import dumper.Utils as U
 
