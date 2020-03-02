@@ -260,7 +260,7 @@ def GetBundleNamesLike(pcarg):
     # Relies on:	REST server working
     #-
     ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.targetfindbundleslike + U.mangle('%25' + pcarg + '%25'))
+    ggeturl.append(U.targetfindbundleslike + U.mangle(pcarg))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     if len(ganswer) <= 2:
@@ -301,7 +301,7 @@ def GetStagedDirsLike(pcarg):
     # Relies on:	REST server working
     #-
     ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.targetdumpinghandedoffdir + U.mangle('%25' + pcarg + '%25'))
+    ggeturl.append(U.targetdumpinghandedoffdir + U.mangle(pcarg))
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     greturn = []

@@ -5,6 +5,7 @@ import json
 import copy
 import os
 import Utils as U
+import SQLUtils as S
 
 DEBUGIT = False
 
@@ -441,14 +442,14 @@ def Phase3():
     #
     # OK, now check that the info is in the database.  Connect to
     # jade-lta-db now.  Use the .my.cnf so I don't expose passwords
-    U.getdbgen()
-    cursor = U.returndbgen()
+    S.getdbgen()
+    cursor = S.returndbgen()
     #
     # It seems reasonable to think that a particular file will only
     # exist once in the jade-lta-db.  Unique UUID and all..
     for filex in nomatch:
         mybasename = os.path.basename(filex)
-        reply = U.doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
+        reply = S.doOperationDBTuple(cursor, 'SELECT * FROM jade_bundle WHERE bundle_file=\"' + mybasename + '\"', 'Phase3')
         if 'ERROR' in reply:
             continue
         try:

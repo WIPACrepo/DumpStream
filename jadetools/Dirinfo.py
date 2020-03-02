@@ -16,7 +16,7 @@ DEBUGIT = False
 def Phase1(pcarg):
     #
     geturl = copy.deepcopy(U.basicgeturl)
-    geturl.append(U.targetfindbundleslike + U.mangle('%25' + pcarg + '%25'))
+    geturl.append(U.targetfindbundleslike + U.mangle(pcarg))
     answer1, erro, code = U.getoutputerrorsimplecommand(geturl, 1)
     answer = U.massage(answer1)
     if len(answer) == 0:
