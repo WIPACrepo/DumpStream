@@ -648,7 +648,7 @@ def Phase2(lTODO):
         print('Duplication?', len(lTODO), lcount)
     for pair_directory in lTODO:
         ldirectory = pair_directory[0]
-        print('About to try', ldirectory)
+        print('About to try', ldirectory, flush=True)
         #
         try:
             command = [INITIAL_DIR + '/process_directory.sh', ldirectory, pair_directory[1]]
