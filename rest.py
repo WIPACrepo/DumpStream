@@ -1465,7 +1465,7 @@ def givereaddirs():
 
 ####
 # Get the list of directories that we consider handed off already
-@app.route("/dumping/handedoffdir/estring", methods=["GET"])
+@app.route("/dumping/handedoffdir/<estring>", methods=["GET"])
 def givedonedirs():
     directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
     query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0 AND idealName LIKE ?'
