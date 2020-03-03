@@ -4,7 +4,6 @@
       them.  Dump works with Pole disks which have ideal names in the
       /data/exp tree.
 '''
-import datetime
 import json
 import subprocess
 import socket
@@ -261,7 +260,7 @@ def GetBundleNamesLike(pcarg):
     #-
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetfindbundleslike + U.mangle(pcarg))
-    ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    ganswer1, _, _ = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     if len(ganswer) <= 2:
         #print('DEBUGGING: GetBundleNamesLike: No answer for', pcarg, ganswer, gerro, gcode)
@@ -439,7 +438,7 @@ def GetToken():
     #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle(socket.gethostname()))
-    ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    ganswer, _, _ = U.getoutputerrorsimplecommand(gposturl, 1)
     try:
         gmycode = int(ganswer)
     except:
@@ -464,7 +463,7 @@ def ReleaseToken():
     #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle('RELEASE'))
-    ganswer, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    ganswer, _, _ = U.getoutputerrorsimplecommand(gposturl, 1)
     try:
         gmycode = int(ganswer)
     except:
@@ -536,7 +535,14 @@ def Phase0():
         print('WARNING:  Forcing run w/ old dump')
     #
     # Get rid of old stuff in the WorkingTable
-    PurgeWork()
+    #No, don't do this:  helps keep track of stuff we've done
+    # PurgeWork()
+    answer = SetStatus('Run')
+    if answer != '':
+        answer = SetStatus('Ready')
+        if not ReleaseToken():
+            print('Phase 0:  Failed to release token after trying to setStatus')
+        return False
     return True
 
 def Phase1():
@@ -681,12 +687,13 @@ def Phase2(lTODO):
 #		Phase1  (accumulate stuff to do)
 #		Phase2  (do the stuff)
 if not Phase0():
-    answer = ReleaseToken()
-    sys.exit()
+    ans_token = ReleaseToken()
+    sys.exit(0)
 mytodo = Phase1()
 #print(mytodo)
-if not Phase2(mytodo):
-    ans = ReleaseToken()
+phase2_ok = Phase2(mytodo)
+ans_token = ReleaseToken()
+ans_status = SetStatus('Ready')
+if not phase2_ok:
     sys.exit(1)
-ans = ReleaseToken()
 sys.exit(0)
