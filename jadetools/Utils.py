@@ -685,7 +685,7 @@ def IsDirectoryFull(idirectory):
     #-
     if not os.path.isdir(idirectory):
         return False
-    idfcommand = ['/bin/find', idirectory]
+    idfcommand = ['/bin/find', '-type', 'f', idirectory]
     idfoutp, idferro, idfcode = getoutputerrorsimplecommand(idfcommand, 1)
     if int(idfcode) != 0:
         print('IsDirectoryFull failed to see', idirectory, idferro)
