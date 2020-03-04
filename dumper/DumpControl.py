@@ -466,6 +466,7 @@ def GetExpectedCount(trialdirname):
     #			 would know but we aren't warehousing these things
     #-
     #  This checks whether the fragment matches anything in the DB
+    # The information is for the first one found!
     gegeturl = copy.deepcopy(U.basicgeturl)
     gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
     geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)

@@ -657,7 +657,7 @@ def Phase2(lTODO):
         print('About to try', ldirectory, flush=True)
         #
         try:
-            command = [INITIAL_DIR + '/process_directory.sh', ldirectory, pair_directory[1]]
+            command = [INITIAL_DIR + '/process_directory.sh', pair_directory[1]]
             output, error, code = U.getoutputerrorsimplecommand(command, 86400)
             #subprocess.run(command, shell=False, timeout=86400, check=True, capture_output=True)
         except subprocess.TimeoutExpired:
