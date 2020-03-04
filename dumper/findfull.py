@@ -38,6 +38,9 @@ class findfull:
             source = sys.argv[count*2+1]
             target = sys.argv[count*2+2]
             twords = target.split('/exp/')
+            if len(twords) != 2:
+                print('findfull.__init__  target should have /exp/ as part of the path', target)
+                sys.exit(4)
             canon = '/data/exp/' + twords[1]
             self.pairs.append([source, canon])
 
