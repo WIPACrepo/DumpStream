@@ -651,7 +651,7 @@ def NormalName(filename):
 def TreeComp(tctree, tcfile):
     ''' Compare a desired tree (e.g. IceCube/YEAR/internal-system/pDAQ-2ndBld)
         with a found file.  If it matches, return True '''
-    #-
+    #+
     # Arguments:    tree format (e.g. IceCube/YEAR/internal-system/pDAQ-2ndBld)
     #               file name (e.g. /mnt/slot6/IceCube/2018/internal-system\
     #                /pDAQ-2ndBld/1208/ukey_fffc0e97-c984-4faa-8d9c-ed60f2ccfe46\
@@ -666,5 +666,42 @@ def TreeComp(tctree, tcfile):
         return False
     secondindex = tcfile.find(chunks[1], firstindex)
     if secondindex < 0:
+        return False
+    return True
+
+####
+# Utility for determining if a directory has the expected number of files
+def IsDirectoryFull(idirectory):
+    ''' Compare the file count with the expected number of files
+        in the specified directory.  This is the ideal name. '''
+    #+
+    # Arguments:	canonical (ideal) directory name.  Must exist, even
+    #			 if only as a link
+    # Returns:		Boolean:  True if the directory has >= expected number
+    #			 False if < expected, or if there is no data for expected,
+    #			 of if the directory isn't there.
+    # Side Effects:	Does a find in the filesystem
+    # Relies on:	REST server working
+    #-
+    if not os.path.isdir(idirectory):
+        return False
+    idfcommand = ['/bin/find', idirectory]
+    idfoutp, idferro, idfcode = getoutputerrorsimplecommand(idfcommand, 1)
+    if int(idfcode) != 0:
+        print('IsDirectoryFull failed to see', idirectory, idferro)
+        return False
+    ifound = len(str(idfoutp).split())
+    #
+    idfgeturl = copy.deepcopy(basicgeturl)
+    idfgeturl.append(targetdumpinggetexpected + mangle(idirectory))
+    idfoutp, idferro, idfcode = getoutputerrorsimplecommand(idfgeturl, 1)
+    if idfcode != 0 or len(idfoutp) <= 0:
+        return False
+    try:
+        idfjson = json.loads(singletodouble(idfoutp))
+        exnumber = int(idfjson[0]['number'])
+    except:
+        return False
+    if exnumber > ifound:
         return False
     return True
