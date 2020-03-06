@@ -698,8 +698,7 @@ def IsDirectoryFull(idirectory):
     if idfcode != 0 or len(idfoutp) <= 0:
         return False
     try:
-        idfjson = json.loads(singletodouble(idfoutp))
-        exnumber = int(idfjson[0]['number'])
+        exnumber = int(idfoutp)
     except:
         return False
     if exnumber > ifound:
