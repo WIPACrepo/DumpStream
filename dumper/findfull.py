@@ -89,9 +89,10 @@ class findfull:
             return
         for pair in self.pairs:
             subdirlist = self.FindDirs(pair[0])
+            tag = pair[0].split('/')[-1]
             if len(subdirlist) > 0:
                 for subdir in subdirlist:
-                    newdir = pair[1] + '/' + subdir
+                    newdir = pair[1] + '/' + tag + '/' + subdir
                     if U.IsDirectoryFull(newdir):
                         self.SetDir(newdir)
 
