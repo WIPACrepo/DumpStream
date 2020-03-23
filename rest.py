@@ -1022,7 +1022,7 @@ def dumpstate():
     except:
         print("dumpstate:  Failed to query")
         stuff = ''
-    return str(stuff)
+    return stuff[0]
 
 
 ###
