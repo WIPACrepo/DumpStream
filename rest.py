@@ -1335,7 +1335,9 @@ def getslotcontents():
 @app.route("/dumping/fullslots", methods=["GET"])
 def getfullslots():
     ''' Get info from SlotContents and PoleDisk for populated slots '''
-    query = 'SELECT sc.slotnumber,sc.poledisk_id,pd.dateBegun,pd.dateEnded,pd.targetArea,pd.status FROM SlotContents AS sc JOIN PoleDisk AS pd ON sc.poledisk_id=pd.poledisk_id'
+    query = 'SELECT sc.slotnumber,sc.poledisk_id,pd.dateBegun,pd.dateEnded,pd.targetArea,pd.status '
+    query = query + 'FROM SlotContents AS sc JOIN PoleDisk AS pd ON (sc.poledisk_id=pd.poledisk_id'
+    query = query + ' AND sc.poledisk_id>0) ORDER by sc.slotnumber ASC'
     try:
         stuff = query_db_final(query)
     except:
@@ -1479,7 +1481,7 @@ def givereaddirs():
 ####
 # Get the list of directories that we consider handed off already
 @app.route("/dumping/handedoffdir/<estring>", methods=["GET"])
-def givedonedirs():
+def givedonedirs(estring):
     directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
     query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0 AND idealName LIKE ?'
     params = ('%' + str(directoryfragment) + '%', )
@@ -1548,13 +1550,18 @@ def getgluestatus(estring):
     except:
         print('getgluestatus:  cannot read status from table')
         return 'FAILURE'
-    #
     answer = str(stuff)
-    if comm == 'Query':
+    if request.method == "GET" or (request.method == "POST" and comm == "Query"):
         return answer
+    #
     if comm == answer:
         return ''
-    # We only return a status from these if we are wasting our time
+    try:
+        stuff = update_db_final('UPDATE GlueStatus SET status=?', (comm,))
+    except:
+        print('getgluestatus set failed', 'UPDATE GlueStatus SET status=?', comm, stuff)
+        return 'FAILURE'
+    return ''
 
 ####
 # Purge the WorkingTable
