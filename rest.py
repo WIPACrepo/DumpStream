@@ -1333,7 +1333,7 @@ def getslotcontents():
 ####
 # Get full information about the populated slots.
 @app.route("/dumping/fullslots", methods=["GET"])
-def getfulllots():
+def getfullslots():
     ''' Get info from SlotContents and PoleDisk for populated slots '''
     query = 'SELECT sc.slotnumber,sc.poledisk_id,pd.dateBegun,pd.dateEnded,pd.targetArea,pd.status FROM SlotContents AS sc JOIN PoleDisk AS pd ON sc.poledisk_id=pd.poledisk_id'
     try:
