@@ -125,6 +125,7 @@ targetdumpinggetwaiting = curltargethost + '/dumping/waitingslots'
 targetdumpinggetwhat = curltargethost + '/dumping/whatslots'
 targetdumpinggetexpected = curltargethost + '/dumping/expectedir/'
 targetdumpingcountready = curltargethost + '/dumping/countready'
+targetdumpingactiveslots = curltargethost + '/dumping/activeslots'
 
 targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
 targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
