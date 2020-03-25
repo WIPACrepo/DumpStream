@@ -835,7 +835,7 @@ def getallbundleinfo():
     for stat in BUNDLESTATI:
         query = query + ', SUM(CASE WHEN status=\"' + stat + '\" THEN 1 ELSE 0 END) AS ' + stat
     query = query + ' FROM BundleStatus'
-    
+    #
     try:
         stuff = query_db_final(query)
         if len(str(stuff)) > 0:
@@ -940,7 +940,7 @@ def activedirclean():
 @app.route("/addbundle/<estring>", methods=["POST"])
 def addbundle(estring):
     ''' Add bundles '''
-    # Above is for 28-Jan-2020.  
+    # Above is for 28-Jan-2020.
     backagain = urllib.parse.unquote_plus(unmangle(reslash(estring)).replace('\'', '\"'))
     #print(backagain)
     # crazy hack--getting rid of those excess backslashes is a pain
@@ -1185,15 +1185,15 @@ def poledisksetstatus(estring):
     unstring = unmangle(estring).split()
     if len(unstring) != 2:
         print('poledisksetstatus has the wrong number of arguments', unstring)
-        return 'FAILURE, number arguments' 
+        return 'FAILURE, number arguments'
     try:
         poleid = int(unstring[0])
     except:
         print('poledisksetstatus cannot read the poledisk_id', estring)
-        return 'FAILURE, not integer' 
+        return 'FAILURE, not integer'
     if unstring[1] not in PoleDiskStatusOptions:
         print('poledisksetstatus has bad status', estring)
-        return 'FAILURE, bad status' 
+        return 'FAILURE, bad status'
     query = 'UPDATE PoleDisk SET status=? WHERE poledisk_id=?'
     params = (unstring[1], poleid)
     try:
@@ -1322,11 +1322,24 @@ def olddumptarget():
 # the info is lightweight
 @app.route("/dumping/slotcontents", methods=["GET"])
 def getslotcontents():
-    query = 'SELECT * FROM SlotContents'
+    query = 'SELECT * FROM SlotContents ORDER BY slotnumber ASC'
     try:
         stuff = query_db_final(query)
     except:
         print('getslotcontents failed to get the slot info', query)
+        return 'FAILURE'
+    return str(stuff)
+
+####
+# Get full information about the populated slots.
+@app.route("/dumping/activeslots", methods=["GET"])
+def getactiveslots():
+    ''' Get info from SlotContents and PoleDisk for populated slots '''
+    query = 'SELECT sc.slotnumber,sc.poledisk_id,pd.dateBegun,pd.dateEnded,pd.targetArea,pd.status FROM SlotContents AS sc JOIN PoleDisk AS pd ON sc.poledisk_id=pd.poledisk_id'
+    try:
+        stuff = query_db_final(query)
+    except:
+        print('getactiveslots failed to get info', query)
         return 'FAILURE'
     return str(stuff)
 
@@ -1402,7 +1415,7 @@ def getwhatslot():
         print('getwhatslot', query)
         return 'FAILURE'
     return str(stuff)
-    
+
 
 ####
 # Get the substring representing the trees we want to retrieve
@@ -1435,7 +1448,7 @@ def addwantedtrees(estring):
     return ''
 
 ####
-# Get expected file count for the directory specified by the 
+# Get expected file count for the directory specified by the
 #  tree fragment proffered
 @app.route("/dumping/expectedir/<estring>", methods=["GET"])
 def getcountexpected(estring):
@@ -1542,19 +1555,6 @@ def getgluestatus(estring):
     if comm == answer:
         return ''
     # We only return a status from these if we are wasting our time
-    if ((comm == 'Pause' and answer == 'Run') or 
-            (comm == 'Run' and answer == 'Pause') or
-            (comm == 'Ready' and answer == 'Run')):
-        return answer
-    query = 'UPDATE GlueStatus SET status=?,lastChangeTime=datetime(\'now\',\'localtime\')'
-    params = (comm, )
-    try:
-        stuff = insert_db_final(query, params)
-        return ''
-    except:
-        print('getgluestatus:  cannot update table with', query, params)
-        return 'FAILURE update'
-    
 
 ####
 # Purge the WorkingTable
@@ -1645,7 +1645,7 @@ def glueworkload(estring):
             print('glueworkload: failed to insert', param)
             return 'FAILURE'
     return ''
-    
+
 
 ####
 # Set the time for the given type
