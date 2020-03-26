@@ -1313,7 +1313,7 @@ def olddumptarget():
     except:
         print('olddumptarget failed to get target info', query)
         return 'FAILURE'
-    return str(stuff)
+    return '{ \"slots\":' + str(stuff) + '}'
 
 ####
 # Get the contents of all the slots.  This will point to
