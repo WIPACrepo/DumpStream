@@ -304,7 +304,7 @@ def GetStagedDirsLike(pcarg):
     ganswer1, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
     ganswer = U.massage(ganswer1)
     greturn = []
-    if len(ganswer) <= 2:
+    if len(ganswer) <= 2 or 'Internal Service Error' in ganswer:
         #print('DEBUGGING: GetBundleNamesLike: No answer for', pcarg, ganswer, gerro, gcode)
         return []
     try:
