@@ -4,6 +4,7 @@
 #   environment setup
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 1; fi
 
+echo "load_filecatalog ENTRANCE DEBUG"
 cd /home/jade/filecatalog/file_catalog
 
 # Setup stuff

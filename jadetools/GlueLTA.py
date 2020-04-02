@@ -490,7 +490,7 @@ def Phase0():
     #			SetStatus
     #			GetWorkCount
     #			DiffOldDumpTime
-    #			PurgeWork
+    #			# Commented out: PurgeWork
     #-
     # Parse parameters, if any
     # If we aren't "Forcing" or "Partial" only, should we be running
@@ -686,6 +686,7 @@ def Phase2(lTODO):
 #		Phase0  (OK to run?)
 #		Phase1  (accumulate stuff to do)
 #		Phase2  (do the stuff)
+#-
 if not Phase0():
     ans_token = ReleaseToken()
     sys.exit(0)

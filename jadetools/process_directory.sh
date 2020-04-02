@@ -14,6 +14,8 @@ if [[ ! -d ${directory} ]]; then echo "${directory} is not a visible directory";
 # First curl to let the REST server know what we're doing with this directory. 
 # The table in question is WorkingTable
 # New status = Preparing
+echo "process_directory.sh ENTRANCE DEBUG"
+
 manglefile=$( echo "${directory}" | sed 's@/@+++@g' )
 manglecom=$( echo "${manglefile}@Preparing" )
 /usr/bin/curl -sS -X POST -H Content-Type:application/x-www-form-urlencoded  http://archivecontrol.wipac.wisc.edu:80/glue/workupdate/"${manglecom}"

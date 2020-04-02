@@ -2,7 +2,7 @@
 # tell_bundlemaker
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 2; fi
 
-#echo "tell_bundlemaker ENTRANCE DEBUG"
+echo "tell_bundlemaker ENTRANCE DEBUG"
 eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 cd /home/jade/LTA/lta
 source env/bin/activate
