@@ -126,7 +126,7 @@ def InventoryOneFull(slotlocation):
     for tip in toplist:
         if tip in answer.split():
             command = ['/bin/ls', slotlocation + '/' + tip]
-            i3outp, i3erro, i3code = U.getoutputerrorsimplecommand(command, 1)
+            i3outp, _, i3code = U.getoutputerrorsimplecommand(command, 1)
             if int(i3code) != 0:
                 continue        # May not be present, do not worry about it
             tipyearlist = []
@@ -145,7 +145,7 @@ def InventoryOneFull(slotlocation):
         for y in ylist:
             vtop = slotlocation + '/' + words[0] + y + words[1]
             command = ['/bin/ls', vtop]
-            i3outp, i3erro, i3code = U.getoutputerrorsimplecommand(command, 1)
+            i3outp, _, i3code = U.getoutputerrorsimplecommand(command, 1)
             if int(i3code) != 0 or len(i3outp) <= 0:
                 continue        # May not be present, do not worry about it
             subdirs = str(i3outp).split()
@@ -681,9 +681,18 @@ def DumperTodo():
         print('Get Dumper state failed', dtoutp, dterro)
         sys.exit(0)
     # status, nextAction
-    dump_json = json.loads(U.singletodouble(dtoutp))
-    status = dump_json[0]['status']
-    nextAction = dump_json[0]['nextAction']
+    try:
+        dump_json = json.loads(U.singletodouble(dtoutp))
+        status = dump_json[0]['status']
+        nextAction = dump_json[0]['nextAction']
+    except:
+        try:
+            dump_json = json.loads(U.singletodouble(dtoutp))
+            status = dump_json['status']
+            nextAction = dump_json['nextAction']
+        except:
+            print('DumperTodo failure with', dump_json)
+            sys.exit(0)
     return status, nextAction
 ####
 #
