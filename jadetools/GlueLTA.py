@@ -580,24 +580,20 @@ def Phase1():
     else:
         TODO = []
     Bulk_tocheck = []
-    for p in SUB_TREES:
-        parts = p.split('YEAR')
-        lower_part = (parts[0] + YEAR + parts[1]).replace('//', '/')
-        # Select from BundleStatus=>known bundles
-        done_or_working = GetBundleDirsLike(lower_part)  # ideal names
-        tentative = (ROOT + '/' + parts[0] + '/' + YEAR + '/' + parts[1]).replace('//', '/')  # on-disk
-        subdirlisting = listdir_fullpath(tentative)
-        #print(tentative)
-        if subdirlisting is None:
-            print('Nothing for this?')
-            continue
-        #print(len(subdirlisting))
-        for d in subdirlisting:
-            if not SubdirInList(d, FORBID_LIST, YEAR) and not SubdirInList(d, done_or_working, YEAR):
-                # A PRIORI knowledge.  This is meant to work with dumps from Pole disks.  If you
-                # plan to expand this to other things, that's on you.
-                d_Ideal = d.replace(ROOT, '/data/exp', 1)
-                Bulk_tocheck.append([d, d_Ideal])
+    # Query what the dump thinks are full directories
+    unhandledDirs = U.GetUnhandledFull()
+    if len(unhandledDirs) == 0:
+        return TODO
+    for directory in unhandledDirs:
+        chunks = directory.split('/exp/')
+        partial = '/exp/' + chunks[1]
+        done_or_working = GetBundleDirsLike(partial)  # ideal names
+        d = directory
+        if not SubdirInList(d, FORBID_LIST, YEAR) and not SubdirInList(d, done_or_working, YEAR):
+            # A PRIORI knowledge.  This is meant to work with dumps from Pole disks.  If you
+            # plan to expand this to other things, that's on you.
+            d_Ideal = '/data' + partial
+            Bulk_tocheck.append([d, d_Ideal])
     if len(Bulk_tocheck) <= 0:
         return TODO
     #  Somehow I need to map the real directory into the ideal
