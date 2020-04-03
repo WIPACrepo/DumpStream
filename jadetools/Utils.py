@@ -705,3 +705,50 @@ def IsDirectoryFull(idirectory):
     if exnumber > ifound:
         return False
     return True
+
+####
+# Utility for getting the directory names that the dumper thinks
+# are now full and ready for bundling.  They have toLTA=0
+def GetUnhandledFull():
+    ''' Retrieve the list of directories we think are full '''
+    #+
+    # Arguments:        None
+    # Returns:          list of idealNames of directories
+    # Side Effects:     print if error
+    # Relies on:        REST server working
+    #-
+    ggeturl = copy.deepcopy(basicgeturl)
+    ggeturl.append(targetdumpinggetreadydir)
+    ganswer1, _, _ = getoutputerrorsimplecommand(ggeturl, 1)
+    ganswer = massage(ganswer1)
+    unhand = []
+    if len(ganswer) <= 2:
+        return unhand
+    try:
+        lanswer = eval(ganswer)
+        for janswer in lanswer:
+            unhand.append(janswer['idealName'])
+    except:
+        print('GetUnhandledFull failed', ganswer)
+    return unhand
+
+####
+# Utility for making sure directory (or directory fragment) names
+# don't have too many / characters
+def ParseCleanDirName(bname):
+    ''' Strip off trailing / and duplicate // in a directory name
+        This works even if this is not a rooted directory, but a chunk '''
+    #+
+    # Arguments:        directory (or fragment) name: not a file!
+    # Returns:          Directory name without extra /
+    # Side Effects:     None
+    # Relies on:        Nothing
+    #-
+    chunks = bname.split('/')
+    if len(chunks) == 1:
+        return bname
+    basen = chunks[0]
+    for word in chunks[1:]:
+        if word != '':
+            basen = basen + '/' + word
+    return basen

@@ -244,6 +244,10 @@ def ParseParams():
     # For initial testing, don't bother
     #INITIAL_DIR = os.getcwd()
 
+
+
+
+
 def GetBundleNamesLike(pcarg):
     ''' Retrieve bundles which are like the specified directory '''
     # This is pretty generic.  If you want a bundle, you can give
@@ -337,11 +341,13 @@ def GetBundleDirsLike(pcarg):
     #
     dreturn = []
     for bname in got_bundles:
-        if os.path.dirname(bname) not in dreturn:
-            dreturn.append(os.path.dirname(bname))
+        cleanname = U.ParseCleanDirName(os.path.dirname(bname))
+        if cleanname not in dreturn:
+            dreturn.append(cleanname)
     for dname in got_staged_dirs:
-        if dname not in dreturn:
-            dreturn.append(dname)
+        cleanname = U.ParseCleanDirName(dname)
+        if cleanname not in dreturn:
+            dreturn.append(cleanname)
     return dreturn
 
 def FullToFrag(dname, lYEAR):
