@@ -298,7 +298,7 @@ def GetStagedDirsLike(pcarg):
     #
     #+
     # Arguments:	directory path fragment (be as specific as possible)
-    # Returns:		list of pairs of directory names [real, ideal] 
+    # Returns:		list of ideal directory names
     #			 for directories that have already been handed off to LTA
     # Side Effects:	Print error if there was a problem
     # Relies on:	REST server working
@@ -309,7 +309,6 @@ def GetStagedDirsLike(pcarg):
     ganswer = U.massage(ganswer1)
     greturn = []
     if len(ganswer) <= 2 or 'Internal Service Error' in ganswer:
-        #print('DEBUGGING: GetBundleNamesLike: No answer for', pcarg, ganswer, gerro, gcode)
         return []
     try:
         ggans = U.singletodouble(ganswer).replace(' None,', ' \"None\",')
@@ -326,7 +325,7 @@ def GetBundleDirsLike(pcarg):
          Get both from BundleStatus and FullDirectories '''
     #+
     # Arguments:	directory path fragment (be as specific as possible) 
-    # Returns:		list of pairs of directory names [real, ideal] 
+    # Returns:		list of ideal directory names
     #			 for directories that have already been handed off to LTA
     #                    or bundled by my system
     # Side Effects:	None
@@ -372,7 +371,7 @@ def SubdirInList(directory, directoryList, lYEAR) -> bool:
         Does the given directory match one in the list? '''
     #+
     # Arguments:	generic directory name with YEAR as placeholder
-    #			list of [ideal,real] directory names already done
+    #			list of ideal directory names already done
     #			actual year to replace placeholder with
     # Returns:		False if 'FAILURE' (fail in favor of processing)
     #			False if the given directory isn't in the done list
@@ -384,9 +383,7 @@ def SubdirInList(directory, directoryList, lYEAR) -> bool:
     if len(directoryList) == 0:
         return False
     rdir = FullToFrag(directory, lYEAR)
-    #DEBUG
-    #if directoryList[0] == '/data/exp/IceCube/2018/unbiased/PFRaw/0626':
-    #    print(rdir, FullToFrag(directoryList[0], lYEAR))
+    #
     if rdir == 'FAILURE':
         return False
     for sdir in directoryList:
