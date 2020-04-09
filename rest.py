@@ -1550,14 +1550,18 @@ def getgluestatus(estring):
     except:
         print('getgluestatus:  cannot read status from table')
         return 'FAILURE'
-    answer = str(stuff)
+    try:
+        answer = eval(str(stuff[0]))['status']
+    except:
+        print('getgluestatus: stuff', str(stuff), str(stuff[0]))
+        return 'FAILURE'
     if request.method == "GET" or (request.method == "POST" and comm == "Query"):
         return answer
     #
     if comm == answer:
         return ''
     try:
-        stuff = update_db_final('UPDATE GlueStatus SET status=?', (comm,))
+        stuff = insert_db_final('UPDATE GlueStatus SET status=?', (comm,))
     except:
         print('getgluestatus set failed', 'UPDATE GlueStatus SET status=?', comm, stuff)
         return 'FAILURE'
