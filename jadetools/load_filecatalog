@@ -11,4 +11,4 @@ cd /home/jade/filecatalog/file_catalog
 eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 source ./env/bin/activate
 # Run
-. ./resources/indexer_env.sh python `pwd`/resources/indexer.py -t `cat /home/jade/lta/service-token` --site WIPAC $1
+. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jade/lta/service-token` --site WIPAC $1
