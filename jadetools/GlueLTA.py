@@ -49,9 +49,9 @@ def SetStatus(gnewstatus):
     #-
     if gnewstatus not in ['Pause', 'Run', 'Ready', 'Query']:
         return 'Error'
-    ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.targetgluestatus + U.mangle(gnewstatus))
-    goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
+    gposturl = copy.deepcopy(U.basicposturl)
+    gposturl.append(U.targetgluestatus + U.mangle(gnewstatus))
+    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
     if len(goutp) == 0:
         return ''	# all is well
     try:
@@ -63,7 +63,7 @@ def SetStatus(gnewstatus):
     #
     if gnewstatus == 'Query':
         return grevised
-    return 'Failure ' + grevised
+    return grevised
 
 def PurgeWork():
     ''' Empty out WorkingTable Picked entries '''
@@ -511,27 +511,30 @@ def Phase0():
     #
     # Test the utilities
     if not GetToken():
+        print('DEBUG Phase0 busy, bailing')
         return False
     ParseParams()
     #
     # Should we do anything?
     run_status = SetStatus('Query')
     if run_status in ['Run', 'Pause'] and not FORCE:
+        print('DEBUG Phase0 run_status=', run_status)
         if not ReleaseToken():
             print('Phase0: Failed to release token: A')
         return False
     #
-    still_in_process = GetWorkCount()
-    if still_in_process > 0:
-        if not FORCE:
-            if not ReleaseToken():
-                print('Phase0: Failed to release token: B')
-            return False
-        print('WARNING:  Forcing run w/ ongoing work!')
+    #still_in_process = GetWorkCount()
+    #if still_in_process > 0:
+    #    if not FORCE:
+    #        if not ReleaseToken():
+    #            print('Phase0: Failed to release token: B')
+    #        return False
+    #    print('WARNING:  Forcing run w/ ongoing work!')
     #
     new_dump = DiffOldDumpTime()
     if not new_dump:
         if not FORCE:
+            print('Phase0: forcing release token, no new dump')
             if not ReleaseToken():
                 print('Phase0: Failed to release token: C')
             return False
@@ -542,6 +545,7 @@ def Phase0():
     # PurgeWork()
     answer = SetStatus('Run')
     if answer != '':
+        print('Phase0: status return', answer)
         answer = SetStatus('Ready')
         if not ReleaseToken():
             print('Phase 0:  Failed to release token after trying to setStatus')
@@ -579,6 +583,10 @@ def Phase1():
     Bulk_tocheck = []
     # Query what the dump thinks are full directories
     unhandledDirs = U.GetUnhandledFull()
+    # DEBUG
+    for d in unhandledDirs:
+        print("DEBUG", d)
+    # END DEBUG
     if len(unhandledDirs) == 0:
         return TODO
     for directory in unhandledDirs:
@@ -616,6 +624,10 @@ def Phase1():
             print('Number of files in ', pdir, 'is greater than expected', fcount, pcount)
         #
     #
+    # DEBUG
+    for d in TODO:
+        print("TODO", d)
+    # END DEBUG
     return TODO
 
 def Phase2(lTODO):
@@ -688,6 +700,7 @@ def Phase2(lTODO):
 #-
 if not Phase0():
     ans_token = ReleaseToken()
+    print('Phase0 false')
     sys.exit(0)
 mytodo = Phase1()
 #print(mytodo)
@@ -695,5 +708,6 @@ phase2_ok = Phase2(mytodo)
 ans_token = ReleaseToken()
 ans_status = SetStatus('Ready')
 if not phase2_ok:
+    print('phase2_ok false')
     sys.exit(1)
 sys.exit(0)
