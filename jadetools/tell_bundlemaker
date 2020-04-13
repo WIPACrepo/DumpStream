@@ -7,5 +7,13 @@ eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 cd /home/jade/LTA/lta
 source env/bin/activate
 
-./ltacmd request new --source WIPAC --dest NERSC --path "$1"
+# Do we need to force the bundle?  If it is too small the "G"
+# will not appear in the (e.g.) "103,462,427,495 bytes (96G) in 1,438 files."
+# In that case n==1, and we want to fail, since something manual is needed
+# If n==2 and the size is below the 100G threshold, add the --force flag
+extraflags=""
+extraflags=$( ./ltacmd request estimate --path "$1" | awk '{split($3,a,"(");n=split(a[2],b,"G");if(n==2 && int(b[1])<100)print "--force";}' )
+
+./ltacmd request new --source WIPAC --dest NERSC "${extraflags}" --path "$1"
+
 if [[ $? != 0 ]]; then echo "Failed to request $1"; exit $?; fi
