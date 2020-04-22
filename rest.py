@@ -1526,7 +1526,8 @@ def countready():
     # total, unstaged, staged, done
     query = 'SELECT count(*) AS total, sum(case when toLTA=0 then 1 else 0 end) AS unstaged, '
     query = query + 'sum(case when toLTA=1 then 1 else 0 end) AS staged, '
-    query = query + 'sum(case when toLTA=2 then 1 else 0 end) AS done '
+    query = query + 'sum(case when toLTA=2 then 1 else 0 end) AS done, '
+    query = query + 'sum(case when toLTA=3 then 1 else 0 end) AS cleaned '
     query = query + 'FROM FullDirectories GROUP BY toLTA;'
     try:
         stuff = query_db_final(query)
