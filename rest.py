@@ -1465,6 +1465,7 @@ def getcountexpected(estring):
         print('getcountexpected failed to get info for', directoryfragment, stuff)
     return str(cc)
 
+######################
 ####
 # Get the list of directories that we think are complete, for handing
 #  off to LTA
@@ -1509,9 +1510,20 @@ def enterreadydir(estring):
 # Update a new ready directory
 @app.route("/dumping/notifiedreadydir/<estring>", methods=["POST"])
 def updatereadydir(estring):
-    directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
-    params = ('%' + str(directoryfragment) + '%', )
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    wcomm = comm.split()
+    if len(wcomm) == 1:
+        directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+        query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
+        params = ('%' + str(directoryfragment) + '%', 1)
+    else:
+        directoryfragment = wcomm[0]
+        try:
+            newto = int(wcomm[1])
+        except:
+            print('updateradydir failed to set new lta status for', wcomm)
+            return 'FAILURE'
+        params = ('%' + str(directoryfragment) + '%', newto)
     try:
         stuff = insert_db_final(query, params)
     except:
@@ -1536,6 +1548,7 @@ def countready():
         return 'FAILURE'
     return str(stuff)
 
+#########################
 ####
 # Get/reset the GlueStatus
 @app.route("/glue/status/<estring>", methods=["GET", "POST"])
