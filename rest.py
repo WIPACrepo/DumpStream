@@ -1483,9 +1483,17 @@ def givereaddirs():
 # Get the list of directories that we consider handed off already
 @app.route("/dumping/handedoffdir/<estring>", methods=["GET"])
 def givedonedirs(estring):
-    directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0 AND idealName LIKE ?'
-    params = ('%' + str(directoryfragment) + '%', )
+    ''' If 1 argument, this is anything >0.  If 2, select only the toLTA=2nd '''
+    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    wcomm = comm.split()
+    if len(wcomm) == 2:
+        directoryfragment = wcomm[0]
+        query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA=? AND idealName LIKE ?'
+        params = (wcomm[1], '%' + str(directoryfragment) + '%')
+    else:
+        directoryfragment = comm
+        query = 'SELECT idealName,toLTA FROM FullDirectories WHERE toLTA>0 AND idealName LIKE ?'
+        params = ('%' + str(directoryfragment) + '%', )
     try:
         stuff = query_db_final(query, params)
     except:
