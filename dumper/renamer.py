@@ -4,7 +4,7 @@
    This is called from the dumpscript bash script, after
    the rsync's complete.  '''
 import sys
-import dumper.Utils as U
+import Utils as U
 
 class renamer:
     ''' class renamer.  Look up the files, figure the right names, rename them '''
