@@ -242,6 +242,10 @@ class AutoFiles():
                 if not ok:
                     print('FindAndDelete failed in deleting', transfer[0])
                     return	# Do not try to continue
+                ok = self.ResetStatus(transfer[0])
+                if not ok:
+                    print('FindAndDelete failed to reset the FullDirectories entry status', transfer[0])
+                    return	# Do not try to continue
 
 if __name__ == '__main__':
     app = AutoFiles()
