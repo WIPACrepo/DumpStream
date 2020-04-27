@@ -66,7 +66,7 @@ def SetStatus(gnewstatus):
     return grevised
 
 def UpdateWork(idir):
-    ''' Update the directory entry in WorkingTable to have new status '''
+    ''' Update the directory entry in FullDirectories to a new toLTA status '''
     #+
     # Arguments:	Directory to update
     # Returns:		None

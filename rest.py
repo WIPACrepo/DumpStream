@@ -1591,7 +1591,7 @@ def getgluestatus(estring):
 
 
 ####
-# Set the WorkingTable entry to 'Picked'
+# Set the FullDirectories toLTA as specified
 @app.route("/glue/workupdate/<estring>", methods=["POST"])
 def glueworkupdate(estring):
     ''' Update directory as Picked or other specified '''
@@ -1599,23 +1599,10 @@ def glueworkupdate(estring):
     comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
     word_pair = comm.split()
     if len(word_pair) == 2:
-        if word_pair[1] not in WORKINGTABLESTATI:
-            print('glueworkupdate: status not valid', word_pair[1])
-            return 'FAILURE invalid status'
-        query = 'UPDATE WorkingTable SET status=? WHERE realDir LIKE ?'
+        query = 'UPDATE FullDirectories SET toLTA=? WHERE idealName LIKE ?'
         params = (word_pair[1], '%' + word_pair[0] + '%')
     else:
-        # default is Picked
-        query = 'UPDATE WorkingTable set status=\'Picked\' WHERE realDir LIKE ?'
-        params = ('%' + comm + '%', )
-    try:
-        stuff = insert_db_final(query, params)
-    except:
-        print('glueworkupdate: failed to set status for', query, params)
-        return 'FAILURE'
-    # ALSO:
-    query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
-    params = ('%' + word_pair[0] +'%', )
+        params = (1, '%' + comm + '%')
     try:
         stuff = insert_db_final(query, params)
     except:
