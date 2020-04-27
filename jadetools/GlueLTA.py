@@ -80,52 +80,6 @@ def UpdateWork(idir):
     if len(str(goutp)) > 1:
         print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
 
-def InsertWork(idir_array):
-    ''' Insert new directories in WorkingTable (default Unpicked)
-         idir_array is a list of pairs of directories: [real,ideal]  '''
-    #+
-    # Arguments:	list of pairs of directories [real, ideal]
-    # Returns:		number of directories successfully inserted
-    #			 (REST server info return; will silently refuse to
-    #			  insert duplicate directories)
-    # Side Effects:	Prints error if there was a problem
-    #			change in REST server (additions)
-    # Relies on:	REST server working
-    #-
-    ilendir = len(idir_array)
-    if ilendir <= 0:
-        return 0
-    # assemble a long string.  Assume we have a limit of 20/per 
-    number_inserted = 0
-    ichunks = int(ilendir/20) + 1
-    for iw in range(ichunks):
-        ilow = iw * 20
-        ihigh = min(ilendir + 1, ilow + 20)
-        istring = ''
-        for idir in idir_array[ilow:ihigh][0]:
-            istring = istring  + ' ' + idir
-        gposturl = copy.deepcopy(U.basicposturl)
-        gposturl.append(U.targetglueworkload + U.mangle(istring))
-        goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
-        if 'FAILURE' in str(goutp):
-            print('InsertWork failure at chunk ', iw, ' of ', ichunks, ' with ', gposturl, goutp, gerro, gcode)
-            breakdown = str(goutp).split()
-            number_inserted = number_inserted + int(breakdown[1])
-            return number_inserted
-        ictest = len(str(goutp).split())
-        if ictest > 1:
-            print('Insertwork failure at chunk ', iw, ' of ', ichunks, ' having ', goutp, ' from ', gposturl)
-            return -1
-        if len(goutp) > 0:
-            try:
-                number_inserted = number_inserted + int(str(goutp))
-            except:
-                print(number_inserted, str(goutp))
-                sys.exit(2)
-    if number_inserted != ilendir:
-        print('InsertWork failure: inserted ', number_inserted, ' out of ', ilendir)
-    return number_inserted
-
 
 def DiffOldDumpTime():
     ''' Is the most recent dump time newer than the most recent scan? '''
@@ -587,8 +541,7 @@ def Phase2(lTODO):
     # Returns:		boolean:  True if OK or nothing to do, False otherwise
     # Side Effects:	change WorkingTable
     #			execute process_directory.sh script
-    # Relies on:	InsertWork
-    #			REST server working
+    # Relies on:	REST server working
     #			process_directory.sh script (which relies on LTA environment)
     #-
     #  if lTODO is empty, just log the run time and quit
@@ -609,10 +562,6 @@ def Phase2(lTODO):
     # Anything to do?
     if len(lTODO) <= 0:
         return True
-    # Load the WorkingTable with the lTODO contents
-    lcount = InsertWork(lTODO)
-    if lcount != len(lTODO):
-        print('Duplication?', len(lTODO), lcount)
     for pair_directory in lTODO:
         ldirectory = pair_directory[0]
         print('About to try', ldirectory, flush=True)
