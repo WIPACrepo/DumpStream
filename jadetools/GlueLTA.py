@@ -65,43 +65,6 @@ def SetStatus(gnewstatus):
         return grevised
     return grevised
 
-def PurgeWork():
-    ''' Empty out WorkingTable Picked entries '''
-    #+
-    # Arguments:	None
-    # Returns:		None
-    # Side Effects:	Prints error if there was a problem
-    #			change in REST server
-    # Relies on:	REST server working
-    #-
-    gposturl = copy.deepcopy(U.basicposturl)
-    gposturl.append(U.targetglueworkpurge)
-    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
-    if 'FAILURE' in goutp:
-        print('PurgeWork could not empty WorkingTable', goutp, gerro, gcode)
-
-def GetWorkCount():
-    ''' Get the count of 'Unpicked' in WorkingTable '''
-    #+
-    # Arguments:	None
-    # Returns:		# of Unpicked if OK
-    #			0 or -1 if failure
-    # Side Effects:	Prints error if there was a problem
-    # Relies on:	REST server working
-    #-
-    ggeturl = copy.deepcopy(U.basicgeturl)
-    ggeturl.append(U.targetglueworkcount)
-    goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
-    if len(goutp) == 0:
-        print('GetWorkCount failure', gerro, gcode)
-        return 0
-    try:
-        icount = int(goutp)
-    except:
-        print('GetWorkCount: Failure to unpack return?')
-        return -1
-    return icount
-
 def UpdateWork(idir):
     ''' Update the directory entry in WorkingTable to have new status '''
     #+
@@ -491,9 +454,7 @@ def Phase0():
     #			ReleaseToken
     #			ParseParams
     #			SetStatus
-    #			GetWorkCount
     #			DiffOldDumpTime
-    #			# Commented out: PurgeWork
     #-
     # Parse parameters, if any
     # If we aren't "Forcing" or "Partial" only, should we be running
@@ -523,14 +484,6 @@ def Phase0():
             print('Phase0: Failed to release token: A')
         return False
     #
-    #still_in_process = GetWorkCount()
-    #if still_in_process > 0:
-    #    if not FORCE:
-    #        if not ReleaseToken():
-    #            print('Phase0: Failed to release token: B')
-    #        return False
-    #    print('WARNING:  Forcing run w/ ongoing work!')
-    #
     new_dump = DiffOldDumpTime()
     if not new_dump:
         if not FORCE:
@@ -540,9 +493,6 @@ def Phase0():
             return False
         print('WARNING:  Forcing run w/ old dump')
     #
-    # Get rid of old stuff in the WorkingTable
-    #No, don't do this:  helps keep track of stuff we've done
-    # PurgeWork()
     answer = SetStatus('Run')
     if answer != '':
         print('Phase0: status return', answer)

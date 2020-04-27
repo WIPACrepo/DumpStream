@@ -84,7 +84,8 @@ def InventoryOneFull(slotlocation):
     #+
     # Arguments:	path to slot's directory e.g. /mnt/slot6
     # Returns:		[diskuuid, list of compositely named directories to view (simple views),
-    #                    detailed list for lower nested]
+    #                    detailed list for lower nested, fragment (w/o slot) compositely named dirs
+    #			 fragments (w/o slot) of detailed directories
     #			 based on wanted trees:
     #			 e.g. /mnt/slot6/ARA/YEAR/unbiased/SPS-NUPHASE
     #			 "YEAR" is replaced by what is found in the directory
@@ -151,7 +152,13 @@ def InventoryOneFull(slotlocation):
             subdirs = str(i3outp).split()
             for subdir in subdirs:
                 detaildirs.append(vtop + '/' + subdir)
-    return [diskuuid, dirstoscan, detaildirs]
+    fragstoscan = []
+    detailfrags = []
+    for d in dirstoscan:
+        fragstoscan.append(d.split(slotlocation)[1])
+    for d in detaildirs:
+        detailfrags.append(d.split(slotlocation)[1])
+    return [diskuuid, dirstoscan, detaildirs, fragstoscan, detailfrags]
 
 ####
 # Get the UUID, if this is readable, for use with slot
@@ -513,7 +520,7 @@ def DirectoryCheckFull(donelist):
     for packet in donelist:
         # This repeats an earlier disk access!
         dstuff = InventoryOneFull(packet[4])
-        for tentativedir in dstuff[2]:
+        for tentativedir in dstuff[4]:
             # It should, in theory not have been full before, and thus
             #  there should not be anything in FullDirectories.  But,
             #  to be on the safe side, check before registering it
