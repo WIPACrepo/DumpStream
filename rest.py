@@ -1589,32 +1589,6 @@ def getgluestatus(estring):
         return 'FAILURE'
     return ''
 
-####
-# Purge the WorkingTable
-@app.route("/glue/workpurge", methods=["POST"])
-def purgegluework():
-    ''' Empty out the done stuff from WorkingTable If done, everything '''
-    query = 'DELETE FROM WorkingTable WHERE status=\'Picked\''
-    try:
-        stuff = insert_db_final(query)
-        return ''
-    except:
-        print('purgegluework:  cannot empty table', query)
-        return 'FAILURE'
-
-
-####
-# Count the 'Unpicked in the WorkingTable
-@app.route("/glue/workcount", methods=["GET"])
-def countgluework():
-    ''' Empty out the WorkingTable, since we are done '''
-    query = 'SELECT COUNT(*) FROM WorkingTable WHERE status=\'Unpicked\''
-    try:
-        stuff = query_db_final(query)
-        return str(stuff[0]['COUNT(*)'])
-    except:
-        print('countgluework:  cannot count table', query)
-        return str(-1)
 
 ####
 # Set the WorkingTable entry to 'Picked'
@@ -1650,34 +1624,6 @@ def glueworkupdate(estring):
     #
     return ''
 
-
-####
-# Load the WorkingTable with 'Unpicked' directories
-@app.route("/glue/workload/<estring>", methods=["POST"])
-def glueworkload(estring):
-    ''' Load WorkingTable with idealName directories '''
-    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    if len(comm) <= 0:
-        return str(0)
-    individual_dirs = comm.split()
-    query = 'INSERT INTO WorkingTable (realDir,status) VALUES (?,\'Unpicked\')'
-    query0 = 'SELECT * FROM WorkingTable WHERE realDir=?'
-    for indir in individual_dirs:
-        param = (str(indir), )
-        try:
-            stuff = query_db_final(query0, param)
-        except:
-            print('glueworkload:  failed to select', param)
-            return 'FAILURE'
-        #
-        if len(stuff) > 2:
-            continue	# This already exists, do not try to re-insert
-        try:
-            stuff = insert_db_final(query, param)
-        except:
-            print('glueworkload: failed to insert', param)
-            return 'FAILURE'
-    return ''
 
 
 ####
