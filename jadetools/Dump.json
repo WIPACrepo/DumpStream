@@ -1,0 +1,8 @@
+{
+  "FRACTION_FS": 0.90,
+  "FRACTION_NERSC_QUOTA": 0.85,
+  "SIZE_BUFFER_GB": 20000,
+  "SIZE_ALL_LOCAL_BUNDLE_SPACE_GB": 100000,
+  "ROOT": "/mnt/lfs7/exp",
+  "STAGE_ROOT": "/mnt/lfss/jade-lta"
+}
