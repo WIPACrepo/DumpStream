@@ -58,7 +58,7 @@ class CheckExternals():
         else:
             self.execdf = '/usr/bin/df'
     #
-    def __call__(self, filesystem):
+    def __call__(self):
         return self.go_nogo()
     #
     def getLTAToken(self, name):
@@ -73,7 +73,7 @@ class CheckExternals():
     #
     def checkQuotaNERSC(self):
         ''' get the cscratch1 use from NERSC--are we too full? '''
-        _, used, avail = self.checkQuotaNERSC()
+        _, used, avail = self.getQuotaNERSC()
         if used < 0 or avail < 0:
             return False
         if used > self.config['FRACTION_NERSC_QUOTA'] * avail:
@@ -125,7 +125,7 @@ class CheckExternals():
             if '%' in wword and 'Use' not in wword:
                 wx = wword.split('%')
                 try:
-                    flans = float(wx[0])
+                    flans = float(wx[0])/100
                     break
                 except:
                     print('FetchDfPercent could not make a number out of', wx[0])
@@ -136,7 +136,7 @@ class CheckExternals():
 
     def CheckLocalSpace(self):
         ''' Execute a du on the stage and out areas; should not exceed limit '''
-        cmd = [self.execdu, '-h', self.config['STAGE_ROOT'] + '/bundler_out']
+        cmd = [self.execdu, self.config['STAGE_ROOT'] + '/bundler_out']
         answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
         if code != 0 or len(error) > 2:
             print('CheckLocalSpace failed', error, answer, code, 'bundler_out')
@@ -146,9 +146,9 @@ class CheckExternals():
         except:
             print('CheckLocalSpace failed to get out size', answer)
             return False
-        if outsize/1024 > self.config['SIZE_BUFFER_GB']:
+        if outsize/1048576 > self.config['SIZE_BUFFER_GB']:
             return False
-        cmd = [self.execdu, '-h', self.config['STAGE_ROOT'] + '/bundler_stage']
+        cmd = [self.execdu, self.config['STAGE_ROOT'] + '/bundler_stage']
         answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
         if code != 0 or len(error) > 2:
             print('CheckLocalSpace failed', error, answer, code, 'bundler_stage')
@@ -158,7 +158,7 @@ class CheckExternals():
         except:
             print('CheckLocalSpace failed to get stage size', answer)
             return False
-        if (stagesize + outsize)/1024 > self.config['SIZE_ALL_LOCAL_BUNDLE_GB']:
+        if (stagesize + outsize)/1048576 > self.config['SIZE_ALL_LOCAL_BUNDLE_SPACE_GB']:
             return False
         return True
 
