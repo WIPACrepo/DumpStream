@@ -19,17 +19,6 @@ class BearerAuth(requests.auth.AuthBase):
 
 #####
 #
-def readConfig(fileName='Dump.json'):
-    '''  Read the configuration -- which filesystems and what limits
-        from the specified file '''
-    try:
-        with open(fileName) as f:
-            data = json.load(f)
-        return data
-    except:
-        print('readConfig failed to read', fileName)
-        return None
-
 #####
 #
 def normalizeAnswer(quotaString):
@@ -53,11 +42,13 @@ def normalizeAnswer(quotaString):
 
 #####
 #
-class checkExternals():
+class CheckExternals():
     ''' Encapsulate the NERSC quota check code '''
-    def __init__(self, config, name='service-token'):
+    def __init__(self, name='service-token', configname='Dump.json'):
+        self.tokenfilename = name
+        self.configfilename = configname
         self.getLTAToken(name)
-        self.config = config
+        self.config = self.ReadConfig()
         if os.path.isfile('/bin/du'):
             self.execdu = '/bin/du'
         else:
@@ -143,29 +134,29 @@ class checkExternals():
             return False
         return True
 
-    def checkLocalSpace(self):
+    def CheckLocalSpace(self):
         ''' Execute a du on the stage and out areas; should not exceed limit '''
         cmd = [self.execdu, '-h', self.config['STAGE_ROOT'] + '/bundler_out']
         answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
         if code != 0 or len(error) > 2:
-            print('checkLocalSpace failed', error, answer, code, 'bundler_out')
+            print('CheckLocalSpace failed', error, answer, code, 'bundler_out')
             return False
         try:
             outsize = int(answer.split()[0])
         except:
-            print('checkLocalSpace failed to get out size', answer)
+            print('CheckLocalSpace failed to get out size', answer)
             return False
         if outsize/1024 > self.config['SIZE_BUFFER_GB']:
             return False
         cmd = [self.execdu, '-h', self.config['STAGE_ROOT'] + '/bundler_stage']
         answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
         if code != 0 or len(error) > 2:
-            print('checkLocalSpace failed', error, answer, code, 'bundler_stage')
+            print('CheckLocalSpace failed', error, answer, code, 'bundler_stage')
             return False
         try:
             stagesize = int(answer.split()[0])
         except:
-            print('checkLocalSpace failed to get stage size', answer)
+            print('CheckLocalSpace failed to get stage size', answer)
             return False
         if (stagesize + outsize)/1024 > self.config['SIZE_ALL_LOCAL_BUNDLE_GB']:
             return False
@@ -177,13 +168,29 @@ class checkExternals():
             return False
         if not self.FetchDfPercent(self.config['STAGE_ROOT']):
             return False
-        if not self.checkLocalSpace():
+        if not self.CheckLocalSpace():
             return False
         if not self.checkQuotaNERSC():
             return False
         return True
 
-
-x = readConfig()
-print(x['STAGE_ROOT'])
+    def ReadConfig(self):
+        '''  Read the configuration -- which filesystems and what limits
+            from the specified file '''
+        try:
+            with open(self.configfilename) as f:
+                data = json.load(f)
+            return data
+        except:
+            print('ReadConfig failed to read', self.configfilename)
+            return None
+    
+#
+#####
+# main
+if __name__ == '__main__':
+    app = CheckExternals()
+    if app.go_nogo():
+        sys.exit(0)	#OK
+    sys.exit(1)
  
