@@ -80,6 +80,21 @@ def UpdateWork(idir):
     if len(str(goutp)) > 1:
         print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
 
+def SetLastGluePassTime():
+    ''' Tell the database the last interface pass has completed '''
+    #+
+    # Arguments:	None
+    # Returns:		None
+    # Side Effects:	changes row in REST server's DB
+    #			Prints error if there was a problem
+    # Relies on:	REST serve working
+    #-
+    gposturl = copy.deepcopy(U.basicposturl)
+    gposturl.append(U.targetgluetimeset + 'LastGluePass')
+    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    if 'FAIL' in str(goutp):
+        print('SetLastGluePassTime failed to set the last time')
+    return
 
 def DiffOldDumpTime():
     ''' Is the most recent dump time newer than the most recent scan? '''
@@ -606,6 +621,8 @@ mytodo = Phase1()
 phase2_ok = Phase2(mytodo)
 ans_token = ReleaseToken()
 ans_status = SetStatus('Ready')
+# Flag that we're done
+SetLastGluePassTime()
 if not phase2_ok:
     print('phase2_ok false')
     sys.exit(1)

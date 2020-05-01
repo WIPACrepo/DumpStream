@@ -4,5 +4,6 @@
   "SIZE_BUFFER_GB": 20000,
   "SIZE_ALL_LOCAL_BUNDLE_SPACE_GB": 100000,
   "ROOT": "/mnt/lfs7/exp",
-  "STAGE_ROOT": "/mnt/lfss/jade-lta"
+  "STAGE_ROOT": "/mnt/lfss/jade-lta",
+  "FILE_CATALOG_REST_URL": "https://file-catalog.icecube.wisc.edu"
 }
