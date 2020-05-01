@@ -1,5 +1,6 @@
 import sys
-import Utils as U
+import requests
+#import Utils as U
 
 
 class CandC():
@@ -10,10 +11,11 @@ class CandC():
         self.DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
         # Note: Added operator functions, remove DumpOne (a legit command)
         self.DumperNextOptions = ['Dump', 'Pause', 'Inventory', 'Help', 'Status']
+        self.baseurl = 'http://archivecontrol.wipac.wisc.edu'
     #
     def BasicOutput(self):
         ''' Tell the user what is going on, and ask what to do next '''
-        nowAction, nextAction = U.DumperTodo()
+        nowAction, nextAction = self.DumperTodo()
         print('The dump action last time we checked was:', nowAction)
         print('The dump action next in line is:', nextAction)
         print(' Options for controlling the next dump run are:')
@@ -39,10 +41,38 @@ class CandC():
     def PrintStatus(self):
         ''' Retrieve and print the current DumpControl status,
             as of the last run '''
-        dumpstatus, dumpNextAction = U.DumperTodo()
+        dumpstatus, dumpNextAction = self.DumperTodo()
         print('Status is as of last DumpControl run')
         print(' Current action = ', dumpstatus)
         print(' Next action = ', dumpNextAction)
+    #
+    def DumperTodo(self):
+        ''' Return what the current and next commands are '''
+        answer = requests.get(self.baseurl + '/dumping/state')
+        try:
+            js = answer.json()
+        except:
+            print('CandC:DumperTodo failed to parse', answer.text)
+            return None, None
+        return js['nextAction'], js['status']
+    #
+    def DumperSetNext(self, command):
+        ''' Set line in REST server DB for DumpControl next state  after this '''
+        if command not in ['Dump', 'Pause', 'Inventory']:
+            print('CandC:DumperSetState invalid command', command)
+            return
+        answer = requests.get(self.baseurl + '/dumping/state/nextaction/' + command)
+        if 'FAILURE' in answer:
+            print('CandC:DumperSetState failed with command', command)
+    #
+    def DumperSetState(self, command):
+        ''' Set line in REST server DB for DumpControl next state '''
+        if command not in ['Dump', 'Pause', 'DumpOne', 'Inventory']:
+            print('CandC:DumperSetState invalid command', command)
+            return
+        answer = requests.get(self.baseurl + '/dumping/state/status/' + command)
+        if 'FAILURE' in answer:
+            print('CandC:DumperSetState failed with command', command)
     #
     def Communicate(self):
         ''' Interact with the user '''
@@ -59,9 +89,9 @@ class CandC():
             if tentativeCommand == 'Status':
                 self.PrintStatus()
                 sys.exit(0)
-            U.DumperSetState(tentativeCommand)
+            self.DumperSetState(tentativeCommand)
             if tentativeCommand == 'Inventory':
-                U.DumperSetNext('Pause')
+                self.DumperSetNext('Pause')
             sys.exit(0)
         #
         self.BasicOutput()
@@ -79,8 +109,8 @@ class CandC():
             self.PrintStatus()
             sys.exit(0)
         if myread == 'Inventory':
-            U.DumperSetNext('Pause')
-        U.DumperSetState(myread)
+            self.DumperSetNext('Pause')
+        self.DumperSetState(myread)
         sys.exit(0)
 
 if __name__ == "__main__":
