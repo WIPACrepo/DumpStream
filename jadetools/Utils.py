@@ -752,3 +752,73 @@ def ParseCleanDirName(bname):
         if word != '':
             basen = basen + '/' + word
     return basen
+
+####
+# State of the Dumper: query and set routines
+def DumperTodo():
+    ''' Query the state of the dumper system '''
+    #+
+    # Arguments:        None
+    # Returns:          current status
+    #                   next action to do
+    # Side Effects:     print and die if failure
+    # Relies on:        REST server working
+    #-
+    dtgeturl = copy.deepcopy(basicgeturl)
+    dtgeturl.append(targetdumpingstate)
+    dtoutp, dterro, dtcode = getoutputerrorsimplecommand(dtgeturl, 1)
+    if int(dtcode) != 0 or 'FAILURE' in str(dtoutp):
+        print('Get Dumper state failed', dtoutp, dterro)
+        sys.exit(0)
+    # status, nextAction
+    try:
+        dump_json = json.loads(singletodouble(dtoutp))
+        status = dump_json[0]['status']
+        nextAction = dump_json[0]['nextAction']
+    except:
+        try:
+            dump_json = json.loads(singletodouble(dtoutp))
+            status = dump_json['status']
+            nextAction = dump_json['nextAction']
+        except:
+            print('DumperTodo failure with', dump_json)
+            sys.exit(0)
+    return status, nextAction
+####
+#
+def DumperSetState(value):
+    ''' Set the state of the dumper system '''
+    #+
+    # Arguments:        new state
+    # Returns:          Nothing
+    # Side Effects:     print and die if bad state or failure
+    # Relies on:        REST server working
+    #-
+    if value not in DumperStatusOptions:
+        print('DumperSetState:  invalid state to set', value)
+        sys.exit(0)
+    dposturl = copy.deepcopy(basicposturl)
+    dposturl.append(targetdumpingstatus + mangle(value))
+    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    if int(dcode) != 0 or 'FAILURE' in str(doutp):
+        print('DumperSetState: failed to set', value, doutp, derro)
+        sys.exit(0)
+####
+#
+def DumperSetNext(value):
+    ''' Set the next action for the dumper system when done with current action '''
+    #+
+    # Arguments:        new action
+    # Returns:          Nothing
+    # Side Effects:     print and die if bad action or failure
+    # Relies on:        REST server working
+    #-
+    if value not in DumperNextOptions:
+        print('DumperSetNext:  invalid state to set', value)
+        sys.exit(0)
+    dposturl = copy.deepcopy(basicposturl)
+    dposturl.append(targetdumpingnext + mangle(value))
+    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    if int(dcode) != 0 or 'FAILURE' in str(doutp):
+        print('DumperSetNext: failed to set', value, doutp, derro)
+        sys.exit(0)
