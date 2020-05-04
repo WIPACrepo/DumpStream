@@ -3,6 +3,7 @@
    using an argument provided to the dump script.
    This is called from the dumpscript bash script, after
    the rsync's complete.  '''
+import os
 import sys
 import Utils as U
 
@@ -33,6 +34,14 @@ class renamer:
         self.target = U.GiveTarget() + '/'
         self.target.replace('//', '/')
         self.listOfTops = U.RetrieveDesiredTrees()
+        if os.path.isfile('/bin/mv'):
+            self.execmv = '/bin/mv'
+        else:
+            self.execmv = '/usr/bin/mv'
+        if os.path.isfile('/bin/chown'):
+            self.execchown = '/bin/chown'
+        else:
+            self.execchown = '/usr/bin/chown'
 
     
     def FindOriginal(self):
@@ -81,7 +90,9 @@ class renamer:
         ''' Given a file name of file found on the pole disk, strip off the
             disk name and replace it with the target directory name.
             Decide on  new name--if it is the same there's nothing to do.
-            Otherwise attempt a mv of the old name to the new.  Die on failure '''
+            Otherwise attempt a mv of the old name to the new.  Die on failure
+            EXPANDED SPECIFICATIONS
+            Change the ownership to jadelta:jadelta '''
         #+
         # Arguments:	name of the file as found on the pole disk
         # Returns:	Nothing
@@ -100,8 +111,7 @@ class renamer:
         if tempName == newName:
             return
         try:
-            # NOTE: jade03 has a different location for mv, not /usr/bin/mv
-            command = ['/usr/bin/sudo', '/bin/mv', tempName, newName]
+            command = ['/usr/bin/sudo', self.execmv, tempName, newName]
             routp, rerr, rcode = U.getoutputerrorsimplecommand(command, 1)
             if rcode != 0:
                 print('RenameOne failed during rename', tempName, newName, routp, rerr, rcode)
@@ -109,6 +119,14 @@ class renamer:
         except:
             print('RenameOne failed to rename', tempName, newName, routp, rerr, rcode)
             #sys.exit(3)
+        try:
+            command = ['/usr/bin/sudo', self.execchown, 'jadelta:jadelta', newName]
+            routp, rerr, rcode = U.getoutputerrorsimplecommand(command, 1)
+            if rcode != 0:
+                print('RenameOne failed during chown', newName, routp, rerr, rcode)
+                #sys.exit(3)
+        except:
+            print('RenameOne failed to chown', newName, routp, rerr, rcode)
         return
     #
     def ExecuteJob(self):
