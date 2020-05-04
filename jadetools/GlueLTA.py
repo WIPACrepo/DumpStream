@@ -15,7 +15,7 @@ import Utils as U
 
 ####
 # Set some global stuff with default values
-config_file = '/home/jbellinger/Glue.json'
+config_file = '/home/jadelta/Glue.json'
 YEAR = '2018'
 ROOT = '/mnt/lfs7/exp'
 PARTIAL = False
@@ -27,7 +27,7 @@ FORBID = False
 FORBID_LIST = []
 CROOT = '/tmp'
 CONDOR_LIMIT = 10
-INITIAL_DIR = '/home/jade/dumpcontrol/DumpStream/jadetools'
+INITIAL_DIR = '/home/jadelta/dumpcontrol/DumpStream/jadetools'
 
 DEBUG = False
 
@@ -151,7 +151,7 @@ def ParseParams():
     global CROOT
     global CONDOR_LIMIT
     global INITIAL_DIR
-    config_file = '/home/jbellinger/Glue.json'
+    config_file = '/home/jadelta/Glue.json'
     try:
         with open(config_file) as json_file:
             data = json.load(json_file)
