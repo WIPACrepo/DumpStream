@@ -15,9 +15,12 @@
         Delete the files in that directory
 '''
 import os
+import sys
 import glob
+import json
 import requests
 import Utils as U
+import CheckFileCatalog as LC
 
 #######################################################
 #
@@ -34,16 +37,184 @@ class BearerAuth(requests.auth.AuthBase):
 #
 class AutoFiles():
     ''' Class to handle dumped file deletion '''
-    def __init__(self):
+    def __init__(self, name='service-token', configname='Dump.json'):
         ''' __init__ for AutoFiles; load LTA token '''
         #+
-        # Arguments:	None
+        # Arguments:	optional name of service token file; default service-token
+        #		optional name of configuration file; default Dump.json
         # Returns:	Nothing
         # Side Effects: Subroutine reads a file
-        # Relies on:	GetLTAToken
+        # Relies on:	getLTAToken
+        #		ReadConfig
         #-
-        self.token = self.GetLTAToken()
-        self.bearer = BearerAuth(self.token)
+        token = self.getLTAToken(name)
+        self.bearer = BearerAuth(token)
+        self.config = self.ReadConfig(configname)
+        if os.path.isfile('/bin/ls'):
+            self.execls = '/bin/ls'
+        else:
+            self.execls = '/usr/bin/ls'
+        self.apriori = ['PFRaw', 'PFDST', 'pDAQ-2ndBld']
+        self.dumptargetdir = U.GiveTarget()
+        self.dirsplit = '/exp/'
+        self.checker = LC.CheckFileCatalog()
+    #
+    def getLTAToken(self, tokenfilename):
+        ''' Read the LTA REST server token from file "tokenfilename"; set it for the class '''
+        #+
+        # Arguments:	token file name string
+        # Returns:	token
+        # Side Effects:	reads a file, if possible
+        # Relies on:	file with token
+        #-
+        try:
+            tf = open(tokenfilename, 'r')
+            token = tf.readline()
+            tf.close()
+            return token
+        except:
+            print('getLTAToken failed to read from', tokenfilename)
+            sys.exit(1)
+    #
+    def ReadConfig(self, configfilename):
+        '''  Read the configuration -- which filesystems and what limits
+            from the specified file '''
+        #+
+        # Arguments:	configuration file name
+        # Returns:	json with configuration from file
+        # Side Effects:	reads a file
+        # Relies on:	file exists, has json configuration
+        #-
+        try:
+            with open(configfilename) as f:
+                data = json.load(f)
+            return data
+        except:
+            print('ReadConfig failed to read', configfilename)
+            return None
+    #
+    def getFullDirsNotEmptied(self):
+        ''' Return an array of FullDirectories where toLTA=2, only of expected types '''
+        #+
+        # Arguments:	None
+        # Returns:	array of idealNames from FullDirectories 
+        #		where toLTA=2 and directory is one of the expected types
+        # Side Effects:	query of my REST server
+        # Relies on:	my REST server is up
+        #-
+        bigreq = 'http://archivecontrol.wipac.wisc.edu/dumping/handedoffdir/' + U.mangle(self.dirsplit + ' 2')
+        fulldirs = requests.get(bigreq)
+        unjson = eval(fulldirs.text)
+        undone = []
+        for blob in unjson:
+            candidate = blob['idealName']
+            for ap in self.apriori:
+                if ap in candidate:
+                    undone.append(candidate)
+                    break
+        return undone
+    #
+    def VetNotOfficialTree(self, logicalDirectoryName):
+        ''' Check that this directory is
+             1) Really a directory
+             2) Has a real path that is part of the dump target area,
+               not the true data warehouse.  It should be linked to
+               from the warehouse
+            returns True if OK; False if something not OK '''
+        #+
+        # Arguments:	directory path name
+        # Returns:	boolean
+        # Side Effects:	os filesystem metadata retrieved
+        # Relies on:	fileystem is up
+        #-
+        if not os.path.isdir(logicalDirectoryName):
+            return False
+        if self.dumptargetdir not in os.path.realpath(logicalDirectoryName):
+            return False
+        return True
+    #
+    #
+    def compareDirectoryToArchive(self, directory):
+        ''' Does the listing of the directory include files not found
+            in the locally (WIPAC) archived or remotely (NERSC) archived
+            list?  If so, return a non-zero code
+            If everything is in the archive lists, return 0 '''
+        #+
+        # Arguments:	directory name to investigate; ideal name
+        #		NOTE:  must be linked to from the warehouse
+        #		The real name is not what's wanted
+        # Returns:	Integer code 0=OK, others represent different problems
+        # Side Effects:	filesystem listing
+        #		FileCatalog queries
+        # Relies on:	filesystem up and directory accessible
+        #		FileCatalog up and its REST server
+        #		directory name is of the form /data/exp/ETC
+        cmd = [self.execls, directory]
+        answer, error, code = U.getoutputerrorsimplecommand(cmd, 2)
+        if code != 0 or len(error) > 2:
+            print('compareDirectoryToArchive failed to do a ls on', directory)
+            return 1
+        foundFiles = answer.splitlines()
+        #
+        # Now fetch info from the FileCatalog--the files need to match
+        # If I'm missing files in the warehouse, that may not matter,
+        # what's a problem is when there are files that aren't registered
+        # here or at NERSC
+        dwords = directory.split(self.dirsplit)
+        if len(dwords) != 2:
+            print('compareDirectoryToArchive could not parse the exp in the directory name', directory)
+            return 2
+        #
+        directoryFrag = dwords[1]
+        #
+        query_dictw = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "WIPAC"}, "logical_name": {"$regex": directoryFrag}}
+        query_jsonw = json.dumps(query_dictw)
+        overallw = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonw}'
+        rw = requests.get(overallw, auth=self.bearer)
+        #
+        query_dictn = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
+        query_jsonn = json.dumps(query_dictn)
+        overalln = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonn}'
+        rn = requests.get(overalln, auth=self.bearer)
+        # Try to unpack the info.
+        try:
+            fileWIPAC = rw.json()['files']
+        except:
+            print('compareDirectoryToArchive failed to unpack WIPAC-based files')
+            return 3
+        try:
+            fileNERSC = rn.json()['files']
+        except:
+            print('compareDirectoryToArchive failed to unpack NERSC-based files')
+            return 4
+        if len(fileWIPAC) <= 0 or len(fileNERSC) <= 0:
+            return 5
+        #
+        wip = []
+        ner = []
+        for z in fileWIPAC:
+            wip.append(z['logical_name'])
+        for z in fileNERSC:
+            ner.append(z['logical_name'])
+        # logical_name
+        for ff in foundFiles:
+            foundIt = False
+            for arch in wip:
+                if ff in arch:
+                    foundIt = True
+                    break
+            if not foundIt:
+                return 6
+            #
+            foundIt = False
+            for arch in ner:
+                if ff in arch:
+                    foundIt = True
+                    break
+            if not foundIt:
+                return 7
+        return 0
+    #
     #
     def GetFullDirsDone(self):
         ''' Get a list of pairs of ideal/real directory names where toLTA=2
@@ -51,16 +222,15 @@ class AutoFiles():
             Skip directories not found in a dump area, for safety '''
         #+
         # Arguments:	None
-        # Returns:		list of [idealName, realName] pairs for the toLTA=2 directories
+        # Returns:	List of [idealName, realName] pairs for the toLTA=2 directories
         # Side Effects:	Print if failure (keeps going w/o failed one)
         # Relies on:	MatchIdealToRealDir
-        #			My REST server working
-        #			Working with /data/exp dumps!
+        #		My REST server working
+        #		Working with /data/exp dumps!
         #-
         # Request everything handed off, and parse it for the handed-off
         # "exp" should get pretty much anything in we want
-        splitterWord = '/exp/'
-        combin = U.mangle(splitterWord[0:-1]) + ' 2'
+        combin = U.mangle(self.dirsplit[0:-1]) + ' 2'
         bulkReceive = requests.get(U.curltargethost + 'dumping/handedoffdir/' + combin)
         bulkList = eval(str(bulkReceive.text))
         breturn = []
@@ -69,7 +239,7 @@ class AutoFiles():
         breturn = []
         #
         for chunk in bulkList:
-            dname = chunk['idealDir']
+            dname = chunk['idealName']
             match = self.MatchIdealToRealDir(dname)
             if match == '':
                 continue	# Don't monkey with the real /data/exp!!!
@@ -107,27 +277,6 @@ class AutoFiles():
         print('MatchIdealToRealDir WARNING:  ', idealDir, 'does not appear to be in a dump target area')
         return ''
     #
-    ####
-    #
-    def GetLTAToken(self):
-        ''' Get the token for the LTA REST server '''
-        #+
-        # Arguments:	None
-        # Returns:		string token for server
-        # Side Effects:	opens/reads/closes the token file
-        # Relies on:	File exists and is readable
-        #-
-        tokenFile = '/Users/jbellinger/Dump/DumpStream/jadetools/service-token'
-        try:
-            filen = open(tokenFile, 'r')
-            token = filen.readline()
-            filen.close()
-            return token
-        except:
-            print('GetLTAToken failed to open and read ', tokenFile)
-        return ''
-    #
-    ####
     #
     def GetAllTransfer(self, listOfDirectories):
         ''' Get the full list of transfers from LTA that match the given list of directories '''
@@ -238,6 +387,9 @@ class AutoFiles():
             return
         for transfer in transferRows:
             if self.AreTransfersComplete(transfer):
+                ok = self.checker.compareDirectoryToArchive(transfer[0])
+                if not ok:
+                    continue
                 ok = self.DeleteDir(transfer[0])
                 if not ok:
                     print('FindAndDelete failed in deleting', transfer[0])
@@ -246,6 +398,20 @@ class AutoFiles():
                 if not ok:
                     print('FindAndDelete failed to reset the FullDirectories entry status', transfer[0])
                     return	# Do not try to continue
+    ##
+    def ResetStatus(self, idealDirectory):
+        ''' Set toLTA=3 in FullDirectories for directory idealDirectory '''
+        #+
+        # Arguments:	directory name (string)
+        # Returns:	boolean for success/failure
+        # Side Effects:	updates my REST server
+        # Relies on:	my REST server working
+        #-
+        updurl = 'http://archivecontrol.wipac.wisc.edu/workupdate/' + U.mangle(idealDirectory + ' 3')
+        rw = requests.post(updurl)
+        if 'FAILURE' in rw.text:
+            return False
+        return True
 
 if __name__ == '__main__':
     app = AutoFiles()
