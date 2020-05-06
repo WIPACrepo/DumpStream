@@ -322,7 +322,7 @@ class AutoFiles():
             return False	# Something is wrong, don't break anything
         # Which bundle states are OK to allow deletion of raw files
         #acceptable = ['external', 'finished', 'deleted', 'source-deleted', 'detached', 'completed']
-        acceptable = ['external', 'finished']
+        acceptable = ['external', 'finished', 'deprecated']
         bundleuuid = []
         for tuuid in trUUID:
             transferRequestData = requests.get('https://lta.icecube.aq/TransferRequests/' + tuuid, auth=self.bearer)
@@ -359,7 +359,7 @@ class AutoFiles():
         try:
             for donefile in list_o_files:
                 #os.remove(donefile)
-                print(donefile)
+                print('dEBUG DeleteDir pretending to remove', donefile)
             return True
         except:
             print('DeleteDir: failed to delete some files from', realDir)
@@ -398,6 +398,8 @@ class AutoFiles():
                 if not ok:
                     print('FindAndDelete failed to reset the FullDirectories entry status', transfer[0])
                     return	# Do not try to continue
+            else:
+                print('FindAndDelete: not all the Transfers are complete in', transfer)
     ##
     def ResetStatus(self, idealDirectory):
         ''' Set toLTA=3 in FullDirectories for directory idealDirectory '''
