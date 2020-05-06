@@ -110,7 +110,7 @@ class CandC():
             sys.exit(0)
         if myread == 'Inventory':
             self.DumperSetNext('Pause')
-        self.DumperSetState(myread)
+        self.DumperSetNext(myread)
         sys.exit(0)
 
 if __name__ == "__main__":
