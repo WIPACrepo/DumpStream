@@ -61,7 +61,7 @@ class CandC():
         if command not in ['Dump', 'Pause', 'Inventory']:
             print('CandC:DumperSetState invalid command', command)
             return
-        answer = requests.get(self.baseurl + '/dumping/state/nextaction/' + command)
+        answer = requests.post(self.baseurl + '/dumping/state/nextaction/' + command)
         if 'FAILURE' in answer:
             print('CandC:DumperSetState failed with command', command)
     #
