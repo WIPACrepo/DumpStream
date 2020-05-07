@@ -22,6 +22,7 @@ import requests
 import Utils as U
 import CheckFileCatalog as LC
 
+JNB_DEBUG = False
 #######################################################
 #
 class BearerAuth(requests.auth.AuthBase):
@@ -319,14 +320,19 @@ class AutoFiles():
         #
         trUUID = infoRow[1]
         if len(trUUID) <= 0:
+            print('AreTransfersComplete: SHOULD NOT HAPPEN')
             return False	# Something is wrong, don't break anything
         # Which bundle states are OK to allow deletion of raw files
-        #acceptable = ['external', 'finished', 'deleted', 'source-deleted', 'detached', 'completed']
-        acceptable = ['external', 'finished', 'deprecated']
+        #acceptable = ['external', 'finished', 'deleted', 'source-deleted', 'detached', 'completed', 'deprecated']
+        acceptable = ['external', 'finished', 'deleted', 'deprecated']
         bundleuuid = []
         for tuuid in trUUID:
-            transferRequestData = requests.get('https://lta.icecube.aq/TransferRequests/' + tuuid, auth=self.bearer)
-            bundleRequest = requests.get('https://lta.icecube.aq/Bundles?request=' + tuuid, auth=self.bearer)
+            try:
+                transferRequestData = requests.get('https://lta.icecube.aq/TransferRequests/' + tuuid, auth=self.bearer)
+                bundleRequest = requests.get('https://lta.icecube.aq/Bundles?request=' + tuuid, auth=self.bearer)
+            except:
+                print('AreTransfersComplete died when lta.icecube.aq failed to reply', tuuid, len(trUUID))
+                sys.exit(1)
             trbundle = bundleRequest.json()['results']
             if len(trbundle) <= 0:
                 print('AreTransfersComplete: TransferRequest has no bundles', transferRequestData.text)
@@ -337,6 +343,8 @@ class AutoFiles():
         for uu in bundleuuid:
             bundleStatus = requests.get('https://lta.icecube.aq/Bundles/' + uu, auth=self.bearer)
             stat = bundleStatus.json()['status']
+            if JNB_DEBUG:
+                print('dEBUG AreTransfersComplete:', stat, bundleStatus.json()['uuid'], infoRow[0])
             if stat not in acceptable:
                 return False
         return True
@@ -358,8 +366,10 @@ class AutoFiles():
             return False
         try:
             for donefile in list_o_files:
-                #os.remove(donefile)
-                print('dEBUG DeleteDir pretending to remove', donefile)
+                if JNB_DEBUG:
+                    print('dEBUG DeleteDir pretending to remove', donefile)
+                else:
+                    os.remove(donefile)
             return True
         except:
             print('DeleteDir: failed to delete some files from', realDir)
@@ -400,6 +410,9 @@ class AutoFiles():
                     return	# Do not try to continue
             else:
                 print('FindAndDelete: not all the Transfers are complete in', transfer)
+            if JNB_DEBUG:
+                print('dEBUG FindAndDelete:  stop here for test A', transfer)
+
     ##
     def ResetStatus(self, idealDirectory):
         ''' Set toLTA=3 in FullDirectories for directory idealDirectory '''
@@ -409,6 +422,9 @@ class AutoFiles():
         # Side Effects:	updates my REST server
         # Relies on:	my REST server working
         #-
+        if JNB_DEBUG:
+            print('ResetStatus', idealDirectory)
+            return True
         updurl = 'http://archivecontrol.wipac.wisc.edu/workupdate/' + U.mangle(idealDirectory + ' 3')
         rw = requests.post(updurl)
         if 'FAILURE' in rw.text:
