@@ -115,6 +115,21 @@ class AutoFiles():
                     break
         return undone
     #
+    def CompRight(self, string1, string2):
+        ''' Compare 2 directory names.  Split on /exp/ and compare
+            the right-hand halves '''
+        #+
+        # Arguments:           strings for directory names
+        # Returns:             boolean
+        # Side Effects:        None
+        # Relies on:           Nothing
+        #-
+        words1 = string1.split('/exp/')
+        words2 = string2.split('/exp/')
+        if len(words1) != 2 or len(words2) != 2:
+            return False
+        return words1[1] == words2[1]
+    #
     def VetNotOfficialTree(self, logicalDirectoryName):
         ''' Check that this directory is
              1) Really a directory
@@ -280,7 +295,8 @@ class AutoFiles():
     #
     #
     def GetAllTransfer(self, listOfDirectories):
-        ''' Get the full list of transfers from LTA that match the given list of directories '''
+        ''' Get the full list of transfers from LTA that match the given list of directories
+            Comparison is by whatever is to the right of /exp/ '''
         #+
         # Arguments:	list of pairs of [ideal,real] directories to review
         # Returns:	array of [realDir, [array of transfer UUID]] pairs
@@ -297,7 +313,7 @@ class AutoFiles():
         for direct in listOfDirectories:
             uuidset = []
             for entry in allTransferRequests.json()['results']:
-                if direct[0] == entry['path'] or direct[1] == entry['path']:
+                if self.CompRight(direct[0], entry['path']):
                     uuidset.append(entry['uuid'])
             if len(uuidset) <= 0:
                 continue		# nothing matches, nothing to do
