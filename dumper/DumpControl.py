@@ -152,13 +152,11 @@ def InventoryOneFull(slotlocation):
             subdirs = str(i3outp).split()
             for subdir in subdirs:
                 detaildirs.append(vtop + '/' + subdir)
-    fragstoscan = []
     detailfrags = []
-    for d in dirstoscan:
-        fragstoscan.append(d.split(slotlocation)[1])
     for d in detaildirs:
         detailfrags.append(d.split(slotlocation)[1])
-    return [diskuuid, dirstoscan, detaildirs, fragstoscan, detailfrags]
+    # yes, there's a duplicate.  Refactoring artificat, clean later
+    return [diskuuid, dirstoscan, detaildirs, dirstoscan, detailfrags]
 
 ####
 # Get the UUID, if this is readable, for use with slot
