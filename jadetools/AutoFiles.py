@@ -413,8 +413,10 @@ class AutoFiles():
             return
         for transfer in transferRows:
             if self.AreTransfersComplete(transfer):
-                ok = self.checker.compareDirectoryToArchive(transfer[0])
-                if not ok:
+                answerkey = self.checker.compareDirectoryToArchive(transfer[0])
+                if answerkey != 0:
+                    if JNB_DEBUG:
+                        print('FindAndDelete: not in Archive', transfer[0], answerkey)
                     continue
                 ok = self.DeleteDir(transfer[0])
                 if not ok:
