@@ -443,7 +443,12 @@ class AutoFiles():
         if JNB_DEBUG:
             print('ResetStatus', idealDirectory)
             return True
-        updurl = 'http://archivecontrol.wipac.wisc.edu/workupdate/' + U.mangle(idealDirectory + ' 3')
+        words = idealDirectory.split('/exp/')
+        if len(words) == 2:
+            subpart = words[1]
+        else:
+            subpart = idealDirectory
+        updurl = 'http://archivecontrol.wipac.wisc.edu/workupdate/' + U.mangle(subpart + ' 3')
         rw = requests.post(updurl)
         if 'FAILURE' in rw.text:
             return False
