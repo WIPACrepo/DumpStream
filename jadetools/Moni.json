@@ -1,0 +1,7 @@
+{
+  "FILE_CATALOG_REST_URL": "https://file-catalog.icecube.wisc.edu/",
+  "DUMP_REST_URL": "https://archivecontrol.icecube.wisc.edu/",
+  "LTA_REST_URL": "https://lta.icecube.aq:443/",
+  "OVERDUE_SHORT": 21600,
+  "OVERDUE_LONG": 172800
+}
