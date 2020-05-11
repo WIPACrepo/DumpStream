@@ -47,5 +47,5 @@ if [[ "${firstargument}" == "" ]]; then echo "Nothing to do/was done?"; exit 1; 
 cd /opt/i3admin/dumpscripts
 source venv/bin/activate
 python3 renamer.py "${firstargument}"
-#python3 findfull.py "${allargs}"
+python3 findfull.py "${allargs}"
 exit 0
