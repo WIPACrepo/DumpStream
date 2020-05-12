@@ -3,5 +3,7 @@
   "DUMP_REST_URL": "https://archivecontrol.icecube.wisc.edu/",
   "LTA_REST_URL": "https://lta.icecube.aq:443/",
   "OVERDUE_SHORT": 21600,
-  "OVERDUE_LONG": 172800
+  "OVERDUE_LONG": 172800,
+  "CHECKMK_FILE": "/Users/jbellinger/Dump/DumpStream/jadetools/LTA.monitor",
+  "TRUE_FILE": "/home/jadelta/LTA.monitor"
 }

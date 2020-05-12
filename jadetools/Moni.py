@@ -132,6 +132,7 @@ class MoniLTA():
         return [oldest_remote]
     #
     def AllComponents(self):
+        ''' Drive the readout of each module, record problems '''
         #+
         # Arguments:	None
         # Returns:	Nothing
@@ -149,16 +150,99 @@ class MoniLTA():
                 continue
             if len(results) == 1:
                 if results[0] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module)
+                    problem_list.append(module + '#' + str(int(results)))
             else:
                 if results[0] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module + ' NERSC')
+                    problem_list.append(module + '-NERSC' + '#' + str(int(results)))
                 if results[1] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module + ' local')
+                    problem_list.append(module + '-local' + '#' + str(int(results)))
         return problem_list
+    #
+    def WriteStatusFile(self):
+        ''' Open the file used for check_mk status 
+            Call the various component checkers
+            Call the component nagios summarizers
+            Close the file
+            '''
+        #+ 
+        # Arguments:    Nothing
+        # Returns:      file handle for opened file
+        # Side Effects: Opens the flag file
+        # Relies on:    Nothing
+        #-
+        checkmk_file = self.config['CHECKMK_FILE']
+        try:
+            fhandle = open(checkmk_file, 'w')
+        except:
+            print('WriteStatusFile failed to open', checkmk_file)
+            sys.exit(5)
+        lta_problem_list = self.AllComponents()
+        fhandle.write(self.LTAToString(lta_problem_list) + '\n')
+        # TBD
+        dump_problem_list = []
+        fhandle.write(self.DumpToString(dump_problem_list) + '\n')
+        # TBD
+        bundle_summary_dict = {}
+        fhandle.write(self.BundlesToString(bundle_summary_dict) + '\n')
+        fhandle.close()
+
+    #
+    def LTAToString(self, problem_list):
+        ''' Compose a string summary of problem_list (from LTA system) to a
+             network file system file to be read elsewhere '''
+        #+
+        # Arguments:	list of overdue modules with times
+        # Returns:	String for nagios-reader to use
+        # Side Effects:	None
+        # Relies on:	Nothing
+        #-
+        if len(problem_list) == 0:
+            return '0 LTAModules - OK'
+        oldest = 0
+        for problem in problem_list:
+            try:
+                thistime = int(problem.split('#')[1])
+            except:
+                print('LTAToString format issue', problem)
+                sys.exit(6)
+            if thistime > oldest:
+                oldest = thistime
+        #
+        return '2 LTAModules oldest:' + str(oldest) + ' CRIT ' + problem_list
+    #
+    def DumpToString(self, dump_problem_list):
+        ''' compose a string summary of dump_problem_list (from Dump system) to a
+             network file system file to be read elsewhere '''
+        #+ 
+        # Arguments:    list of overdue modules with times and problems
+        # Returns:      String for nagios-reader to use
+        # Side Effects: None
+        # Relies on:    Nothing
+        #-
+        if len(dump_problem_list) == 0:
+            return '0 DumpModules - OK'
+        # This is not the final version
+        # NOT IMPLEMENTED
+        return '2 DumpModules - CRIT ' + dump_problem_list
+    #
+    def BundlesToString(self, bundle_summary_dict):
+        ''' compose a string summary of bundle_summary_dict (from LTA system) to a
+             network file system file to be read elsewhere '''
+        #+ 
+        # Arguments:    dict of counts of bundles in each status
+        # Returns:      String for nagios-reader to use
+        # Side Effects: None
+        # Relies on:    Nothing
+        #-
+        if len(bundle_summary_dict) == 0:
+            print('BundlesToString expects a dict of bundle status counts')
+            sys.exit(7)
+        # NOT IMPLEMENTED
+        return '0 BundleStatus - OK'
+
 
 if __name__ == '__main__':
     allc = MoniLTA()
-    result = allc.AllComponents()
+    result = allc.WriteStatusFile()
     if len(result) > 0:
         print(result)
