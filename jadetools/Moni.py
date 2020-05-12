@@ -176,16 +176,23 @@ class MoniLTA():
         except:
             print('WriteStatusFile failed to open', checkmk_file)
             sys.exit(5)
+        # I print out a timestamp to help the helper script figure out if something's wrong
+        # and if the last pass was too long ago
+        fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         lta_problem_list = self.AllComponents()
         fhandle.write(self.LTAToString(lta_problem_list) + '\n')
         # TBD
+        fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         dump_problem_list = []
         fhandle.write(self.DumpToString(dump_problem_list) + '\n')
         # TBD
+        fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         bundle_summary_dict = {}
+        bundle_summary_dict['specified'] = 13   # fake
         fhandle.write(self.BundlesToString(bundle_summary_dict) + '\n')
+        fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.close()
-
+    #
     #
     def LTAToString(self, problem_list):
         ''' Compose a string summary of problem_list (from LTA system) to a
@@ -208,7 +215,7 @@ class MoniLTA():
             if thistime > oldest:
                 oldest = thistime
         #
-        return '2 LTAModules oldest:' + str(oldest) + ' CRIT ' + problem_list
+        return '2 LTAModules oldest:' + str(oldest) + ' CRIT - ' + problem_list
     #
     def DumpToString(self, dump_problem_list):
         ''' compose a string summary of dump_problem_list (from Dump system) to a
@@ -223,7 +230,7 @@ class MoniLTA():
             return '0 DumpModules - OK'
         # This is not the final version
         # NOT IMPLEMENTED
-        return '2 DumpModules - CRIT ' + dump_problem_list
+        return '2 DumpModules - CRIT - ' + dump_problem_list
     #
     def BundlesToString(self, bundle_summary_dict):
         ''' compose a string summary of bundle_summary_dict (from LTA system) to a
@@ -243,6 +250,4 @@ class MoniLTA():
 
 if __name__ == '__main__':
     allc = MoniLTA()
-    result = allc.WriteStatusFile()
-    if len(result) > 0:
-        print(result)
+    allc.WriteStatusFile()
