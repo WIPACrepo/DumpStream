@@ -1341,7 +1341,7 @@ def getfullslots():
     try:
         stuff = query_db_final(query)
     except:
-        print('getactiveslots failed to get info', query)
+        print('getfulllots failed to get info', query)
         return 'FAILURE'
     return str(stuff)
 
