@@ -483,15 +483,14 @@ def GetExpectedCount(trialdirname):
         print('No expected counts for directory', trialdirname, geerro)
         return -1
     try:
-        genumber = gejson[0]['number']
+        gen = int(gejson)
     except:
-        return -1
-    try:
-        gen = int(genumber)
-    except:
-        gen = -1
+        try:
+            genumber = gejson[0]['number']
+            gen = int(genumber)
+        except:
+            return -1
     return gen
-    
 
 ###
 # Determine whether any of the directories are now full.  Return the
