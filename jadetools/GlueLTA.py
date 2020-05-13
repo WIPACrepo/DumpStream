@@ -371,6 +371,7 @@ def GetToken():
     #			REST server status change if success
     # Relies on:	REST server working
     #-
+    print('JNBDEBUG: GetToken')
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle(socket.gethostname()))
     ganswer, _, _ = U.getoutputerrorsimplecommand(gposturl, 1)
@@ -396,6 +397,7 @@ def ReleaseToken():
     #			REST server status change if success
     # Relies on:	REST server working
     #-
+    print('JNBDEBUG: ReleaseToken')
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetoken + U.mangle('RELEASE'))
     ganswer, _, _ = U.getoutputerrorsimplecommand(gposturl, 1)
