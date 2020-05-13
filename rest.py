@@ -1583,7 +1583,7 @@ def getgluestatus(estring):
     if comm == answer:
         return ''
     try:
-        stuff = insert_db_final('UPDATE GlueStatus SET status=?', (comm,))
+        stuff = insert_db_final('UPDATE GlueStatus SET status=?,lastChangeTime=datetime(\'now\',\'localtime\')', (comm,))
     except:
         print('getgluestatus set failed', 'UPDATE GlueStatus SET status=?', comm, stuff)
         return 'FAILURE'
