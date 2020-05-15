@@ -187,9 +187,7 @@ class MoniLTA():
         fhandle.write(self.DumpToString(dump_problem_list) + '\n')
         # TBD
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
-        bundle_summary_dict = {}
-        bundle_summary_dict['specified'] = 13   # fake
-        fhandle.write(self.BundlesToString(bundle_summary_dict) + '\n')
+        fhandle.write(self.BundlesToString() + '\n')
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.close()
     #
@@ -232,21 +230,106 @@ class MoniLTA():
         # NOT IMPLEMENTED
         return '2 DumpModules - CRIT - ' + dump_problem_list
     #
-    def BundlesToString(self, bundle_summary_dict):
+    def BundlesToString(self):
         ''' compose a string summary of bundle_summary_dict (from LTA system) to a
              network file system file to be read elsewhere '''
         #+ 
-        # Arguments:    dict of counts of bundles in each status
+        # Arguments:    None
         # Returns:      String for nagios-reader to use
         # Side Effects: None
-        # Relies on:    Nothing
+        # Relies on:    GetAllActiveBundles
+        #		AccumulateBundleStats
         #-
-        if len(bundle_summary_dict) == 0:
-            print('BundlesToString expects a dict of bundle status counts')
-            sys.exit(7)
-        # NOT IMPLEMENTED
-        return '0 BundleStatus - OK'
-
+        # This step can easily take over 10 minutes!!
+        bundleList = self.GetAllActiveBundles()
+        bundle_summary_dict = self.AccumulateBundleStats(bundleList)
+        flag = False
+        metstring = ''
+        for word in bundle_summary_dict:
+            if flag:
+                metstring = metstring + '|'
+            flag = True
+            metstring = metstring + word + '=' + str(bundle_summary_dict[word])
+        if bundle_summary_dict['quarantined'] > 0 or bundle_summary_dict['overdue'] > 0:
+            outstr = '2 BundleStatus ' +  metstring + ' Crit'
+        else:
+            outstr = '0 BundleStatus ' + metstring + ' OK'
+        return outstr
+    #
+    def GetAllActiveBundles(self):
+        ''' Get the full list of transfer requests from LTA '''
+        #+
+        # Arguments:	None
+        # Returns:	array of [transfer UUID]
+        # Side Effects:	reads LTA server
+        # Relies on:	LTA REST server working
+        #-
+        allTransferRequests = requests.get(self.config['LTA_REST_URL'] + 'TransferRequests', auth=self.bearer)
+        returnList = []
+        for entry in allTransferRequests.json()['results']:
+            if entry['dest'] != 'NERSC':
+                continue
+            status = entry['status']
+            if status in ('completed', 'quarantined'):
+                continue
+            uuid = entry['uuid']
+            updateTime = entry['update_timestamp']
+            bundleRequest = requests.get(self.config['LTA_REST_URL'] + 'Bundles?request=' + uuid, auth=self.bearer)
+            trbundle = bundleRequest.json()['results']
+            bunlist = []
+            for uu in trbundle:
+                bundleStatus = requests.get(self.config['LTA_REST_URL'] + 'Bundles/' + uu, auth=self.bearer)
+                bsj = bundleStatus.json()
+                stat = bsj['status']
+                timestamp = bsj['create_timestamp']
+                try:
+                    ts2 = bsj['update_timestamp']
+                    if ts2 > timestamp:
+                        timestamp = ts2
+                except:
+                    pass
+                try:
+                    ts2 = bsj['claimed_timestamp']
+                    if ts2 > timestamp:
+                        timestamp = ts2
+                except:
+                    pass
+                bunlist.append([uu, stat, timestamp])
+            returnList.append([uuid, status, updateTime, bunlist])
+        return returnList
+    #
+    def AccumulateBundleStats(self, active_list):
+        ''' Parse the list of active transfers to find stats '''
+        #+
+        # Arguments:	array of [requestUUID, requestStatus, requestUpdateTime, [[bundleUUID, bundleStatus, bundleTime]] ]
+        # Returns:	dict of statistics
+        # Side Effects:	None
+        # Relies on:	Nothing
+        #-
+        expected_types = ['specified', 'created', 'staged', 'transferring', 'taping',
+                          'verifying', 'completed', 'detached', 'source-deleted',
+                          'deleted', 'finished', 'external', 'deprecated', 'quarantined', 'overdue']
+        do_not_worry = ['external', 'deprecated', 'quarantined']
+        #
+        dlist = {}
+        for ty in expected_types:
+            dlist[ty] = 0
+        rightnow = datetime.utcnow()
+        for request in active_list:
+            for bundle in request[3]:
+                status = bundle[1]
+                if status in do_not_worry:
+                    dlist[status] = dlist[status] + 1
+                    continue
+                stripped = strptime(bundle[2], "%Y-%m-%dT%H:%M:%S")
+                rightthen = datetime.fromtimestamp(mktime(stripped))
+                diff = rightnow - rightthen
+                minutes = diff.days*86400 + diff.seconds
+                if minutes > self.config['OVERDUE_SHORT']:
+                    dlist['overdue'] = dlist['overdue'] + 1
+                    continue
+                dlist[status] = dlist[status] + 1
+        return dlist
 
 if __name__ == '__main__':
     allc = MoniLTA()
