@@ -13,8 +13,7 @@
 #   root@linux# /usr/lib/check_mk_agent/local/mycustomscript
 # 0 myservice count1=42|count2=21;23;27|count3=73 OK - This is my custom output
 import sys
-import datetime as datetime
-from time import mktime, strptime
+import datetime
 
 thisrun = datetime.datetime.now()
 
@@ -31,17 +30,29 @@ except:
     sys.exit(2)
 fhandle.close()
 
-number_lines = len(contents)
-last_line_words = contents[number_lines-1].strip().split()
-old_time = last_line_words[-2].split('=')[1]
-old_internal = datetime.datetime.strptime(old_time, '%Y-%m-%dT%H:%M:%S.%f')
-difft = (thisrun - old_internal)
-delay = difft.days*86400 + difft.seconds
-if delay > 3600:
-    print('2 LTAMonitor - CRIT - Monitor not running')
-    sys.exit(2)
-print('0 LTAMonitor - OK')
-print(contents[1].strip())
-print(contents[3].strip())
-print(contents[5].strip())
+if len(sys.argv) <= 1:
+    number_lines = len(contents)
+    last_line_words = contents[number_lines-1].strip().split()
+    old_time = last_line_words[-2].split('=')[1]
+    old_internal = datetime.datetime.strptime(old_time, '%Y-%m-%dT%H:%M:%S.%f')
+    difft = (thisrun - old_internal)
+    delay = difft.days*86400 + difft.seconds
+    if delay > 3600:
+        print('2 LTAMonitor - CRIT - Monitor not running')
+        sys.exit(2)
+    print('0 LTAMonitor - OK')
+    sys.exit(0)
+
+if 'LTA' in sys.argv:
+    print(contents[1].strip())
+    sys.exit(0)
+
+if 'Dump' in sys.argv:
+    print(contents[3].strip())
+    sys.exit(0)
+
+if 'Bundle' in sys.argv:
+    print(contents[5].strip())
+    sys.exit(0)
+
 sys.exit(0)
