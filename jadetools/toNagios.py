@@ -44,15 +44,30 @@ if len(sys.argv) <= 1:
     sys.exit(0)
 
 if 'LTA' in sys.argv:
+    ww = contents[1].split()
+    try:
+        icode = int(ww[0])
+    except:
+        icode = 2
     print(contents[1].strip())
-    sys.exit(0)
+    sys.exit(icode)
 
 if 'Dump' in sys.argv:
+    ww = contents[3].split()
+    try:
+        icode = int(ww[0])
+    except:
+        icode = 2
     print(contents[3].strip())
-    sys.exit(0)
+    sys.exit(icode)
 
 if 'Bundle' in sys.argv:
+    ww = contents[5].split()
+    try:
+        icode = int(ww[0])
+    except:
+        icode = 2
     print(contents[5].strip())
-    sys.exit(0)
+    sys.exit(icode)
 
 sys.exit(0)
