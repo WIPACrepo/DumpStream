@@ -247,7 +247,7 @@ class MoniLTA():
         metstring = '|'
         for word in bundle_summary_dict:
             if flag:
-                metstring = metstring + ';'
+                metstring = metstring + ' '
             flag = True
             metstring = metstring + word + '=' + str(bundle_summary_dict[word])
         if bundle_summary_dict['quarantined'] > 0 or bundle_summary_dict['overdue'] > 0:
