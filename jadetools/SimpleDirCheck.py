@@ -86,6 +86,21 @@ class SimpleDirCheck():
             return None
     #
     #
+    def CompRight(self, string1, string2):
+        ''' Compare 2 directory names.  Split on /exp/ and compare
+            the right-hand halves '''
+        #+
+        # Arguments:           strings for directory names
+        # Returns:             boolean
+        # Side Effects:        None
+        # Relies on:           Nothing
+        #-
+        words1 = string1.split('/exp/')
+        words2 = string2.split('/exp/')
+        if len(words1) != 2 or len(words2) != 2:
+            return False
+        return words1[1] == words2[1]
+    #
     def CompareDirectoryToArchive(self, directory):
         ''' Does the listing of the directory include files not found
             in the locally (WIPAC) archived or remotely (NERSC) archived
