@@ -129,6 +129,30 @@ class renamer:
             print('RenameOne failed to chown', newName, routp, rerr, rcode)
         return
     #
+    def ChownDir(self, foundDiskFile):
+        ''' From the list of files to manage, get a (much shorter) list of
+            directories that need to be chown'ed for safety.
+            chown them. '''
+        #+
+        # Arguments:	list of file names as found on the pole disk
+        # Returns:	Nothing
+        # Side Effects:	chown the directory immediately above the file
+        # Relies on:	Nothing
+        #-
+        direList = []
+        for dfile in foundDiskFile:
+            ddir = os.path.dirname(dfile)
+            if ddir not in direList:
+                direList.append(ddir)
+        for ddir in direList:
+            try:
+                command = ['/usr/bin/sudo', self.execchown, 'jadelta:jadelta', ddir]
+                routp, rerr, rcode = U.getoutputerrorsimplecommand(command, 1)
+                if rcode != 0:
+                    print('ChownDir failed during chown', ddir, routp, rerr, rcode)
+            except:
+                print('ChownDir failed to chown', ddir, routp, rerr, rcode)
+    #
     def ExecuteJob(self):
         ''' Execute the rename operations '''
         #+
