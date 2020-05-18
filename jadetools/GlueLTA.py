@@ -91,19 +91,22 @@ def SetLastGluePassTime():
     #-
     gposturl = copy.deepcopy(U.basicposturl)
     gposturl.append(U.targetgluetimeset + 'LastGluePass')
-    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
+    goutp, _, _ = U.getoutputerrorsimplecommand(gposturl, 1)
     if 'FAIL' in str(goutp):
         print('SetLastGluePassTime failed to set the last time')
-    return
 
 def DiffOldDumpTime():
-    ''' Is the most recent dump time newer than the most recent scan? '''
+    ''' Is the most recent dump time newer than the most recent scan?
+        Is there a --do-anyway flag set? '''
     #+
     # Arguments:	None
     # Returns:		Boolean
     # Side Effects:	Prints error if there was a problem
     # Relies on:	REST server working, and Dump and Interface times set
     #-
+    if len(sys.argv) > 1:
+        if '--do-anyway' in sys.argv:
+            return True
     ggeturl = copy.deepcopy(U.basicgeturl)
     ggeturl.append(U.targetgluetimediff)
     goutp, gerro, gcode = U.getoutputerrorsimplecommand(ggeturl, 1)
