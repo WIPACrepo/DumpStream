@@ -1670,6 +1670,8 @@ def gluetoken(estring):
     except:
         print('gluetoken failed to query', query)
         return '2'
+    if host == 'QUERY':
+        return str(stuff)
     if len(stuff) > 2:
         return '1'
     query = 'INSERT INTO ReviewDump (host,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
