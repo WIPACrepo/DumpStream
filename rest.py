@@ -1697,6 +1697,7 @@ def gluedeletetoken(estring):
         query = 'DELETE FROM DeleterToken'
         try:
             stuff = insert_db_final(query)
+            return '0'
         except:
             print('gluedeletetoken failed to release', stuff)
             return '2'
@@ -1711,10 +1712,10 @@ def gluedeletetoken(estring):
         return str(stuff)
     if len(stuff) > 2:
         return '1'
-    query = 'INSERT INTO DeleterToken (host,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
+    query = 'INSERT INTO DeleterToken (hostname,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
     param = (host, )
     try:
-        stuff = insert_db_final(query, host)
+        stuff = insert_db_final(query, param)
     except:
         print('gluedeletetoken failed to insert', stuff, query, param)
         return '2'

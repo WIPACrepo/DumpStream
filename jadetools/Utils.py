@@ -141,6 +141,7 @@ targetglueworkpurge = curltargethost + 'glue/workpurge'
 targetgluetimeset = curltargethost + 'glue/timeset/'
 targetgluetimediff = curltargethost + 'glue/timediff'
 targetgluetoken = curltargethost + 'glue/token/'
+targetgluedeleter = curltargethost + 'glue/deleter/'
 
 basicgeturl = [curlcommand, '-sS', '-X', 'GET', '-H', 'Content-Type:application/x-www-form-urlencoded']
 basicposturl = [curlcommand, '-sS', '-X', 'POST', '-H', 'Content-Type:application/x-www-form-urlencoded']
