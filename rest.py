@@ -1710,7 +1710,7 @@ def gluedeletetoken(estring):
         return '2'
     if host == 'QUERY':
         return str(stuff)
-    if len(stuff) > 2:
+    if len(str(stuff)) > 2:
         return '1'
     query = 'INSERT INTO DeleterToken (hostname,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
     param = (host, )
