@@ -1654,7 +1654,9 @@ def gluetimediff():
 # Get or release token to operate
 @app.route("/glue/token/<estring>", methods=["POST"])
 def gluetoken(estring):
-    ''' Set the token if not taken.  Release if host=RELEASE 0 if ok, 1 if blocked, 2 if error '''
+    ''' Set the token if not taken.  Release if host=RELEASE 
+        return host and date if QUERY
+        0 if ok, 1 if already taken, 2 if error '''
     host = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
     if host == 'RELEASE':
         query = 'DELETE FROM ReviewDump'
@@ -1683,20 +1685,43 @@ def gluetoken(estring):
         return '2'
     return '0'
 
-
-###y
-# Debug various things.  Only prints locally
-@app.route("/debugging/<estring>", methods=["GET", "POST"])
-def debugging(estring):
-    backagain = unmangle(reslash(estring).replace('\'', '\"'))
+####
+# Get or release or query token to operate Deleter
+@app.route("/glue/deleter/<estring>", methods=["POST"])
+def gluedeletetoken(estring):
+    ''' Set the token if not taken.  Release if host=RELEASE
+        return host and date if QUERY
+        return 0 if ok, 1 if not available, 2 if error '''
+    host = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    if host == 'RELEASE':
+        query = 'DELETE FROM DeleterToken'
+        try:
+            stuff = insert_db_final(query)
+        except:
+            print('gluedeletetoken failed to release', stuff)
+            return '2'
+    #
+    query = 'SELECT * FROM DeleterToken'
     try:
-        fjson = json.loads(backagain)
-        return ''
+        stuff = query_db_final(query)
     except:
-        print('debugging: failed to turn into json')
-        print(estring)
-        print(backagain)
-        return 'FAILURE'
+        print('gluedeletetoken failed to query', query)
+        return '2'
+    if host == 'QUERY':
+        return str(stuff)
+    if len(stuff) > 2:
+        return '1'
+    query = 'INSERT INTO DeleterToken (host,lastChangeTime) VALUES (?,datetime(\'now\',\'localtime\'))'
+    param = (host, )
+    try:
+        stuff = insert_db_final(query, host)
+    except:
+        print('gluedeletetoken failed to insert', stuff, query, param)
+        return '2'
+    return '0'
+
+
+
 
 
 
