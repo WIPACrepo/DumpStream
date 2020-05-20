@@ -468,9 +468,9 @@ class MoniLTA():
         # Side Effects:	access REST server
         # Relies on:	REST server up
         answers = requests.post(U.targetgluedeleter + 'QUERY')
-        testit = eval(answers.text)
-        if testit[0] == '':
+        if len(answers.text) == 2:
             return True
+        testit = eval(answers.text)
         rightnow = datetime.utcnow()
         stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%dT%H:%M:%S")
         rightthen = datetime.fromtimestamp(mktime(stripped))
