@@ -150,12 +150,12 @@ class MoniLTA():
                 continue
             if len(results) == 1:
                 if results[0] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module + '#' + str(int(results)))
+                    problem_list.append(module + '#' + str(int(results[0])))
             else:
                 if results[0] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module + '-NERSC' + '#' + str(int(results)))
+                    problem_list.append(module + '-NERSC' + '#' + str(int(results[0])))
                 if results[1] > self.config['OVERDUE_SHORT']:
-                    problem_list.append(module + '-local' + '#' + str(int(results)))
+                    problem_list.append(module + '-local' + '#' + str(int(results[0])))
         return problem_list
     #
     def WriteStatusFile(self):
