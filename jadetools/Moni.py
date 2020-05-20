@@ -406,18 +406,17 @@ class MoniLTA():
         errors = ''
         # Are we short of disks to read?
         if count_error > 0 or count_inv < 1:
-            crit = 2
+            #
             if count_error > 0:
                 errors = errors + 'Read failure '
+                crit = 2
             if count_inv < 1:
-                errors = errors + 'Load new disks '
+                errors = errors + 'Need to load more Pole disks '
+                crit = 1
         #
         # Are we not in dumping mode?
         if dumpcontrol['status'] != 'Dumping' or dumpcontrol['nextAction'] != 'Dump':
-            if crit == 0:
-                crit = 2
-            else:
-                crit = 1
+            crit = 1
             errors = errors + 'Not dumping yet '
         # Are we overdue on a dump cycle?
         if dumpcontrol['status'] == 'Dumping':
