@@ -4,7 +4,7 @@
    Bundle status
    Dump system status
 '''
-
+import os
 import sys
 from datetime import datetime
 from time import mktime, strptime
@@ -41,7 +41,11 @@ class MoniLTA():
         self.modules = ['picker', 'bundler', 'nersc_mover', 'nersc_verifier', 
                         'site_move_verifier', 'replicator', 'deleter',  
                         'rucio_detacher', 'rucio_stager', 'transfer_request_finisher']
-        # 'health' isn't needed, but is a possibility 
+        # 'health' isn't needed, but is a possibility
+        if os.path.isfile('/usr/bin/mv'):
+            self.execmv = '/usr/bin/mv'
+        else:
+            self.execmv = '/bin/mv'
     #
     def GetLTAToken(self, tokenfilename):
         ''' Read the LTA REST server token from file "tokenfilename"; set it for the class '''
@@ -174,7 +178,7 @@ class MoniLTA():
         #-
         checkmk_file = self.config['CHECKMK_FILE']
         try:
-            fhandle = open(checkmk_file, 'w')
+            fhandle = open(checkmk_file + '.temp', 'w')
         except:
             print('WriteStatusFile failed to open', checkmk_file)
             sys.exit(5)
@@ -191,6 +195,11 @@ class MoniLTA():
         fhandle.write(self.BundlesToString() + '\n')
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.close()
+        cmd = [self.execmv, checkmk_file + '.temp', checkmk_file]
+        goutp, gerro, gcode = U.getoutputerrorsimplecommand(cmd, 1)
+        if gcode != 0:
+            print('WriteStatusFile error:', goutp, gerro, gcode)
+        
     #
     #
     def LTAToString(self, problem_list):
