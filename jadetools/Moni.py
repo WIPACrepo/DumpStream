@@ -196,9 +196,9 @@ class MoniLTA():
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         file_deleter_ok = self.CheckDeleter()
         if file_deleter_ok:
-            fhandle.write('0 Interface - OK')
+            fhandle.write('0 Interface - OK\n')
         else:
-            fhandle.write('1 Interface - Warn overdue')
+            fhandle.write('1 Interface - Warn taking too long\n')
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.close()
         cmd = [self.execmv, checkmk_file + '.temp', checkmk_file]
