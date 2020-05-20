@@ -194,6 +194,12 @@ class MoniLTA():
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.write(self.BundlesToString() + '\n')
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
+        file_deleter_ok = self.CheckDeleter()
+        if file_deleter_ok:
+            fhandle.write('0 Interface - OK')
+        else:
+            fhandle.write('1 Interface - Warn overdue')
+        fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.close()
         cmd = [self.execmv, checkmk_file + '.temp', checkmk_file]
         goutp, gerro, gcode = U.getoutputerrorsimplecommand(cmd, 1)
@@ -449,6 +455,31 @@ class MoniLTA():
         dump_info_string = ('readyDirs=' + str(unprocessed) + ' interfacing=' 
                             + str(inprogress) + ' withLTA=' + str(withlta) + ' ')
         return str(crit) + ' DumpModules | ' + dump_info_string + ' ' + mess + ' ' + errors
+    #
+    def CheckDeleter(self):
+        ''' Is it active?
+             No:  probably OK, unless backlog [figured elsewhere]
+             Yes:  Is it recent?  2 hours should be more than enough time!!
+                  Yes:  probably OK
+                  No:  problem '''
+        #+
+        # Arguments:	None
+	# Returns:	boolean Ok/not
+        # Side Effects:	access REST server
+        # Relies on:	REST server up
+        answers = requests.post(U.targetgluedeleter + 'QUERY')
+        testit = eval(answers.text)
+        if testit[0] == '':
+            return True
+        rightnow = datetime.utcnow()
+        stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%dT%H:%M:%S")
+        rightthen = datetime.fromtimestamp(mktime(stripped))
+        diff = rightnow - rightthen
+        hours = int((diff.days*86400 + diff.seconds) / 3600)
+        if hours > 2:
+            return False
+        return True
+
 
 if __name__ == '__main__':
     allc = MoniLTA()
