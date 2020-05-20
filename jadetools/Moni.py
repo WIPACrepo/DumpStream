@@ -213,7 +213,7 @@ class MoniLTA():
             if thistime > oldest:
                 oldest = thistime
         #
-        return '2 LTAModules oldest:' + str(oldest) + ' CRIT - ' + problem_list
+        return '2 LTAModules oldest:' + str(oldest) + ' CRIT - ' + str(problem_list)
     #
     def DumpToString(self, dump_problem_list):
         ''' compose a string summary of dump_problem_list (from Dump system) to a
