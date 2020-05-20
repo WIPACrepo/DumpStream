@@ -70,4 +70,13 @@ if 'Bundle' in sys.argv:
     print(contents[5].strip())
     sys.exit(icode)
 
+if 'Interface' in sys.argv:
+    ww = contents[7].split()
+    try:
+        icode = int(ww[0])
+    except:
+        icode = 2
+    print(contents[7].strip())
+    sys.exit(icode)
+
 sys.exit(0)
