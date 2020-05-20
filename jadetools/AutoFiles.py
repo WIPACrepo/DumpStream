@@ -18,6 +18,7 @@ import os
 import sys
 import glob
 import json
+import socket
 import requests
 import Utils as U
 import CheckFileCatalog as LC
@@ -75,6 +76,7 @@ class AutoFiles():
             return token
         except:
             print('getLTAToken failed to read from', tokenfilename)
+            self.ReleaseToken()
             sys.exit(1)
     #
     def ReadConfig(self, configfilename):
@@ -93,6 +95,33 @@ class AutoFiles():
         except:
             print('ReadConfig failed to read', configfilename)
             return None
+    #
+    def GetToken(self):
+        ''' Tell the REST server that we have begun, fail if another
+            instance is still busy '''
+        #+
+        # Arguments:	None
+        # Returns:	boolean for success/failure
+        # Side Effects:	query REST server
+        # Relies on:	REST server is up
+        #-
+        answers = requests.post(U.targetgluedeleter + U.mangle(socket.gethostname().split('.')[0]))
+        if answers != '0':
+            return False
+        return True
+    #
+    def ReleaseToken(self):
+        ''' Tell the REST server that we are done, fail if it cannot release '''
+        #+
+        # Arguments:	None
+        # Returns:	boolean for success/failure
+        # Side Effects:	query REST server
+        # Relies on:	REST server is up
+        #-
+        answers = requests.post(U.targetgluedeleter + 'RELEASE')
+        if answers != '0':
+            return False
+        return True
     #
     def getFullDirsNotEmptied(self):
         ''' Return an array of FullDirectories where toLTA=2, only of expected types '''
@@ -348,6 +377,7 @@ class AutoFiles():
                 bundleRequest = requests.get('https://lta.icecube.aq/Bundles?request=' + tuuid, auth=self.bearer)
             except:
                 print('AreTransfersComplete died when lta.icecube.aq failed to reply', tuuid, len(trUUID))
+                self.ReleaseToken()
                 sys.exit(1)
             trbundle = bundleRequest.json()['results']
             if len(trbundle) <= 0:
@@ -405,11 +435,16 @@ class AutoFiles():
         #		AreTransfersComplete
         #		DeleteDir
         #-
+        if not self.GetToken():
+            return
+        #
         directoryPairs = self.GetFullDirsDone()
         if len(directoryPairs) <= 0:
+            self.ReleaseToken()
             return
         transferRows = self.GetAllTransfer(directoryPairs)
         if len(transferRows) <= 0:
+            self.ReleaseToken()
             return
         for transfer in transferRows:
             if self.AreTransfersComplete(transfer):
@@ -421,15 +456,18 @@ class AutoFiles():
                 ok = self.DeleteDir(transfer[0])
                 if not ok:
                     print('FindAndDelete failed in deleting', transfer[0])
+                    self.ReleaseToken()
                     return	# Do not try to continue
                 ok = self.ResetStatus(transfer[0])
                 if not ok:
                     print('FindAndDelete failed to reset the FullDirectories entry status', transfer[0])
+                    self.ReleaseToken()
                     return	# Do not try to continue
             else:
                 print('FindAndDelete: not all the Transfers are complete in', transfer)
             if JNB_DEBUG:
                 print('dEBUG FindAndDelete:  stop here for test A', transfer)
+        self.ReleaseToken()
 
     ##
     def ResetStatus(self, idealDirectory):
