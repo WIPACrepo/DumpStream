@@ -251,8 +251,15 @@ class MoniLTA():
                 metstring = metstring + ' '
             flag = True
             metstring = metstring + word + '=' + str(bundle_summary_dict[word])
-        if bundle_summary_dict['quarantined'] > 0 or bundle_summary_dict['overdue'] > 0:
-            outstr = '2 BundleStatus ' +  metstring + ' Crit'
+        infostring = ''
+        if bundle_summary_dict['quarantined'] > 0:
+            infostring = infostring + ' ' + str(bundle_summary_dict['quarantined']) + ' Quarantined files'
+        if bundle_summary_dict['overdue'] > 0:
+            infostring = infostring + ' ' + str(bundle_summary_dict['overdue']) + ' Overdue files'
+        if bundle_summary_dict['quarantined'] + bundle_summary_dict['overdue'] > 1:
+            outstr = '2 BundleStatus ' +  metstring + ' Crit' + infostring
+        if bundle_summary_dict['quarantined'] > 1 or bundle_summary_dict['overdue'] > 0:
+            outstr = '1 BundleStatus ' +  metstring + ' Warn' + infostring
         else:
             outstr = '0 BundleStatus ' + metstring + ' OK'
         return outstr
