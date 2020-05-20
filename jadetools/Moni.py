@@ -12,6 +12,8 @@ import json
 import requests
 import Utils as U
 
+DEBUG_JNB = False
+
 class BearerAuth(requests.auth.AuthBase):
     ''' Utility for token handling for LTA '''
     def __init__(self, token):
@@ -101,7 +103,7 @@ class MoniLTA():
         # Arguments:	LTA module name
         #		The value of the local name, if there are both a remote
         #		 and local class of module.
-        # Returns:	Nothing for now
+        # Returns:	List of the age in seconds
         # Side Effects:	prints the LTA module information
         # Relies on:	ReadBlob
         #		LTA REST server up
@@ -183,8 +185,7 @@ class MoniLTA():
         fhandle.write(self.LTAToString(lta_problem_list) + '\n')
         # TBD
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
-        dump_problem_list = []
-        fhandle.write(self.DumpToString(dump_problem_list) + '\n')
+        fhandle.write(self.GetDumpSystem() + '\n')
         # TBD
         fhandle.write('0 LTAM ltamonitor=' + datetime.now().isoformat() + ' OK\n')
         fhandle.write(self.BundlesToString() + '\n')
@@ -330,6 +331,109 @@ class MoniLTA():
                     continue
                 dlist[status] = dlist[status] + 1
         return dlist
+    #
+    def GetDumpSystem(self):
+        ''' Fetching Dump system info '''
+        #+
+        # Arguments:	None
+        # Returns:	string for check_mk
+        # Side Effects:	access to my REST server
+        # Relies on:	REST server up
+        #-
+        dumpcontrol_get = requests.get(U.curltargethost + '/dumping/state')
+        allslots_get = requests.get(U.curltargethost + '/dumping/fullslots')
+        fulldir_get = requests.get(U.curltargethost + '/dumping/countready')
+        dumpcontrol = eval(dumpcontrol_get.text)
+        if DEBUG_JNB:
+            print('DumpControl is ', dumpcontrol['status'], ' next up is ', dumpcontrol['nextAction'])
+        hhh = eval(allslots_get.text)
+        total_slots = len(hhh)
+        count_inv = 0
+        count_done = 0
+        count_dumping = 0
+        count_error = 0
+        oldest_start_date = '3030-01-01 12:12:12'
+        newest_end_date = '1010-01-01 12:12:12'
+        #
+        for h in hhh:
+            if h['status'] == 'Inventoried':
+                count_inv = count_inv + 1
+            if h['status'] == 'Done':
+                count_done = count_done + 1
+                end_date = h['dateEnded']
+                if end_date > newest_end_date:
+                    newest_end_date = end_date
+            if h['status'] == 'Dumping':
+                count_dumping = count_dumping + 1
+                start_date = h['dateBegun']
+                if start_date < oldest_start_date:
+                    oldest_start_date = start_date
+            if h['status'] == 'Error':
+                count_error = count_error + 1
+        oldest = datetime.strptime(oldest_start_date, "%Y-%m-%d %H:%M:%S")
+        newest = datetime.strptime(newest_end_date, "%Y-%m-%d %H:%M:%S")
+        rightnow = datetime.now()
+        diff = rightnow - oldest
+        oldhour = int((diff.days*86400 + diff.seconds) / 3600)
+        # if oldhour <0, start date is in the future.
+        if oldhour < 0:
+            oldhour = 0
+        diff = rightnow - newest
+        newhour = int((diff.days*86400 + diff.seconds) / 3600)
+        if DEBUG_JNB:
+            print('Total known slots=', total_slots, ' Done/Dumping/ToDo/Err=', str(count_done) + '/' +
+                  str(count_dumping), '/', str(count_inv) + '/' + str(count_error), ' OLDEST start=', oldest_start_date, 
+                  ' ', oldhour, ' NEWEST end=', newest_end_date, ' ', newhour)
+        string_begin = 'Full Directories: '
+        jjj = eval(fulldir_get.text)
+        unprocessed = 0
+        inprogress = 0
+        withlta = 0
+        for h in jjj:
+            for mtype in h:
+                if str(mtype) != 'total' and int(h[mtype]) > 0:
+                    string_begin = string_begin + '   ' + str(mtype) + ':' + str(h[mtype])
+                    if str(mtype) == 'unstaged':
+                        unprocessed = int(h[mtype])
+                    if str(mtype) == 'staged':
+                        inprogress = int(h[mtype])
+                    if str(mtype) == 'done':
+                        withlta = int(h[mtype])
+        if DEBUG_JNB:
+            print(string_begin)
+        #
+        crit = 0
+        errors = ''
+        # Are we short of disks to read?
+        if count_error > 0 or count_inv < 1:
+            crit = 2
+            if count_error > 0:
+                errors = errors + 'Read failure '
+            if count_inv < 1:
+                errors = errors + 'Load new disks '
+        #
+        # Are we not in dumping mode?
+        if dumpcontrol['status'] != 'Dumping' or dumpcontrol['nextAction'] != 'Dump':
+            if crit == 0:
+                crit = 2
+            else:
+                crit = 1
+            errors = errors + 'Not dumping yet '
+        # Are we overdue on a dump cycle?
+        if dumpcontrol['status'] == 'Dumping':
+            if oldhour > newhour and oldhour > self.config['OVERDUE_LONG']/3600:
+                crit = 2
+                errors = errors + 'Dump taking too long ' + str(oldhour) + ' hours '
+        #
+        if crit == 0:
+            mess = 'OK'
+        if crit == 1:
+            mess = 'Warn'
+        if crit == 2:
+            mess = 'Crit'
+        dump_info_string = ('readyDirs=' + str(unprocessed) + ' interfacing=' 
+                            + str(inprogress) + ' withLTA=' + str(withlta) + ' ')
+        return str(crit) + ' DumpModules | ' + dump_info_string + ' ' + mess + ' ' + errors
 
 if __name__ == '__main__':
     allc = MoniLTA()

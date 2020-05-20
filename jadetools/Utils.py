@@ -50,7 +50,7 @@ hsibase = ['/usr/common/mss/bin/hsi', '-q']
 BUNDLETREE = '/mnt/lfss/jade-lta/bundles-scratch/bundles?'
 
 curlcommand = '/usr/bin/curl'
-curltargethost = 'http://archivecontrol.wipac.wisc.edu:80/'
+curltargethost = 'http://archivecontrol.wipac.wisc.edu/'
 
 # I will have to figure out how to pack these in a command,
 #  but for the moment here they are.  I drop 2 defaults,
