@@ -1712,7 +1712,26 @@ def adddirectory(estring):
         print('adddirectory failed to insert', filename, stuff)
         return 'FAILURE to insert'
 
-
+####
+# Query the table.  Must expand greatly, this is a rump
+@app.route("/directory/info/<estring>", methods=["GET"])
+def querydirectory(estring):
+    ''' Return information about the rows
+        0th order:  use an int and only get the dirkey
+        final version--send a dict with complex query '''
+    try:
+        dirkey = int(estring)
+    except:
+        print('querydirectory has a non-int.  Cannot handle that YET', estring)
+        return 'FAILURE argument non-int'
+    param = (dirkey, )
+    query = 'SELECT * FROM FullDirectory where dirkey=?'
+    try:
+        stuff = query_db_final(query, param)
+        return str(stuff)
+    except:
+        print('querydirectory failed the query', query, param, stuff)
+        return 'FAILURE to query'
 
 
 
