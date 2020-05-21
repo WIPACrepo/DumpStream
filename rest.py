@@ -1515,31 +1515,6 @@ def enterreadydir(estring):
     return ''
 
 ####
-# Update a new ready directory
-@app.route("/dumping/notifiedreadydir/<estring>", methods=["POST"])
-def updatereadydir(estring):
-    comm = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-    wcomm = comm.split()
-    if len(wcomm) == 1:
-        directoryfragment = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
-        query = 'UPDATE FullDirectories SET toLTA=1 WHERE idealName LIKE ?'
-        params = ('%' + str(directoryfragment) + '%', 1)
-    else:
-        directoryfragment = wcomm[0]
-        try:
-            newto = int(wcomm[1])
-        except:
-            print('updateradydir failed to set new lta status for', wcomm)
-            return 'FAILURE'
-        params = ('%' + str(directoryfragment) + '%', newto)
-    try:
-        stuff = insert_db_final(query, params)
-    except:
-        print('updatereadydir failed to set info for', directoryfragment, stuff)
-        return 'FAILURE'
-    return ''
-
-####
 # Count the ready directories
 @app.route("/dumping/countready", methods=["GET"])
 def countready():

@@ -128,7 +128,6 @@ targetdumpingcountready = curltargethost + '/dumping/countready'
 targetdumpingfullslots = curltargethost + '/dumping/fullslots'
 
 targetdumpinggetreadydir = curltargethost + '/dumping/readydir'
-targetdumpingnotifiedreadydir = curltargethost + '/dumping/notifiedreadydir/'
 targetdumpingenteredreadydir = curltargethost + '/dumping/enteredreadydir/'
 targetdumpingdonereadydir = curltargethost + '/dumping/donereadydir/'
 targetdumpinghandedoffdir = curltargethost + '/dumping/handedoffdir/'
