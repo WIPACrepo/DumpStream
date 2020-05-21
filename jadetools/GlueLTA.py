@@ -65,21 +65,6 @@ def SetStatus(gnewstatus):
         return grevised
     return grevised
 
-def UpdateWork(idir):
-    ''' Update the directory entry in FullDirectories to a new toLTA status '''
-    #+
-    # Arguments:	Directory to update
-    # Returns:		None
-    # Side Effects:	Prints error if there was a problem
-    #			change in REST server
-    # Relies on:	REST server working
-    #-
-    gposturl = copy.deepcopy(U.basicposturl)
-    gposturl.append(U.targetglueworkupdate + U.mangle(idir))
-    goutp, gerro, gcode = U.getoutputerrorsimplecommand(gposturl, 1)
-    if len(str(goutp)) > 1:
-        print('UpdateWork failed with ', idir, str(goutp), gerro, gcode)
-
 def SetLastGluePassTime():
     ''' Tell the database the last interface pass has completed '''
     #+
