@@ -1697,6 +1697,22 @@ def gluedeletetoken(estring):
     return '0'
 
 
+####
+# Add a new directory to the full list 
+@app.route("/directory/<estring>", methods=["POST"])
+def adddirectory(estring):
+    ''' Add the directory to the list with the default status '''
+    filename = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    param = (filename, )
+    query = 'INSERT INTO FullDirectory (idealName,status,lastChangeTime) VALUES (?,\'unclaimed\',datetime(\'now\',\'localtime\'))'
+    try:
+        stuff = insert_db_final(query, param)
+        return ''
+    except:
+        print('adddirectory failed to insert', filename, stuff)
+        return 'FAILURE to insert'
+
+
 
 
 
