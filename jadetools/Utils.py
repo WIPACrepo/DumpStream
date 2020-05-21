@@ -9,6 +9,7 @@ import json
 import subprocess
 import copy
 import os
+import requests
 # IMPORT_db.py 
 # Assumes we have "import sys" as well
 
@@ -717,10 +718,8 @@ def GetUnhandledFull():
     # Side Effects:     print if error
     # Relies on:        REST server working
     #-
-    ggeturl = copy.deepcopy(basicgeturl)
-    ggeturl.append(targetdumpinggetreadydir)
-    ganswer1, _, _ = getoutputerrorsimplecommand(ggeturl, 1)
-    ganswer = massage(ganswer1)
+    nguf = requests.get(curltargethost + 'dumping/handedoffdir/' + mangle('e 0'))
+    ganswer = massage(nguf.text)
     unhand = []
     if len(ganswer) <= 2:
         return unhand
