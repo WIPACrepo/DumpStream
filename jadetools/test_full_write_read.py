@@ -1,4 +1,6 @@
-''' Not to be used against the working REST server '''
+''' Not to be used against the working REST server
+   I need a different curltargethost ! '''
+
 import os
 import sys
 import json
@@ -129,6 +131,8 @@ class DefTest(unittest.TestCase):
         anst = '{\"results\":' + answers.text.replace('\'', '\"').replace('None', '\"\"') + '}'
         ansa = json.loads(anst)["results"][0]
         self.assertEqual(ansa["status"], 'LTArequest')
+        ansb = U.UnpackDBReturnJson(answers.text)[0]
+        self.assertEqual(ansa["status"], ansb["status"])
     #
     def test_update_request_wrong_number_args(self):
         ''' Update to LTArequest with wrong number of args '''
