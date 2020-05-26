@@ -725,6 +725,7 @@ def GetUnhandledFull():
         return unhand
     try:
         lanswer = eval(ganswer)
+        # lanswer = UnpackDBReturnJson(ganswer)
         for janswer in lanswer:
             unhand.append(janswer['idealName'])
     except:
@@ -821,3 +822,27 @@ def DumperSetNext(value):
     if int(dcode) != 0 or 'FAILURE' in str(doutp):
         print('DumperSetNext: failed to set', value, doutp, derro)
         sys.exit(0)
+
+####
+#
+def UnpackDBReturnJson(estring):
+    ''' The return from my REST server when it is a DB query is
+        perhaps a little messy to unpack.  I do not want to use
+        eval on stuff I get by http communication, so I translate
+        it to an array of json.
+        If there is just one row returned, we want 
+        x = UnpackDBReturnJson(estring)[0] '''
+    #+
+    # Arguments:        string from DB query of REST server
+    # Returns:          array of json
+    # Side Effects:     None
+    # Relies on:        the string actually being a sqlite3 DB query
+    #-
+    if not isinstance(estring, str):
+        return None
+    answert = '{\"results\":' + estring.replace('\'', '\"').replace('None', '\"\"') + '}'
+    try:
+        answerj = json.loads(answert)
+    except:
+        return None
+    return answerj["results"]
