@@ -1808,7 +1808,7 @@ def modifydirectory(estring):
             param = (words[1], words[2], words[0])
             query = 'UPDATE FullDirectory SET status=?,requestid=?,lastChangeTime=datetime(\'now\',\'localtime\') WHERE dirkey=?'
     try:
-        stuff = query_db_final(query, param)
+        stuff = insert_db_final(query, param)
         return str(stuff)
     except:
         print('modifydirectory failed the update', query, param, stuff)
