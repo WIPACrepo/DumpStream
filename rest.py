@@ -41,6 +41,8 @@ PoleDiskStatusOptions = ['New', 'Inventoried', 'Dumping', 'Done', 'Removed', 'Er
 DumperStatusOptions = ['Idle', 'Dumping', 'Inventorying', 'Error']
 DumperNextOptions = ['Dump', 'Pause', 'DumpOne', 'Inventory']
 BUNDLECOLS = ["bundleStatus_id", "localName", "idealName", "UUIDJade", "UUIDGlobus", "size", "status", "useCount", "checksum", "LooseFileDir"]
+FULL_DIR_STATI = ['unclaimed', 'processing', 'LTArequest', 'filesdeleted', 'problem', 'deprecated']
+FULL_DIR_SINGLE_STATI = ['unclaimed', 'filesdeleted', 'problem', 'deprecated']
 SLOTBAD = -2
 SLOTRESERVED = -1
 SLOTUNK = 0
@@ -1722,10 +1724,49 @@ def querydirectory(estring):
     try:
         dirkey = int(estring)
     except:
-        print('querydirectory has a non-int.  Cannot handle that YET', estring)
-        return 'FAILURE argument non-int'
-    param = (dirkey, )
-    query = 'SELECT * FROM FullDirectory where dirkey=?'
+        untangle = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+        try:
+            trial_json = json.loads(untangle)
+        except:
+            print('querydirectory has non-int and non-json.  Something is wrong', untangle)
+            return 'FAILURE argument non-json'
+        # Extract possible options
+        try:
+            dirkey = trial_json['dirkey']
+        except:
+            dirkey = None
+        try:
+            likeIdeal = trial_json['likeIdeal']
+        except:
+            likeIdeal = None
+        try:
+            status = trial_json['status']
+        except:
+            status = None
+        # Not all of these are needed.  If dirkey is present, it takes precedence
+    if dirkey is not None:
+        param = (dirkey, )
+        query = 'SELECT * FROM FullDirectory where dirkey=?'
+        try:
+            stuff = query_db_final(query, param)
+            return str(stuff)
+        except:
+            print('querydirectory failed the query', query, param, stuff)
+            return 'FAILURE to query'
+    #
+    if likeIdeal is None and status is None:
+        # Something got screwed up
+        print('querydirectory got no useful test parameters', untangle)
+        return 'FAILURE no useful parameters'
+    if likeIdeal is not None and status is None:
+        param = ('%' + likeIdeal + '%', )
+        query = 'SELECT * FROM FullDirectory where idealName LIKE ?'
+    if likeIdeal is not None and status is not None:
+        param = ('%' + likeIdeal + '%', status)
+        query = 'SELECT * FROM FullDirectory where idealName LIKE ? AND status=?'
+    if likeIdeal is None and status is not None:
+        param = (status, )
+        query = 'SELECT * FROM FullDirectory where status=?'
     try:
         stuff = query_db_final(query, param)
         return str(stuff)
@@ -1733,8 +1774,46 @@ def querydirectory(estring):
         print('querydirectory failed the query', query, param, stuff)
         return 'FAILURE to query'
 
-
-
+####
+# modify a directory entry
+@app.route("/directory/modify/<estring>", methods=["POST"])
+def modifydirectory(estring):
+    ''' Modify a directory entry with a new status, and possibly other info '''
+    # FULL_DIR_STATI
+    untangle = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    words = untangle.split()
+    if len(words) <= 1 or words[0] not in FULL_DIR_STATI:
+        print('modifydirectory has no idea what to do with', untangle, ' expect key status')
+        return 'FAILURE bad arguments'
+    # Simple updates first
+    if len(words) == 2:
+        if words[1] in FULL_DIR_SINGLE_STATI:
+            param = (words[1], words[0])
+            query = 'UPDATE FullDirectory SET status=? WHERE dirkey=?'
+        else:
+            print('modifydirectory has inadequate argument count for the command', untangle, ' expect key status')
+            return 'FAILURE arguments bad'
+    else:
+        if words[1] == 'processing':
+            # Expect dirkey, newstatus, hostname, process_id
+            if len(words) != 4:
+                 print('modifydirectory has too few arguments for processing', untangle, ' expect key status host processid')
+                 return 'FAILURE arguments bad 4'
+            param = (words[1], words[2], words[3], words[0])
+            query = 'UPDATE FullDirectory SET status=?,hostname=?,process=? where dirkey=?'
+        if words[1] == 'LTArequest':
+            if len(words) != 3:
+                print('modifydirectory has too few arguments for LTArequest', untangle, 'expect key status requestid')
+                return 'FAILURE arguments bad 3'
+            param = (words[1], words[2], words[0])
+            query = 'UPDATE FullDirectory SET status=?,requestid=? WHERE dirkey=?'
+    try:
+        stuff = query_db_final(query, param)
+        return str(stuff)
+    except:
+        print('modifydirectory failed the update', query, param, stuff)
+        return 'FAILURE to update'
+    
 
 ###################################################
 #####
