@@ -1789,7 +1789,7 @@ def modifydirectory(estring):
     if len(words) == 2:
         if words[1] in FULL_DIR_SINGLE_STATI:
             param = (words[1], words[0])
-            query = 'UPDATE FullDirectory SET status=? WHERE dirkey=?'
+            query = 'UPDATE FullDirectory SET status=?,lastChangeTime=datetime(\'now\',\'localtime\') WHERE dirkey=?'
         else:
             print('modifydirectory has inadequate argument count for the command', untangle, ' expect key status')
             return 'FAILURE arguments bad'
@@ -1800,13 +1800,13 @@ def modifydirectory(estring):
                  print('modifydirectory has too few arguments for processing', untangle, ' expect key status host processid')
                  return 'FAILURE arguments bad 4'
             param = (words[1], words[2], words[3], words[0])
-            query = 'UPDATE FullDirectory SET status=?,hostname=?,process=? where dirkey=?'
+            query = 'UPDATE FullDirectory SET status=?,hostname=?,process=?,lastChangeTime=datetime(\'now\',\'localtime\') where dirkey=?'
         if words[1] == 'LTArequest':
             if len(words) != 3:
                 print('modifydirectory has too few arguments for LTArequest', untangle, 'expect key status requestid')
                 return 'FAILURE arguments bad 3'
             param = (words[1], words[2], words[0])
-            query = 'UPDATE FullDirectory SET status=?,requestid=? WHERE dirkey=?'
+            query = 'UPDATE FullDirectory SET status=?,requestid=?,lastChangeTime=datetime(\'now\',\'localtime\') WHERE dirkey=?'
     try:
         stuff = query_db_final(query, param)
         return str(stuff)
