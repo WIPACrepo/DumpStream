@@ -1724,7 +1724,7 @@ def querydirectory(estring):
     try:
         dirkey = int(estring)
     except:
-        untangle = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+        untangle = unmangle(reslash(estring).replace('\'', '\"'))
         try:
             trial_json = json.loads(untangle)
         except:
@@ -1780,7 +1780,7 @@ def querydirectory(estring):
 def modifydirectory(estring):
     ''' Modify a directory entry with a new status, and possibly other info '''
     # FULL_DIR_STATI
-    untangle = unmangle(urllib.parse.unquote_plus(reslash(estring)).replace('\'', '\"'))
+    untangle = unmangle(reslash(estring).replace('\'', '\"'))
     words = untangle.split()
     if len(words) <= 1 or words[0] not in FULL_DIR_STATI:
         print('modifydirectory has no idea what to do with', untangle, ' expect key status')
