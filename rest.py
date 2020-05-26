@@ -1783,34 +1783,36 @@ def modifydirectory(estring):
     untangle = unmangle(reslash(estring).replace('\'', '\"'))
     words = untangle.split()
     if len(words) <= 1:
-        print('modifydirectory has no idea what to do with', untangle, ' expect key status')
+        print('modifydirectory has no idea what to do with', untangle, ': expect key status at minimum')
         return 'FAILURE bad arguments'
     if words[1] not in FULL_DIR_STATI:
-        print('modifydirectory has no idea what to do with', untangle, ' expect key status')
+        print('modifydirectory: invalid status', untangle, ' : expect key status at minimum')
         return 'FAILURE bad status'
     # Simple updates first
-    # words[1] is defined (see above)
+    # 
     if words[1] not in FULL_DIR_SINGLE_STATI and len(words) == 2:
         print('modifydirectory command has too few arguments', untangle)
         return 'FAILURE too few arguments'
-    if len(words) == 2:
-        if words[1] in FULL_DIR_SINGLE_STATI:
+    if words[1] in FULL_DIR_SINGLE_STATI:
+        if len(words) == 2:
             param = (words[1], words[0])
             query = 'UPDATE FullDirectory SET status=?,lastChangeTime=datetime(\'now\',\'localtime\') WHERE dirkey=?'
         else:
-            print('modifydirectory has inadequate argument count for the command', untangle, ' expect key status')
+            # These status-sets take no additional arguments; call any a failure
+            print('modifydirectory has improper argument count for the command', untangle, ' expect key status')
             return 'FAILURE arguments bad'
     else:
+        # We have 2 special status-sets, which want extra arguments
         if words[1] == 'processing':
             # Expect dirkey, newstatus, hostname, process_id
             if len(words) != 4:
-                 print('modifydirectory has too few arguments for processing', untangle, ' expect key status host processid')
+                 print('modifydirectory has too few arguments for processing', untangle, ': expect key status host processid')
                  return 'FAILURE arguments bad 4'
             param = (words[1], words[2], words[3], words[0])
             query = 'UPDATE FullDirectory SET status=?,hostname=?,process=?,lastChangeTime=datetime(\'now\',\'localtime\') where dirkey=?'
         if words[1] == 'LTArequest':
             if len(words) != 3:
-                print('modifydirectory has too few arguments for LTArequest', untangle, 'expect key status requestid')
+                print('modifydirectory has too few arguments for LTArequest', untangle, ': expect key status requestid')
                 return 'FAILURE arguments bad 3'
             param = (words[1], words[2], words[0])
             query = 'UPDATE FullDirectory SET status=?,requestid=?,lastChangeTime=datetime(\'now\',\'localtime\') WHERE dirkey=?'
