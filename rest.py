@@ -1782,10 +1782,17 @@ def modifydirectory(estring):
     # FULL_DIR_STATI
     untangle = unmangle(reslash(estring).replace('\'', '\"'))
     words = untangle.split()
-    if len(words) <= 1 or words[1] not in FULL_DIR_STATI:
+    if len(words) <= 1:
         print('modifydirectory has no idea what to do with', untangle, ' expect key status')
         return 'FAILURE bad arguments'
+    if words[1] not in FULL_DIR_STATI:
+        print('modifydirectory has no idea what to do with', untangle, ' expect key status')
+        return 'FAILURE bad status'
     # Simple updates first
+    # words[1] is defined (see above)
+    if words[1] not in FULL_DIR_SINGLE_STATI and len(words) == 2:
+        print('modifydirectory command has too few arguments', untangle)
+        return 'FAILURE too few arguments'
     if len(words) == 2:
         if words[1] in FULL_DIR_SINGLE_STATI:
             param = (words[1], words[0])
