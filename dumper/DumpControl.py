@@ -525,7 +525,8 @@ def DirectoryCheckFull(donelist):
             if numberexpect < 0:
                 print('DirectoryCheckFull has nothing for', tentativedir)
                 continue
-            dtarg = dtargetdir + '/' + tentativedir
+            #dtarg = dtargetdir + '/' + tentativedir
+            dtarg = ('/data/exp/' + tentativedir).replace('//', '/')
             if CountFilesInDir(dtarg, numberexpect):
                 dcok.append(dtarg)
                 dcposturl = copy.deepcopy(U.basicposturl)
@@ -573,7 +574,8 @@ def JobDecision(dumperstatus, jdumpnextAction):
     #
     # Now look through the completed list and see what needs doing with
     # the directories it loaded.  It will push info into FullDirectories
-    DirectoryCheckFull(donelist)
+    #DirectoryCheckFull(donelist)
+    # Above replaced with findfull.py, called from "dumpscript"
     #
     # Next see how long the current set of jobs has been taking
     for jdrunning in matching:
