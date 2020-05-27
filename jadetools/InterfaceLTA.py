@@ -110,7 +110,7 @@ class InterfaceLTA():
         ''' Parse out what the parameters tell this job to do '''
         #+
         # Arguments:	None [REVISIT THIS.  Probably want to take arguments from command line!]
-        # Returns:		None
+        # Returns:	None
         # Side Effects:	Resets GLOBAL parameters from the configuration file
         #                Prints message and exit-3 if the reading fails
         # Relies on:	Configuration file available and readable
@@ -148,27 +148,18 @@ class InterfaceLTA():
             sys.exit(3)
         #
         # Parse arguments to override the config file values
-        # Later
+        # But do this later.  I don't need this right now.
     #
     def Phase1(self):
-        ''' Get the directories TODO (returned) '''
-        # Assemble list of directories to examine (unless Forced)
-        # If Forced, initialize TODO with the forced directory, else []
-        # Retrieve "Already Picked" and "In Process" for each directory
-        #   Create WorkingTable entries from these
-        # Skipping those that are done (unless Forced):
-        #   Retrieve "expected" count for each directory
-        #   Execute "find" in that directory and count the files
-        #   If this fails/times-out, log the errors and bail
-        #   If they agree, append to the TODO
-        #   If # present > # expected, warn
-        # Return the TODO
+        ''' Return the next unclaimed full directories TODO (returned) '''
+        # Check FullDirectory for the next full directory to deal with
         #+
         # Arguments:	None
         # Returns:	list of arrays of live and ideal directories
         #		 for which the file count == expected
         # Side Effects:	Print errors if problem
         # Relies on:	U.UnpackDBReturnJson
+        #		U.mangle
         #-
         TODO = []
         quer = {}
@@ -179,6 +170,8 @@ class InterfaceLTA():
         if len(arrans) == 0:
             return TODO
         #
+        # Can implement FORBID here, but I haven't been using it yet, so
+        # never mind for now.
         try:
             TODO = [arrans['idealName'], arrans['dirkey']]
         except:
@@ -193,8 +186,7 @@ class InterfaceLTA():
         #+
         # Arguments:	list of arrays of ideal directory and DB dirkey to bundle
         # Returns:	boolean:  True if OK or nothing to do, False otherwise
-        # Side Effects:	change WorkingTable
-        #		execute process_directory.sh script
+        # Side Effects:	execute process_directory_v2.sh script
         # Relies on:	U.mangle
         #		REST server working
         #		process_directory_v2.sh script (which relies on LTA environment)
