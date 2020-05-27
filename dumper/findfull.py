@@ -10,6 +10,7 @@
 
 import sys
 import copy
+import requests
 import Utils as U
 
 class findfull:
@@ -69,6 +70,11 @@ class findfull:
         # Side Effects: change to REST server DB
         # Relies on:    REST server working
         #-
+        mangled = U.mangle(newdir)
+        answers = requests.post(U.curltargethost + '/directory/' + mangled)
+        if 'FAILURE' in answers.text:
+            print('findfull.SetDir could not load', newdir)
+            sys.exit(3)
         sdposturl = copy.deepcopy(U.basicposturl)
         sdposturl.append(U.targetdumpingenteredreadydir + U.mangle(newdir))
         sdoutp, sderro, sdcode = U.getoutputerrorsimplecommand(sdposturl, 1)
