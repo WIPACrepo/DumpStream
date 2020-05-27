@@ -163,11 +163,13 @@ class renamer:
         # Relies on:	RetrieveNames
         #		FindOriginal
         #		RenameOne
+        #		ChownDir
         #		sample directory on pole disk as argument (e.g. /mnt/slot8/IceCube/2018/etc)
         #-
         listOfFiles = self.FindOriginal()
         for fname in listOfFiles:
             self.RenameOne(fname)
+        self.ChownDir(listOfFiles)
 #
 #####
 # main
