@@ -106,7 +106,7 @@ class AutoFiles():
         # Relies on:	REST server is up
         #-
         answers = requests.post(U.targetgluedeleter + U.mangle(socket.gethostname().split('.')[0]))
-        if answers != '0':
+        if answers.text != '0':
             return False
         return True
     #
@@ -119,7 +119,7 @@ class AutoFiles():
         # Relies on:	REST server is up
         #-
         answers = requests.post(U.targetgluedeleter + 'RELEASE')
-        if answers != '0':
+        if answers.text != '0':
             return False
         return True
     #
