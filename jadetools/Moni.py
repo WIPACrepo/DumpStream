@@ -305,18 +305,18 @@ class MoniLTA():
                 bsj = bundleStatus.json()
                 stat = bsj['status']
                 timestamp = bsj['create_timestamp']
-                try:
-                    ts2 = bsj['update_timestamp']
-                    if ts2 > timestamp:
-                        timestamp = ts2
-                except:
-                    pass
-                try:
-                    ts2 = bsj['claimed_timestamp']
-                    if ts2 > timestamp:
-                        timestamp = ts2
-                except:
-                    pass
+                #try:
+                #    ts2 = bsj['update_timestamp']
+                #    if ts2 > timestamp:
+                #        timestamp = ts2
+                #except:
+                #    pass
+                #try:
+                #    ts2 = bsj['claimed_timestamp']
+                #    if ts2 > timestamp:
+                #        timestamp = ts2
+                #except:
+                #    pass
                 bunlist.append([uu, stat, timestamp])
             returnList.append([uuid, status, updateTime, bunlist])
         return returnList
@@ -365,10 +365,10 @@ class MoniLTA():
         dumpcontrol_get = requests.get(U.curltargethost + '/dumping/state')
         allslots_get = requests.get(U.curltargethost + '/dumping/fullslots')
         fulldir_get = requests.get(U.curltargethost + '/dumping/countready')
-        dumpcontrol = eval(dumpcontrol_get.text)
+        dumpcontrol = U.UnpackDBReturnJson(dumpcontrol_get.text)
         if DEBUG_JNB:
             print('DumpControl is ', dumpcontrol['status'], ' next up is ', dumpcontrol['nextAction'])
-        hhh = eval(allslots_get.text)
+        hhh = U.UnpackDBReturnJson(allslots_get.text)
         total_slots = len(hhh)
         count_inv = 0
         count_done = 0
@@ -407,7 +407,7 @@ class MoniLTA():
                   str(count_dumping), '/', str(count_inv) + '/' + str(count_error), ' OLDEST start=', oldest_start_date, 
                   ' ', oldhour, ' NEWEST end=', newest_end_date, ' ', newhour)
         string_begin = 'Full Directories: '
-        jjj = eval(fulldir_get.text)
+        jjj = U.UnpackDBReturnJson(fulldir_get.text)
         unprocessed = 0
         inprogress = 0
         withlta = 0
@@ -470,7 +470,7 @@ class MoniLTA():
         answers = requests.post(U.targetgluedeleter + 'QUERY')
         if len(answers.text) == 2:
             return True
-        testit = eval(answers.text)
+        testit = U.UnpackDBReturnJson(answers.text)
         rightnow = datetime.utcnow()
         stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%dT%H:%M:%S")
         rightthen = datetime.fromtimestamp(mktime(stripped))
