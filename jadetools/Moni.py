@@ -229,7 +229,7 @@ class MoniLTA():
             if thistime > oldest:
                 oldest = thistime
         #
-        return '2 LTAModules oldest:' + str(oldest) + ' CRIT - ' + str(problem_list)
+        return '2 LTAModules oldest:' + ' ' + str(problem_list) + ' ' + str(oldest) + ' CRIT ' 
     #
     def DumpToString(self, dump_problem_list):
         ''' compose a string summary of dump_problem_list (from Dump system) to a
@@ -272,9 +272,9 @@ class MoniLTA():
         if bundle_summary_dict['overdue'] > 0:
             infostring = infostring + ' ' + str(bundle_summary_dict['overdue']) + ' Overdue files'
         if bundle_summary_dict['quarantined'] + bundle_summary_dict['overdue'] > 1:
-            outstr = '2 BundleStatus ' +  metstring + ' Crit' + infostring
+            outstr = '2 BundleStatus ' + infostring + ' '+  metstring + ' Crit'
         if bundle_summary_dict['quarantined'] > 1 or bundle_summary_dict['overdue'] > 0:
-            outstr = '1 BundleStatus ' +  metstring + ' Warn' + infostring
+            outstr = '1 BundleStatus ' + infostring + ' ' +  metstring + ' Warn'
         else:
             outstr = '0 BundleStatus ' + metstring + ' OK'
         return outstr
@@ -454,7 +454,7 @@ class MoniLTA():
             mess = 'Crit'
         dump_info_string = ('readyDirs=' + str(unprocessed) + ' interfacing=' 
                             + str(inprogress) + ' withLTA=' + str(withlta) + ' ')
-        return str(crit) + ' DumpModules | ' + dump_info_string + ' ' + mess + ' ' + errors
+        return str(crit) + ' DumpModules ' + errors +' | ' + dump_info_string + ' ' + mess
     #
     def CheckDeleter(self):
         ''' Is it active?
