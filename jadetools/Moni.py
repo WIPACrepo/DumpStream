@@ -449,7 +449,7 @@ class MoniLTA():
         if crit == 0:
             mess = 'OK'
         if crit == 1:
-            mess = 'Warn'
+            mess = 'Info'
         if crit == 2:
             mess = 'Crit'
         dump_info_string = ('readyDirs=' + str(unprocessed) + ' interfacing=' 
