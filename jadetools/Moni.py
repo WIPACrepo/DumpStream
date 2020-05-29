@@ -332,7 +332,7 @@ class MoniLTA():
         expected_types = ['specified', 'created', 'staged', 'transferring', 'taping',
                           'verifying', 'completed', 'detached', 'source-deleted',
                           'deleted', 'finished', 'external', 'deprecated', 'quarantined', 'overdue']
-        do_not_worry = ['finished', 'external', 'deprecated', 'quarantined']
+        do_not_worry = ['deleted', 'finished', 'external', 'deprecated', 'quarantined']
         #
         dlist = {}
         for ty in expected_types:
