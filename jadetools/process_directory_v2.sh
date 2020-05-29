@@ -37,11 +37,12 @@ if [[ "${crosscheck}" != "$1" ]]
    then
       echo "Giving up trying to the bundler about $1"
       exit 2
-   fi 
+   fi
+ltaid=$(echo "${alls}" | awk '{print $1;}')
 
 ##
 # Lastly, curl to let the REST server know we are done with this directory
-manglecom=$( "${dirkey}@LTArequest@${crosscheck}" )
+manglecom=$( "${dirkey}@LTArequest@${ltaid}" )
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target=$( "http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}" )
 if ! /usr/bin/curl "${CURLARGS}" "${target}"

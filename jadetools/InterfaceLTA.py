@@ -53,7 +53,7 @@ class InterfaceLTA():
         # Side Effects:	Print error if there was a problem
         #		REST server status change if success
         # Relies on:	REST server working
-        #		U.mangle
+        #		Utils.mangle
         #-
         if JNBDEBUG:
             print('InterfaceLTA::DEBUG: GetToken')
@@ -158,8 +158,8 @@ class InterfaceLTA():
         # Returns:	list of arrays of live and ideal directories
         #		 for which the file count == expected
         # Side Effects:	Print errors if problem
-        # Relies on:	U.UnpackDBReturnJson
-        #		U.mangle
+        # Relies on:	Utils.UnpackDBReturnJson
+        #		Utils.mangle
         #-
         TODO = []
         quer = {}
@@ -172,6 +172,8 @@ class InterfaceLTA():
         #
         # Can implement FORBID here, but I haven't been using it yet, so
         # never mind for now.
+        # I could also put in some sanity check to make sure there's no
+        # duplication, but I do that already in findfull.py, so why bother.
         try:
             TODO = [arrans[0]['idealName'], arrans[0]['dirkey']]
         except:
