@@ -84,7 +84,7 @@ class InterfaceLTA():
             return True
         return False
     #
-    def Phase0(self):
+    def ReadyToRun(self):
         ''' Initial program configuration '''
         #+
         # Arguments:	None
@@ -101,7 +101,7 @@ class InterfaceLTA():
         # Test the utilities
         if not self.GetToken():
             if JNBDEBUG:
-                print('InterfaceLTA::Phase0 busy, bailing')
+                print('InterfaceLTA::ReadyToRun busy, bailing')
             return False
         #
         return self.ParseParams()
@@ -144,13 +144,13 @@ class InterfaceLTA():
                 self.config['CROOT'] = data['CROOT']
         except:
             print('InterfaceLTA::ParseParams:  failed to read the config file', self.config_file)
-            self.PhaseEnd()
+            self.CloseDown()
             sys.exit(3)
         #
         # Parse arguments to override the config file values
         # But do this later.  I don't need this right now.
     #
-    def Phase1(self):
+    def GetNextUnclaimedDirectory(self):
         ''' Return the next unclaimed full directories TODO (returned) '''
         # Check FullDirectory for the next full directory to deal with
         #+
@@ -164,7 +164,7 @@ class InterfaceLTA():
         TODO = []
         quer = {}
         quer['status'] = 'unclaimed'
-        mangled = U.mangle(quer)
+        mangled = U.mangle(json.dumps(quer))
         answers = requests.get(U.curltargethost + '/directory/info/' + mangled)
         arrans = U.UnpackDBReturnJson(answers.text)
         if len(arrans) == 0:
@@ -173,15 +173,15 @@ class InterfaceLTA():
         # Can implement FORBID here, but I haven't been using it yet, so
         # never mind for now.
         try:
-            TODO = [arrans['idealName'], arrans['dirkey']]
+            TODO = [arrans[0]['idealName'], arrans[0]['dirkey']]
         except:
-            print('InterfaceLTA::Phase1 failed to retrieve information from', arrans)
+            print('InterfaceLTA::GetNextUnclaimedDirectory failed to retrieve information from', arrans)
             return []
         if JNBDEBUG:
             print("InterfaceLTA::DEBUG TODO", TODO)
         return TODO
     
-    def Phase2(self, pair_directory):
+    def SpawnScript(self, pair_directory):
         ''' Do the submission stuff here '''
         #+
         # Arguments:	list of arrays of ideal directory and DB dirkey to bundle
@@ -194,37 +194,37 @@ class InterfaceLTA():
         # Anything to do?
         if len(pair_directory) <= 0:
             return True
-        print('InterfaceLTA::Phase2 About to try', pair_directory, flush=True)
+        print('InterfaceLTA::SpawnScript About to try', pair_directory, flush=True)
         hostname = socket.gethostname().split('.')[0]
         processID = str(os.getpid())
         mangled = U.mangle(str(pair_directory[1]) + ' processing ' + hostname + ' ' + processID)
         answer = requests.post(U.curltargethost + '/directory/modify/' + mangled)
         if 'FAILURE' in answer.text:
-            print('InterfaceLTA::Phase2: Failed to set new status for', pair_directory, answer.text)
+            print('InterfaceLTA::SpawnScript: Failed to set new status for', pair_directory, answer.text)
             return False
         #
         try:
             command = [self.config['INITIAL_DIR'] + '/process_directory_v2.sh', pair_directory[0], pair_directory[1]]
             output, error, code = U.getoutputerrorsimplecommand(command, 172800) # 2 days
         except subprocess.TimeoutExpired:
-            print('InterfaceLTA::Phase2: Timeout on process_directory_v2.sh on', pair_directory)
+            print('InterfaceLTA::SpawnScript: Timeout on process_directory_v2.sh on', pair_directory)
             return False
         except subprocess.CalledProcessError as e:
-            print('InterfaceLTA::Phase2: Failure with process_directory_v2.sh on', pair_directory, 'with', e.stderr, e.output)
+            print('InterfaceLTA::SpawnScript: Failure with process_directory_v2.sh on', pair_directory, 'with', e.stderr, e.output)
             return False
         except:
-            print('InterfaceLTA::Phase2: Failed to execute process_directory.sh on', pair_directory, error, code)
-            print('InterfaceLTA::Phase2:', command)
+            print('InterfaceLTA::SpawnScript: Failed to execute process_directory.sh on', pair_directory, error, code)
+            print('InterfaceLTA::SpawnScript:', command)
             return False
         if code != 0:
-            print('InterfaceLTA::Phase2: Problem with process_directory_v2.sh', output, error, code)
+            print('InterfaceLTA::SpawnScript: Problem with process_directory_v2.sh', output, error, code)
         else:
             if 'Error:' in str(output) or 'Error:' in str(error):
-                print('InterfaceLTA::Phase2:', pair_directory, output, error, code)
+                print('InterfaceLTA::SpawnScript:', pair_directory, output, error, code)
         #
         return True
     #
-    def PhaseEnd(self):
+    def CloseDown(self):
         ''' Release the token, do anything else needed '''
         #+
         # Arguments:	None
@@ -233,7 +233,7 @@ class InterfaceLTA():
         # Relies on:	ReleaseToken
         #-
         if not self.ReleaseToken():
-            print('InterfaceLTA::PhaseEnd failed to realease the token')
+            print('InterfaceLTA::CloseDown failed to realease the token')
             sys.exit(1)
     #
     def RunOnce(self):
@@ -243,20 +243,20 @@ class InterfaceLTA():
 	# Returns:	Nothing
         # Side Effects:	checksums a directory's worth of files
         #		tells LTA about them
-        # Relies on:	Phase0
-        #		Phase1
-        #		Phase2
-        #		PhaseEnd
+        # Relies on:	ReadyToRun
+        #		GetNextUnclaimedDirectory
+        #		SpawnScript
+        #		CloseDown
         #-
-        if not self.Phase0():
-            if not self.PhaseEnd():
+        if not self.ReadyToRun():
+            if not self.CloseDown():
                 print('InterfaceLTA::RunOnce failed to end politely')
                 sys.exit(1)
-        my_todo = self.Phase1()
+        my_todo = self.GetNextUnclaimedDirectory()
         # Anything we think reasonable goes here
-        if not self.Phase2(my_todo):
-            print('InterfaceLTA::RunOnce received a problem from Phase2')
-        self.PhaseEnd()
+        if not self.SpawnScript(my_todo):
+            print('InterfaceLTA::RunOnce received a problem from SpawnScript')
+        self.CloseDown()
 
 if __name__ == '__main__':
     interf = InterfaceLTA()
