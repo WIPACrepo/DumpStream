@@ -10,6 +10,7 @@
 
 import sys
 import copy
+import json
 import requests
 import Utils as U
 
@@ -70,6 +71,19 @@ class findfull:
         # Side Effects: change to REST server DB
         # Relies on:    REST server working
         #-
+        # Check if this exists already
+        md = {}
+        md['likeIdeal'] = newdir
+        mangled = U.mangle(json.dumps(md))
+        answers = requests.get(U.curltargethost + '/directory/info/' + mangled)
+        if 'FAILURE' in answers.text:
+            print('findfull.SetDir could not read', newdir)
+            sys.exit(3)
+        results = U.UnpackDBReturnJson(answers.text)
+        # Do we have any entries?
+        if results is not None:
+            if len(results) <= 0:
+                return
         mangled = U.mangle(newdir)
         answers = requests.post(U.curltargethost + '/directory/' + mangled)
         if 'FAILURE' in answers.text:
