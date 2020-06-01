@@ -129,9 +129,16 @@ class CheckFileCatalog():
                 return 7
         return 0
     #
-    def getFullDirsNotEmptied(self):
+    def GetFullDirsNotEmptied(self):
         ''' Return an array of FullDirectories where toLTA=2, only of expected types '''
-        #
+        # Arguments:    None
+        # NOT USED
+        # Returns:      array of idealNames from FullDirectories
+        #               where toLTA=2 and directory is one of the expected types
+        # Side Effects: query of my REST server
+        # Relies on:    Utils.mangle
+        #               my REST server is up
+        #-
         bigreq = 'http://archivecontrol.wipac.wisc.edu/dumping/handedoffdir/' + U.mangle('/exp/ 2')
         fulldirs = requests.get(bigreq)
         unjson = eval(fulldirs.text)
@@ -152,6 +159,12 @@ class CheckFileCatalog():
                not the true data warehouse.  It should be linked to
                from the warehouse 
             returns True if OK; False if something not OK '''
+        # Arguments:    directory path name
+        # NOT USED
+        # Returns:      boolean
+        # Side Effects: os filesystem metadata retrieved
+        # Relies on:    fileystem is up
+        #-
         #
         if not os.path.isdir(logicalDirectoryName):
             return False
