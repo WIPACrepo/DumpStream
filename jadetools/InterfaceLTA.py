@@ -213,7 +213,7 @@ class InterfaceLTA():
             print('InterfaceLTA::SpawnScript: Timeout on process_directory_v2.sh on', pair_directory)
             return False
         except subprocess.CalledProcessError as e:
-            print('InterfaceLTA::SpawnScript: Failure with process_directory_v2.sh on', pair_directory, 'with', e.stderr, e.output)
+            print('InterfaceLTA::SpawnScript: Failure with process_directory_v2.sh on', pair_directory, 'with', e.stderr, e.output, 'and', output, error, code)
             return False
         except:
             print('InterfaceLTA::SpawnScript: Failed to execute process_directory.sh on', pair_directory, error, code)

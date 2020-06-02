@@ -10,6 +10,7 @@
 # $2 => dirkey of this FullDirectory entry
 #
 #
+hostname
 if [[ "$1" == "" ]]; then echo "$0 needs directory and the DB key for this row"; exit 1; fi
 if [[ "$2" == "" ]]; then echo "$0 needs a directory and the DB key for this row"; exit 1; fi
 directory=$1
@@ -19,7 +20,7 @@ if [[ ! -d ${directory} ]]; then echo "${directory} is not a visible directory";
 ##
 # The first REST server connection is done by the main program before submitting this job
 # The table in question is FullDirectory
-echo "process_directory.sh ENTRANCE DEBUG"
+echo "process_directory_v2.sh ENTRANCE DEBUG"
 
 ##
 # First execute the file catalog loading script
