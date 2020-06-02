@@ -207,7 +207,7 @@ class InterfaceLTA():
             return False
         #
         try:
-            command = [self.config['INITIAL_DIR'] + '/process_directory_v2.sh', pair_directory[0], pair_directory[1]]
+            command = [self.config['INITIAL_DIR'] + '/process_directory_v2.sh', pair_directory[0], str(pair_directory[1])]
             output, error, code = U.getoutputerrorsimplecommand(command, 172800) # 2 days
         except subprocess.TimeoutExpired:
             print('InterfaceLTA::SpawnScript: Timeout on process_directory_v2.sh on', pair_directory)
