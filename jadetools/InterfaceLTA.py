@@ -110,7 +110,7 @@ class InterfaceLTA():
         ''' Parse out what the parameters tell this job to do '''
         #+
         # Arguments:	None [REVISIT THIS.  Probably want to take arguments from command line!]
-        # Returns:	None
+        # Returns:	boolean
         # Side Effects:	Resets GLOBAL parameters from the configuration file
         #                Prints message and exit-3 if the reading fails
         # Relies on:	Configuration file available and readable
@@ -149,6 +149,7 @@ class InterfaceLTA():
         #
         # Parse arguments to override the config file values
         # But do this later.  I don't need this right now.
+        return True
     #
     def GetNextUnclaimedDirectory(self):
         ''' Return the next unclaimed full directories TODO (returned) '''
