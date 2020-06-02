@@ -80,7 +80,7 @@ class InterfaceLTA():
             print('InterfaceLTA::ReleaseToken')
         answer = requests.post(U.targetgluetoken + U.mangle('RELEASE'))
         gmycode = answer.text
-        if gmycode == 0:
+        if gmycode == '0':
             return True
         return False
     #
