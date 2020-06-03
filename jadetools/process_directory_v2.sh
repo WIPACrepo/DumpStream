@@ -37,6 +37,7 @@ crosscheck=$(echo "${alls}" | awk '{print $4;}')
 if [[ "${crosscheck}" != "$1" ]]
    then
       echo "Giving up trying to the bundler about $1"
+      echo "${alls}"
       exit 2
    fi
 ltaid=$(echo "${alls}" | awk '{print $1;}')
