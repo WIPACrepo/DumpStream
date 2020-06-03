@@ -1,18 +1,17 @@
 # AutoFiles.py
 '''
-	Look for "finished" bundles and see which have the bundle files still
-	present.
-	Go the other way:  look for FullDirectories that aren't cleaned up
-	 FullDirectories uses the idealName for the directory
-	 WorkingTable uses the realDir
-	 I ABSOLUTELY MUST USE realDir
-	Using that info, check which have transfers established
-	Using that info, check which bundles exist
-	Using that info, check which bundles are "finished"
-	Using that info, check whether the directory has files or not
-        Double-check the name of the directory.  Make sure it does not
-         have anything to do with the /data/exp tree
-        Delete the files in that directory
+        Fetch the directories handed off to LTA ("LTArequest") : FullDirectory
+         Find the real directory name and return the list [ [idealName, realName, dirkey], ]
+        Pull the whole list of transfer requests
+        Loop over the directories handed off, and locate the transfer request(s)
+         for each one.  If none, don't bother adding this one to the new list yet
+        Loop over the new list of directory information 
+          Loop over the list of transfer request UUIDs and fetch the bundle UUIDs for 
+           them.  If all of them are done or otherwise properly accounted for, add the
+           directory information to a third list
+        Loop over the third list (real directory name, dirkey) and
+           delete the files in that directory
+           reset the FullDirectory row status (hence the dirkey)
 '''
 import os
 import sys
@@ -358,6 +357,9 @@ class AutoFiles():
             return False	# Something is wrong, don't break anything
         # Which bundle states are OK to allow deletion of raw files
         #acceptable = ['external', 'finished', 'deleted', 'source-deleted', 'detached', 'completed', 'deprecated']
+        # Note:  deprecated is a status that must be assigned manually.
+        # The obvious danger case of a pair of duplicate bundles in which 1 is done and 3 are deprecated 
+        # is something the operator can simply avoid.
         acceptable = ['external', 'finished', 'deleted', 'deprecated']
         bundleuuid = []
         for tuuid in trUUID:
