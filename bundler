@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /home/jadelta/lta
+source /home/jadelta/lta/env/bin/activate
+/home/jadelta/lta/bin/bundler.sh
