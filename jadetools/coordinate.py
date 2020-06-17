@@ -29,13 +29,14 @@ class coordinate():
         self.workerpool.append('c9-11.icecube.wisc.edu')
         self.workerpool.append('c9-12.icecube.wisc.edu')
         self.moduleInfo = {}
-        self.moduleInfo['bundler'] = [3, 'bundlerboost']
-        self.moduleInfo['check'] = [5, 'checkboost']
-        self.moduleInfo['delete'] = [1, 'delboost']
+        self.moduleInfo['bundler'] = [3, 'bundlerboost', 0]
+        self.moduleInfo['check'] = [5, 'checkboost', 0]
+        self.moduleInfo['delete'] = [1, 'delboost', 0]
         self.candidatePool = []
         self.countActiveBundles = 0
         self.countActiveChecks = 0
         self.countActiveDeletes = 0
+        self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
     #
     def GetCandidates(self):
         ''' Ping workerpool machines until we get a list of
@@ -78,7 +79,7 @@ class coordinate():
         #-
         emptyList = []
         for host in self.candidatePool:
-            cmd = ['/usr/bin/ssh', 'i3admin@' + host, '/home/jadelta/getme']
+            cmd = ['/usr/bin/ssh', 'i3admin@' + host, self.workerscripts + 'getme']
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
@@ -91,6 +92,9 @@ class coordinate():
                 self.countActiveBundles = self.countActiveBundles + 1
             if 'AutoFiles2' in answer:
                 self.countActiveDeletes = self.countActiveDeletes + 1
+        self.moduleInfo['bundler'][2] = self.countActiveBundles
+        self.moduleInfo['check'][2] = self.countActiveChecks
+        self.moduleInfo['delete'][2] = self.countActiveDeletes
         return emptyList
     #
     def Launch(self):
@@ -112,39 +116,19 @@ class coordinate():
         if numberFree <= 0:
             return
         whichHost = 0
-        if self.countActiveChecks < self.moduleInfo['check'][0]:
-            for _ in range(self.moduleInfo['check'][0] - self.countActiveChecks):
-                cmd = ['/usr/bin/ssh', 'i3admin@' + emptyList[whichHost], '/home/jadelta/checkboost']
-                answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
-                if code != 0:
-                    print('coordinate::Launch', cmd, answer, error, code)
-                    return
-                whichHost = whichHost + 1
-                # Are we out of free hosts?
-                if whichHost > numberFree - 1:
-                    return
-        if self.countActiveBundles < self.moduleInfo['bundler'][0]:
-            for _ in range(self.moduleInfo['bundler'][0] - self.countActiveBundles):
-                cmd = ['/usr/bin/ssh', 'i3admin@' + emptyList[whichHost], '/home/jadelta/bundlerboost']
-                answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
-                if code != 0:
-                    print('coordinate::Launch', cmd, answer, error, code)
-                    return
-                whichHost = whichHost + 1
-                # Are we out of free hosts?
-                if whichHost > numberFree - 1:
-                    return
-        if self.countActiveDeletes < self.moduleInfo['delete'][0]:
-            for _ in range(self.moduleInfo['delete'][0] - self.countActiveDeletes):
-                cmd = ['/usr/bin/ssh', 'i3admin@' + emptyList[whichHost], '/home/jadelta/delboost']
-                answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
-                if code != 0:
-                    print('coordinate::Launch', cmd, answer, error, code)
-                    return
-                whichHost = whichHost + 1
-                # Are we out of free hosts?
-                if whichHost > numberFree - 1:
-                    return
+        for module in self.moduleInfo:
+            infom = self.moduleInfo[module]
+            if infom[0] > infom[2]:
+                for _ in range(infom[0] - infom[2]):
+                    cmd = ['/usr/bin/ssh', 'i3admin@' + emptyList[whichHost], self.workerscripts + infom[1]]
+                    answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
+                    if code != 0:
+                        print('coordinate::Launch', cmd, answer, error, code)
+                        return
+                    whichHost = whichHost + 1
+                    # Are we out of free hosts?
+                    if whichHost > numberFree - 1:
+                        return
         return
 
 if __name__ == '__main__':
