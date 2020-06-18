@@ -37,6 +37,8 @@ class coordinate():
         self.countActiveChecks = 0
         self.countActiveDeletes = 0
         self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
+        self.cmdping = '/bin/ping'
+        self.cmdssh = '/usr/bin/ssh'
     #
     def GetCandidates(self):
         ''' Ping workerpool machines until we get a list of
@@ -53,7 +55,7 @@ class coordinate():
             targetCount = targetCount + self.moduleInfo[p][0]
         # Find that many, if possible
         for host in self.workerpool:
-            cmd = ['/bin/ping', '-c1', '-w', '1', host]
+            cmd = [self.cmdping, '-c1', '-w', '1', host]
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
@@ -79,7 +81,7 @@ class coordinate():
         #-
         emptyList = []
         for host in self.candidatePool:
-            cmd = ['/usr/bin/ssh', 'i3admin@' + host, self.workerscripts + 'getme']
+            cmd = [self.cmdssh, 'i3admin@' + host, self.workerscripts + 'getme']
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
@@ -120,7 +122,7 @@ class coordinate():
             infom = self.moduleInfo[module]
             if infom[0] > infom[2]:
                 for _ in range(infom[0] - infom[2]):
-                    cmd = ['/usr/bin/ssh', 'i3admin@' + emptyList[whichHost], self.workerscripts + infom[1]]
+                    cmd = [self.cmdssh, 'i3admin@' + emptyList[whichHost], self.workerscripts + infom[1]]
                     answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
                     if code != 0:
                         print('coordinate::Launch', cmd, answer, error, code)
