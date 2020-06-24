@@ -82,7 +82,7 @@ class findfull:
         results = U.UnpackDBReturnJson(answers.text)
         # Do we have any entries?
         if results is not None:
-            if len(results) <= 0:
+            if len(results) > 0:
                 return
         mangled = U.mangle(newdir)
         answers = requests.post(U.curltargethost + '/directory/' + mangled)
