@@ -46,6 +46,9 @@ echo "SUMMARY ${expectedjobs} ${donejobs}"
 if [[ "${firstargument}" == "" ]]; then echo "Nothing to do/was done?"; exit 1; fi
 cd /opt/i3admin/dumpscripts
 source venv/bin/activate
+echo "Running renamer"
 python3 renamer.py "${firstargument}"
+echo "Running findfull"
 python3 findfull.py "${allargs}"
+echo "Done"
 exit 0
