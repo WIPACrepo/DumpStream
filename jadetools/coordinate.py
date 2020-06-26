@@ -10,11 +10,8 @@ class coordinate():
     def __init__(self):
         self.workerpool = []
         self.workerpool.append('c9-1.icecube.wisc.edu')
-        self.workerpool.append('c8-2.icecube.wisc.edu')
         self.workerpool.append('c9-2.icecube.wisc.edu')
-        self.workerpool.append('c8-4.icecube.wisc.edu')
         self.workerpool.append('c9-3.icecube.wisc.edu')
-        self.workerpool.append('c8-5.icecube.wisc.edu')
         self.workerpool.append('c9-4.icecube.wisc.edu')
         self.workerpool.append('c8-6.icecube.wisc.edu')
         self.workerpool.append('c9-5.icecube.wisc.edu')
@@ -22,7 +19,6 @@ class coordinate():
         self.workerpool.append('c9-6.icecube.wisc.edu')
         self.workerpool.append('c8-8.icecube.wisc.edu')
         self.workerpool.append('c9-7.icecube.wisc.edu')
-        self.workerpool.append('c8-10.icecube.wisc.edu')
         self.workerpool.append('c9-8.icecube.wisc.edu')
         self.workerpool.append('c8-12.icecube.wisc.edu')
         self.workerpool.append('c9-10.icecube.wisc.edu')
