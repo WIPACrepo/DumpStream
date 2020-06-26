@@ -1,4 +1,4 @@
-''' To run in a cron on lta-vm-2 as i3admin.
+''' To run in a cron on lta-vm-2 as jadelta.
     Communicates w/ cluster nodes
     Keeps the appropriate number of bundler and checksum
      jobs running. '''
@@ -81,7 +81,7 @@ class coordinate():
         #-
         emptyList = []
         for host in self.candidatePool:
-            cmd = [self.cmdssh, 'i3admin@' + host, self.workerscripts + 'getme']
+            cmd = [self.cmdssh, 'jadelta@' + host, self.workerscripts + 'getme']
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
@@ -122,7 +122,7 @@ class coordinate():
             infom = self.moduleInfo[module]
             if infom[0] > infom[2]:
                 for _ in range(infom[0] - infom[2]):
-                    cmd = [self.cmdssh, 'i3admin@' + emptyList[whichHost], self.workerscripts + infom[1]]
+                    cmd = [self.cmdssh, 'jadelta@' + emptyList[whichHost], self.workerscripts + infom[1]]
                     answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
                     if code != 0:
                         print('coordinate::Launch', cmd, answer, error, code)
