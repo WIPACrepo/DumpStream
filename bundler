@@ -1,4 +1,5 @@
 #!/bin/bash
 cd /home/jadelta/lta
+eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 source /home/jadelta/lta/env/bin/activate
 /home/jadelta/lta/bin/bundler.sh
