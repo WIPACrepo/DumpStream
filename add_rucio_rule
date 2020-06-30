@@ -1,0 +1,74 @@
+# add_rucio_rule
+# Script will have to be copied to the container and 
+#  executed there with the appropriate arguments
+# Basically we want to re-create a NERSC-LTA-XXXX
+#  rucio rule and dataset to replace a stuck one.
+# History:
+#  Our first was NERSC-LTA
+#  Our second was NERSC-LTA-1759   (1759 was the ticket # at rucio)
+# Hereafter increment by 1
+#
+if [[ "$1" == "" ]]
+  then
+    echo "Needs a suffix for NERSC-LTA-?"
+    exit 1
+  fi
+#
+NEWRULE=`echo "NERSC-LTA-$1"`
+#
+duplicate=`rucio-admin rse list | grep ${NEWRULE}`
+if [[ "${duplicate}" != "" ]]
+  then
+    echo "${NEWRULE} already exists"
+    exit 2
+  fi
+#
+NEWDATASET=`echo "lta:nersc-dataset-$1"`
+
+rucio-admin rse add ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 1 failed"; exit 3; fi
+rucio-admin rse set-attribute --rse ${NEWRULE} --key fts --value https://fts.mwt2.org:8446
+if [[ $? != 0 ]]; then echo "Step 2 failed"; exit 3; fi
+
+rucio-admin rse set-attribute --rse ${NEWRULE} --key lfn2pfn_algorithm --value identity
+if [[ $? != 0 ]]; then echo "Step 3 failed"; exit 3; fi
+
+rucio-admin rse add-protocol --hostname dtn05.nersc.gov \
+--prefix '/global/cscratch1/sd/icecubed/jade-disk' \
+--domain-json '{"wan":{"read":1,"write":1,"third_party_copy":1,"delete":1},"lan":{"read":0,"write":0,"delete":0}}' \
+--scheme gsiftp --port 2811 --impl rucio.rse.protocols.gfalv2.Default ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 4 failed"; exit 3; fi
+
+rucio-admin rse add-protocol --hostname dtn06.nersc.gov \
+--prefix '/global/cscratch1/sd/icecubed/jade-disk' \
+--domain-json '{"wan":{"read":2,"write":2,"third_party_copy":1,"delete":2},"lan":{"read":0,"write":0,"delete":0}}' \
+--scheme gsiftp --port 2811 --impl rucio.rse.protocols.gfalv2.Default ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 5 failed"; exit 3; fi
+
+rucio-admin rse add-protocol --hostname dtn07.nersc.gov \
+--prefix '/global/cscratch1/sd/icecubed/jade-disk' \
+--domain-json '{"wan":{"read":3,"write":3,"third_party_copy":1,"delete":3},"lan":{"read":0,"write":0,"delete":0}}' \
+--scheme gsiftp --port 2811 --impl rucio.rse.protocols.gfalv2.Default ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 6 failed"; exit 3; fi
+
+rucio-admin rse add-protocol --hostname dtn08.nersc.gov \
+--prefix '/global/cscratch1/sd/icecubed/jade-disk' \
+--domain-json '{"wan":{"read":4,"write":4,"third_party_copy":1,"delete":4},"lan":{"read":0,"write":0,"delete":0}}' \
+--scheme gsiftp --port 2811 --impl rucio.rse.protocols.gfalv2.Default ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 7 failed"; exit 3; fi
+
+rucio-admin rse add-distance --ranking 1 ICECUBE-LTA ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 8 failed"; exit 3; fi
+
+rucio-admin rse add-distance --ranking 1 ${NEWRULE} ICECUBE-LTA
+if [[ $? != 0 ]]; then echo "Step 9 failed"; exit 3; fi
+
+rucio-admin account set-limits root ${NEWRULE} -1
+if [[ $? != 0 ]]; then echo "Step 10 failed"; exit 3; fi
+
+rucio add-dataset ${NEWDATASET}
+if [[ $? != 0 ]]; then echo "Step 11 failed"; exit 3; fi
+
+rucio add-rule --account root ${NEWDATASET} 1 ${NEWRULE}
+if [[ $? != 0 ]]; then echo "Step 12 failed"; exit 3; fi
+exit 0
