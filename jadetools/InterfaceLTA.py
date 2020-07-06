@@ -56,7 +56,7 @@ class InterfaceLTA():
         #		Utils.mangle
         #-
         if JNBDEBUG:
-            print('InterfaceLTA::DEBUG: GetToken')
+            print('InterfaceLTA::DEBUG: GetToken, PID=', str(os.getpid()))
         answer = requests.post(U.targetgluetoken + U.mangle(socket.gethostname()))
         gmycode = answer.text
         if gmycode == '1':
