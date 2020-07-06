@@ -20,7 +20,7 @@ if [[ ! -d ${directory} ]]; then echo "${directory} is not a visible directory";
 ##
 # The first REST server connection is done by the main program before submitting this job
 # The table in question is FullDirectory
-echo "process_directory_v2.sh ENTRANCE DEBUG"
+echo "process_directory_v2.sh ENTRANCE DEBUG $0"
 
 ##
 # First execute the file catalog loading script
