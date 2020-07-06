@@ -142,6 +142,8 @@ class renamer:
         direList = []
         for dfile in foundDiskFile:
             ddir = os.path.dirname(dfile)
+            if '/mnt/slot' in ddir:
+                continue
             if ddir not in direList:
                 direList.append(ddir)
         for ddir in direList:
