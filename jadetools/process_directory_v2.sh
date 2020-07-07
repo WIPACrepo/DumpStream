@@ -33,10 +33,10 @@ if ! env -i ./load_filecatalog "$1"
 ##
 # Second setup the request
 alls=$(env -i ./tell_bundlemaker "$1")
-crosscheck=$(echo "${alls}" | awk '{print $4;}')
-if [[ "${crosscheck}" != "$1" ]]
+echo "${alls}" | grep "$1" >& /dev/null
+if [[ $? != 0 ]]
    then
-      echo "Giving up trying to the bundler about $1"
+      echo "Giving up trying to tell the bundler about $1"
       echo "${alls}"
       exit 2
    fi
