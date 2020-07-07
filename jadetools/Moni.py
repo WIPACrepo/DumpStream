@@ -472,7 +472,7 @@ class MoniLTA():
             return True
         testit = U.UnpackDBReturnJson(answers.text)
         rightnow = datetime.utcnow()
-        stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%dT%H:%M:%S")
+        stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%d %H:%M:%S")
         rightthen = datetime.fromtimestamp(mktime(stripped))
         diff = rightnow - rightthen
         hours = int((diff.days*86400 + diff.seconds) / 3600)
