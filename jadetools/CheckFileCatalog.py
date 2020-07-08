@@ -84,7 +84,11 @@ class CheckFileCatalog():
         query_dictw = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "WIPAC"}, "logical_name": {"$regex": directoryFrag}}
         query_jsonw = json.dumps(query_dictw)
         overallw = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonw}'
-        rw = requests.get(overallw, auth=BearerAuth(self.token))
+        try:
+            rw = requests.get(overallw, auth=BearerAuth(self.token))
+        except:
+            print('compareDirectoryToArchive:', directory, overallw)
+            return 6
         #
         query_dictn = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
         query_jsonn = json.dumps(query_dictn)
