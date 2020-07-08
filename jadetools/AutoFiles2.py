@@ -476,9 +476,7 @@ class AutoFiles():
         if JNB_DEBUG:
             print('ResetStatus', idealDirectory, dirkey)
             return True
-        quer = {}
-        quer['dirkey'] = dirkey
-        quer['status'] = 'filesdeleted'
+        quer = str(dirkey) + ' filesdeleted'
         mangled = U.mangle(json.dumps(quer))
         rw = requests.post(U.curltargethost + 'directory/modify/' + mangled)
         if 'FAILURE' in rw.text:
