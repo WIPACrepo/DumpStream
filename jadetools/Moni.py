@@ -476,7 +476,7 @@ class MoniLTA():
         rightthen = datetime.fromtimestamp(mktime(stripped))
         diff = rightnow - rightthen
         seconds = int(diff.days*86400 + diff.seconds)
-        if seconds > OVERDUE_SHORT:
+        if seconds > self.OVERDUE_SHORT:
             return False
         return True
 
