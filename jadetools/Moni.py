@@ -475,8 +475,8 @@ class MoniLTA():
         stripped = strptime(testit[0]['lastChangeTime'], "%Y-%m-%d %H:%M:%S")
         rightthen = datetime.fromtimestamp(mktime(stripped))
         diff = rightnow - rightthen
-        hours = int((diff.days*86400 + diff.seconds) / 3600)
-        if hours > 2:
+        seconds = int(diff.days*86400 + diff.seconds)
+        if seconds > OVERDUE_SHORT:
             return False
         return True
 
