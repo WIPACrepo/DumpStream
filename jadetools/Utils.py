@@ -348,7 +348,7 @@ def unNone(u_answer):
     # Relies on:	Nothing
     #-
     try:
-        return u_answer.replace(' None ', ' \"None\" ').replace(' None,', ' \"None\",')
+        return u_answer.replace(' None ', ' \"None\" ').replace(' None,', ' \"None\",').replace(' None}', ' \"None\"}')
     except:
         return u_answer
 
