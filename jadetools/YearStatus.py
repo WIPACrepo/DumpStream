@@ -41,6 +41,7 @@ class YearStatus():
         try:
             tf = open(name, 'r')
             self.token = tf.readline()
+            self.bearer = BearerAuth(self.token)
             tf.close()
         except:
             print('getLTAToken failed to read from', name)
@@ -132,6 +133,68 @@ class YearStatus():
                 print(tag)
             else:
                 print(tag, knownyet[tag][3])
+    #
+    def GetLTATransfers(self):
+        ''' Get the block of LTA transfer requests '''
+        #+
+        # Arguments:    None
+        # Returns:      json of LTA transfer request info
+        # Side Effects: Calls LTA REST server
+        # Relies on:    LTA REST server
+        #-
+        # I may want to cherrypick info, so I'm putting this in its own routine
+        #answers = requests.get('https://lta.icecube.aq/Bundles?request=' + 'dcc26d08185011ea899f12aa67a59482', auth=self.bearer)
+        #print(answers.text)
+        answers = requests.get('https://lta.icecube.aq/TransferRequests', auth=self.bearer)
+        return answers.json()['results']
+    #
+    def RetrieveBundleInfo(self, directory, jsonblob):
+        ''' Get status information for the given directory from LTA '''
+        #+
+        # Arguments:    directory = /data/exp/etc... string
+        #		jsonblob = json from LTA query of all transfer requests
+        # Returns:      status of the bundles in this directory
+        # Side Effects: Calls LTA REST server
+        # Relies on:    LTA REST server
+        #-
+        # Parse through the jsonblob for this directory path
+        # Note that there may be some directories that are /mnt/lfs7/exp...,
+        #  so I need to look for part of the directory name
+        acceptable = ['external', 'finished', 'deleted', 'deprecated']
+        dsplit = directory.split('/exp/')
+        if len(dsplit) != 2:
+            print('YearStatus:RetrieveBundleInfo does not know what to do with non-exp', directory)
+            sys.exit(4)
+        foundjsons = []
+        for blob in jsonblob:
+            if dsplit[1] in blob['path']:
+                foundjsons.append(blob)
+        if len(foundjsons) == 0:
+            return '-'
+        # If any request was completed, we're done with this one
+        for blob in foundjsons:
+            if blob['status'] == 'completed':
+                return 'completed'
+        # Get bundle uuid's associated with transfer requests for this directory
+        bundleuuid = []
+        for blob in foundjsons:
+            truuid = blob['uuid']
+            answer = requests.get('https://lta.icecube.aq/Bundles?request=' + truuid, auth=self.bearer)
+            ansj = answer.json()['results']
+            thisrequest = True
+            for uuid in ansj:
+                bundleuuid.append(uuid)
+                answer = requests.get('https://lta.icecube.aq/Bundles/' + uuid, auth=self.bearer)
+                status = answer.json()['status']
+                if status not in acceptable:
+                    thisrequest = False
+            if thisrequest:
+                return 'completed'	# Any set of bundles will do, but not a mix from sets
+        if len(bundleuuid) == 0:
+            return 'inconsistent'
+        #
+        return 'processing'
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
@@ -142,6 +205,10 @@ if __name__ == '__main__':
             print('Bad year argument', sys.argv[1])
     else:
         app = YearStatus() 
+    ltaj = app.GetLTATransfers()
+    for x in ltaj:
+        print(x)
+    sys.exit(0)
     app.PrintStatus(0)
     app.PrintStatus(1)
     app.PrintStatus(2)
