@@ -1,8 +1,10 @@
+import os
 import sys
 import json
 import requests
 import Utils as U
 
+DEBUG_JNB = False
 #####
 #
 class BearerAuth(requests.auth.AuthBase):
@@ -36,6 +38,15 @@ class YearStatus():
                     self.TAGLIST.append(tag)
                     continue
         self.TRBLOB = self.GetLTATransfers()
+        if os.path.isfile('/bin/du'):
+            self.EXECDU = '/bin/du'
+        else:
+            self.EXECDU = '/usr/bin/du'
+        if os.path.isfile('/bin/df'):
+            self.EXECDF = '/bin/df'
+        else:
+            self.EXECDF = '/usr/bin/df'
+        self.FS_AVAIL = self.isDataExpPresent()
     #
     def getLTAToken(self, name):
         ''' Read the LTA REST server token from file "name"; return the same '''
@@ -47,6 +58,24 @@ class YearStatus():
         except:
             print('getLTAToken failed to read from', name)
             sys.exit(1)
+    #
+    def isDataExpPresent(self):
+        ''' Are the /data/exp and /mnt/lfs7 filesystems available? '''
+        #+
+        # Arguments:	None
+        # Returns:	boolean; true if both are present
+        # Side Effects:	none
+        # Relies on:	Utils.getoutputerrorsimplecommand
+        #-
+        cmd = [self.EXECDF, '/data/exp']
+        _, _, code = U.getoutputerrorsimplecommand(cmd, 1)
+        if code != 0:
+            return False
+        cmd = [self.EXECDF, '/mnt/lfs7']
+        _, _, code = U.getoutputerrorsimplecommand(cmd, 1)
+        if code != 0:
+            return False
+        return True
     #
     def gettag(self, mmonth, mday):
         ''' Return a string for the given month and day.  Trivial except for Feb '''
@@ -132,11 +161,22 @@ class YearStatus():
             if tag == lasttag:
                 break
             ltastatus = self.RetrieveBundleInfo(prefix + tag)
+            # Check the directory?
+            if self.FS_AVAIL:
+                cmd = [self.EXECDF, '-s', prefix + tag]
+                canswer, _, _ = U.getoutputerrorsimplecommand(cmd, 1)
+                try:
+                    dresult = str(canswer.split('\t')[0])
+                except:
+                    dresult = 'NotAvail'
+            #
+            else:
+                dresult = 'NotAvail'
             if len(knownyet[tag]) == 0:
                 dumpstatus = '-'
             else:
                 dumpstatus = knownyet[tag][3]
-            print(tag, dumpstatus, ltastatus)
+            print(tag, dumpstatus, ltastatus, dresult)
     #
     def GetLTATransfers(self):
         ''' Get the block of LTA transfer requests '''
@@ -177,8 +217,9 @@ class YearStatus():
         # If any request was completed, we're done with this one
         for tblob in foundjsons:
             if tblob['status'] == 'completed':
-                answerx = requests.get('https://lta.icecube.aq/Bundles?request=' + tblob['uuid'], auth=self.bearer)
-                print('alldone', len(foundjsons), directory, answerx.text)
+                if DEBUG_JNB:
+                    answerx = requests.get('https://lta.icecube.aq/Bundles?request=' + tblob['uuid'], auth=self.bearer)
+                    print('alldone', len(foundjsons), directory, answerx.text)
                 return 'completed'
         # Get bundle uuid's associated with transfer requests for this directory
         bundleuuid = []
@@ -190,7 +231,8 @@ class YearStatus():
             if len(ansj) <= 0:
                 thisrequest = False
             for uuid in ansj:
-                print('bundle', uuid)
+                if DEBUG_JNB:
+                    print('bundle', uuid)
                 bundleuuid.append(uuid)
                 answer = requests.get('https://lta.icecube.aq/Bundles/' + uuid, auth=self.bearer)
                 status = answer.json()['status']
@@ -218,6 +260,6 @@ if __name__ == '__main__':
     #ltaj = app.GetLTATransfers()
     #for x in ltaj:
     #    print(x)
-    sys.exit(0)
     app.PrintStatus(1)
     app.PrintStatus(2)
+    sys.exit(0)
