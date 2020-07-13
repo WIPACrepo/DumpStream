@@ -23,6 +23,7 @@ import Utils as U
 import CheckFileCatalog as LC
 
 JNB_DEBUG = False
+JNB_DEBUG_REMOVE = False
 #######################################################
 #
 class BearerAuth(requests.auth.AuthBase):
@@ -403,7 +404,7 @@ class AutoFiles():
             return False
         try:
             for donefile in list_o_files:
-                if JNB_DEBUG:
+                if JNB_DEBUG_REMOVE:
                     print('dEBUG DeleteDir pretending to remove', donefile)
                 else:
                     os.remove(donefile)
@@ -473,7 +474,7 @@ class AutoFiles():
         # Relies on:	Utils.mangle
         #		my REST server working
         #-
-        if JNB_DEBUG:
+        if JNB_DEBUG_REMOVE:
             print('ResetStatus', idealDirectory, dirkey)
             return True
         quer = str(dirkey) + ' filesdeleted'
