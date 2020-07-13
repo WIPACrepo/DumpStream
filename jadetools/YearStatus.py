@@ -35,6 +35,7 @@ class YearStatus():
                 if tag != '':
                     self.TAGLIST.append(tag)
                     continue
+        self.TRBLOB = self.GetLTATransfers()
     #
     def getLTAToken(self, name):
         ''' Read the LTA REST server token from file "name"; return the same '''
@@ -111,7 +112,8 @@ class YearStatus():
             print('YearStatus:PrintStatus got a bad data type, should be int', dtype)
             sys.exit(2)
         knownstuff = self.GetYearInfo(dtype)
-        print('======== ' + self.PREFIX + self.YEAR + self.SUFFIX[dtype] + ' =========')
+        prefix = self.PREFIX + self.YEAR + self.SUFFIX[dtype]
+        print('======== ' + prefix + ' =========')
         knownyet = {}
         for tag in self.TAGLIST:
             knownyet[tag] = []
@@ -129,10 +131,12 @@ class YearStatus():
         for tag in self.TAGLIST:
             if tag == lasttag:
                 break
+            ltastatus = self.RetrieveBundleInfo(prefix + tag)
             if len(knownyet[tag]) == 0:
-                print(tag)
+                dumpstatus = '-'
             else:
-                print(tag, knownyet[tag][3])
+                dumpstatus = knownyet[tag][3]
+            print(tag, dumpstatus, ltastatus)
     #
     def GetLTATransfers(self):
         ''' Get the block of LTA transfer requests '''
@@ -148,16 +152,15 @@ class YearStatus():
         answers = requests.get('https://lta.icecube.aq/TransferRequests', auth=self.bearer)
         return answers.json()['results']
     #
-    def RetrieveBundleInfo(self, directory, jsonblob):
+    def RetrieveBundleInfo(self, directory):
         ''' Get status information for the given directory from LTA '''
         #+
         # Arguments:    directory = /data/exp/etc... string
-        #		jsonblob = json from LTA query of all transfer requests
         # Returns:      status of the bundles in this directory
         # Side Effects: Calls LTA REST server
         # Relies on:    LTA REST server
         #-
-        # Parse through the jsonblob for this directory path
+        # Parse through the self.TRBLOB for this directory path
         # Note that there may be some directories that are /mnt/lfs7/exp...,
         #  so I need to look for part of the directory name
         acceptable = ['external', 'finished', 'deleted', 'deprecated']
@@ -166,26 +169,32 @@ class YearStatus():
             print('YearStatus:RetrieveBundleInfo does not know what to do with non-exp', directory)
             sys.exit(4)
         foundjsons = []
-        for blob in jsonblob:
-            if dsplit[1] in blob['path']:
-                foundjsons.append(blob)
+        for tblob in self.TRBLOB:
+            if dsplit[1] in tblob['path']:
+                foundjsons.append(tblob)
         if len(foundjsons) == 0:
             return '-'
         # If any request was completed, we're done with this one
-        for blob in foundjsons:
-            if blob['status'] == 'completed':
+        for tblob in foundjsons:
+            if tblob['status'] == 'completed':
+                answerx = requests.get('https://lta.icecube.aq/Bundles?request=' + tblob['uuid'], auth=self.bearer)
+                print('alldone', len(foundjsons), directory, answerx.text)
                 return 'completed'
         # Get bundle uuid's associated with transfer requests for this directory
         bundleuuid = []
-        for blob in foundjsons:
-            truuid = blob['uuid']
+        for tblob in foundjsons:
+            truuid = tblob['uuid']
             answer = requests.get('https://lta.icecube.aq/Bundles?request=' + truuid, auth=self.bearer)
             ansj = answer.json()['results']
             thisrequest = True
+            if len(ansj) <= 0:
+                thisrequest = False
             for uuid in ansj:
+                print('bundle', uuid)
                 bundleuuid.append(uuid)
                 answer = requests.get('https://lta.icecube.aq/Bundles/' + uuid, auth=self.bearer)
                 status = answer.json()['status']
+                #print('xx', status)
                 if status not in acceptable:
                     thisrequest = False
             if thisrequest:
@@ -205,10 +214,10 @@ if __name__ == '__main__':
             print('Bad year argument', sys.argv[1])
     else:
         app = YearStatus() 
-    ltaj = app.GetLTATransfers()
-    for x in ltaj:
-        print(x)
-    sys.exit(0)
     app.PrintStatus(0)
+    #ltaj = app.GetLTATransfers()
+    #for x in ltaj:
+    #    print(x)
+    sys.exit(0)
     app.PrintStatus(1)
     app.PrintStatus(2)

@@ -1,6 +1,8 @@
 import os
 import sys
 import json
+from datetime import datetime
+from time import mktime, strptime
 import requests
 import Utils as U
 
@@ -73,11 +75,19 @@ class CheckExternals():
     #
     def checkQuotaNERSC(self):
         ''' get the cscratch1 use from NERSC--are we too full? '''
-        _, used, avail = self.getQuotaNERSC()
+        lasttime, used, avail = self.getQuotaNERSC()
         if used < 0 or avail < 0:
             return False
         if used > self.config['FRACTION_NERSC_QUOTA'] * avail:
             return False
+        rightnow = datetime.utcnow()
+        st = strptime(lasttime, "%Y-%m-%dT%H:%M:%S.%f")
+        rightthen = datetime.fromtimestamp(mktime(st))
+        diff = rightnow - rightthen
+        seconds = diff.days*86400 + diff.seconds
+        if seconds > 86400:
+            return False
+        #
         return True
     #
     def getQuotaNERSC(self):
