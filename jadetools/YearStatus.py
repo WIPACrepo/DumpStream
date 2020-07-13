@@ -163,7 +163,7 @@ class YearStatus():
             ltastatus = self.RetrieveBundleInfo(prefix + tag)
             # Check the directory?
             if self.FS_AVAIL:
-                cmd = [self.EXECDF, '-s', prefix + tag]
+                cmd = [self.EXECDU, '-s', prefix + tag]
                 canswer, _, _ = U.getoutputerrorsimplecommand(cmd, 1)
                 try:
                     dresult = str(canswer.split('\t')[0])
