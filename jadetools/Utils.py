@@ -267,7 +267,11 @@ def getoutputerrorsimplecommand(cmd, Timeout):
     #-
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate(Timeout)
+        try:
+            output, error = proc.communicate(Timeout)
+        except:
+            print('Died at proc.communicate stage', cmd)
+            return "", "", 1
         returncode = proc.returncode
         return output.decode('utf-8'), error, returncode
     except subprocess.CalledProcessError:
