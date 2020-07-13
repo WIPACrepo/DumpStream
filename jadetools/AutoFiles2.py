@@ -478,7 +478,7 @@ class AutoFiles():
             print('ResetStatus', idealDirectory, dirkey)
             return True
         quer = str(dirkey) + ' filesdeleted'
-        mangled = U.mangle(json.dumps(quer))
+        mangled = U.mangle(quer)
         rw = requests.post(U.curltargethost + 'directory/modify/' + mangled)
         if 'FAILURE' in rw.text:
             return False
