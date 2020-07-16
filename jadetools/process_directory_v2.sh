@@ -44,10 +44,16 @@ ltaid=$(echo "${alls}" | awk '{print $1;}')
 
 ##
 # Lastly, curl to let the REST server know we are done with this directory
+if [[ -f /usr/bin/curl ]]
+  then
+    CURL=/usr/bin/curl
+  else
+    CURL=/bin/curl
+  fi
 manglecom=$( "${dirkey}@LTArequest@${ltaid}" )
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target=$( "http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}" )
-if ! /usr/bin/curl "${CURLARGS}" "${target}"
+if ! ${CURL} "${CURLARGS}" "${target}"
   then
     echo "FAILURE w/ set status to LTArequest "
     exit 5
