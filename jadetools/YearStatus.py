@@ -4,6 +4,8 @@ import json
 import requests
 import Utils as U
 
+# DEV-976
+# 16-July-2020
 DEBUG_JNB = False
 #####
 #
