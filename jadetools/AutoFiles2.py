@@ -454,7 +454,7 @@ class AutoFiles():
                     return	# Do not try to continue
                 ok = self.ResetStatus(transfer[0], transfer[2])
                 if not ok:
-                    print('FindAndDelete failed to reset the FullDirectories entry status', transfer[0])
+                    print('FindAndDelete failed to reset the FullDirectory entry status', transfer[0])
                     self.ReleaseToken()
                     return	# Do not try to continue
             else:
@@ -481,6 +481,7 @@ class AutoFiles():
         mangled = U.mangle(quer)
         rw = requests.post(U.curltargethost + 'directory/modify/' + mangled)
         if 'FAILURE' in rw.text:
+            print('ResetStatus', idealDirectory, dirkey, rw.text)
             return False
         return True
 
