@@ -137,11 +137,13 @@ class renamer:
         # Arguments:	list of file names as found on the pole disk
         # Returns:	Nothing
         # Side Effects:	chown the directory immediately above the file
-        # Relies on:	Nothing
+        # Relies on:	Utils.NormalName
         #-
         direList = []
         for dfile in foundDiskFile:
-            ddir = os.path.dirname(dfile)
+            odir = os.path.dirname(dfile)
+            tempName = odir.replace(self.sourcedir, self.target)
+            ddir = U.NormalName(tempName)
             if '/mnt/slot' in ddir:
                 continue
             if ddir not in direList:
