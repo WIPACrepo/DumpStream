@@ -53,7 +53,7 @@ if [[ -f /usr/bin/curl ]]
 manglecom=$( "${dirkey}@LTArequest@${ltaid}" )
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target=$( "http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}" )
-if ! ${CURL} "${CURLARGS}" "${target}"
+if ! ${CURL} ${CURLARGS} "${target}"
   then
     echo "FAILURE w/ set status to LTArequest "
     exit 5
