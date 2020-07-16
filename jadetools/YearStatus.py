@@ -164,7 +164,9 @@ class YearStatus():
             # Check the directory?
             if self.FS_AVAIL:
                 cmd = [self.EXECDU, '-s', prefix + tag]
-                canswer, _, _ = U.getoutputerrorsimplecommand(cmd, 1)
+                canswer, cerror, ccode = U.getoutputerrorsimplecommand(cmd, 1)
+                if ccode != 0:
+                    print('PrintStatus:', cmd, ccode, cerror, canswer)
                 try:
                     dresult = str(canswer.split('\t')[0])
                 except:
