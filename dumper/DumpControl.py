@@ -476,11 +476,12 @@ def GetExpectedCount(trialdirname):
     gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
     geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)
     if gecode != 0 or len(geoutp) <= 0:
+        print('GetExpectedCount: Problem getting info for directory', trialdirname, geerro, gecode)
         return -1
     try:
         gejson = json.loads(U.singletodouble(geoutp))
     except:
-        print('No expected counts for directory', trialdirname, geerro)
+        print('GetExpectedCount: No expected counts for directory', trialdirname, geerro)
         return -1
     try:
         gen = int(gejson)
