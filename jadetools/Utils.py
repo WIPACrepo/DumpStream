@@ -850,3 +850,25 @@ def UnpackDBReturnJson(estring):
     except:
         return None
     return answerj["results"]
+
+###
+# Set the PoleDisk status
+def SetPoleDiskStatus(spid, sstatus):
+    ''' Set the Pole Disk status '''
+    #+
+    # Arguments:        pole disk ID (in REST database)
+    #                   new status
+    # Returns:          Nothing
+    # Side Effects:     Print and die if it fails
+    # Relies on:        REST server working
+    #-
+    if sstatus not in PoleDiskStatusOptions:
+        print('SetPoleDiskStatus:  bad status', sstatus)
+        sys.exit(0)
+    sarg = mangle(str(spid) + ' ' + sstatus)
+    spposturl = copy.deepcopy(basicposturl)
+    spposturl.append(targetdumpingpoledisksetstatus + sarg)
+    spoutp, sperro, spcode = getoutputerrorsimplecommand(spposturl, 1)
+    if int(spcode) != 0 or 'FAILURE' in str(spoutp):
+        print('SetPoleDiskStatus: Set status failed', sarg, sperro)
+        sys.exit(0)
