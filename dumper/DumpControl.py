@@ -538,7 +538,7 @@ def JobDecision(dumperstatus, jdumpnextAction):
     #			CheckLogSpace
     #			InventoryOneFull
     #			GiveTarget
-    #			SetPoleDiskStatus
+    #			Utils.SetPoleDiskStatus
     #			DumperSetState
     #-
     # Inspect what's out there

@@ -5,6 +5,8 @@
    the rsync's complete.  '''
 import os
 import sys
+import json
+import requests
 import Utils as U
 
 class renamer:
@@ -42,8 +44,49 @@ class renamer:
             self.execchown = '/bin/chown'
         else:
             self.execchown = '/usr/bin/chown'
-
-    
+    #
+    def FindID(self):
+        ''' Using the sourcedir, parse out the slot name.  Find the poledisk_id for
+            the disk in the slot '''
+        #+
+        # Arguments:	None
+        # Returns:	poledisk_id for the disk we just read
+        # Side Effects:	None
+        # Relies on:	Utils.getoutputsimplecommand
+        #-
+        parts = self.sourcedir.split()
+        slotname = ''
+        for k in parts:
+            if 'slot' in k:
+                slotname = k
+                break
+        if slotname == '':
+            print('renamer:FindID cannot find slot name in', self.sourcedir)
+            return -1
+        nameslot = '/mnt/' + slotname
+        answers = requests.get(U.curltargethost + 'dumping/slotcontents')
+        slotinfo = json.loads(U.singletodouble(answers.text))
+        for slot in slotinfo:
+            if slot['name'] == nameslot:
+                return int(slot['poledisk_id'])
+        return -1
+    #
+    def CallDone(self):
+        ''' Declare this disk dump Done '''
+        #+
+        # Arguments:	None
+	# Returns:	Nothing
+        # Side Effects:	query/set REST server info
+        # Relies on:	FindID
+        #		Utils.SetPoleDiskStatus
+        #-
+        diskid = self.FindID()
+        if diskid < 0:
+            print('renamer:CallDone cannot reset the disk status')
+            return
+        U.SetPoleDiskStatus(diskid, 'Done')
+        return
+    #
     def FindOriginal(self):
         ''' Run a find on the files in the disk '''
         #+
