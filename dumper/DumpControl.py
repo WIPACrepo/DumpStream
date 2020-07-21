@@ -435,28 +435,6 @@ def JobDecisionCompleted(notmatched):
     return donelist
 
 ###
-# Set the PoleDisk status
-def SetPoleDiskStatus(spid, sstatus):
-    ''' Set the Pole Disk status '''
-    #+
-    # Arguments:	pole disk ID (in REST database)
-    #			new status
-    # Returns:		Nothing
-    # Side Effects:	Print and die if it fails
-    # Relies on:	REST server working
-    #-
-    if sstatus not in U.PoleDiskStatusOptions:
-        print('SetPoleDiskStatus:  bad status', sstatus)
-        sys.exit(0)
-    sarg = U.mangle(str(spid) + ' ' + sstatus)
-    spposturl = copy.deepcopy(U.basicposturl)
-    spposturl.append(U.targetdumpingpoledisksetstatus + sarg)
-    spoutp, sperro, spcode = U.getoutputerrorsimplecommand(spposturl, 1)
-    if int(spcode) != 0 or 'FAILURE' in str(spoutp):
-        print('SetPoleDiskStatus: Set status failed', sarg, sperro)
-        sys.exit(0)
-
-###
 # Get the expected count from the DB
 def GetExpectedCount(trialdirname):
     ''' Given the directory, how many files do we expect to find in it? '''
@@ -637,13 +615,13 @@ def JobDecision(dumperstatus, jdumpnextAction):
     returnstuff = InventoryOneFull(slotlocation)
     if len(returnstuff) < 2:
         # nothing here--not sure why
-        SetPoleDiskStatus(jid, 'Error')
+        U.SetPoleDiskStatus(jid, 'Error')
         return
     targetdir = U.GiveTarget()
     dirstoscan = returnstuff[1]
     if len(dirstoscan) == 0:
         # nothing we want here, call it done.
-        SetPoleDiskStatus(jid, 'Done')
+        U.SetPoleDiskStatus(jid, 'Done')
         return
     commandy = [U.DUMPING_SCRIPTS + 'submitdumper', U.DUMPING_MASTER_LOG_SPACE + 'U.DUMPING_' + str(juuid)]
     for source in dirstoscan:
