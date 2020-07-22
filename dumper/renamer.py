@@ -217,6 +217,7 @@ class renamer:
         for fname in listOfFiles:
             self.RenameOne(fname)
         self.ChownDir(listOfFiles)
+        self.CallDone()
 #
 #####
 # main
