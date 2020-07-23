@@ -63,11 +63,11 @@ class renamer:
         if slotname == '':
             print('renamer:FindID cannot find slot name in', self.sourcedir)
             return -1
-        nameslot = '/mnt/' + slotname
+        slotname.replace('//', '/')
         answers = requests.get(U.curltargethost + 'dumping/slotcontents')
         slotinfo = json.loads(U.singletodouble(answers.text))
         for slot in slotinfo:
-            if slot['name'] == nameslot:
+            if slot['name'] == slotname:
                 return int(slot['poledisk_id'])
         return -1
     #
