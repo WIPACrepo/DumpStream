@@ -54,11 +54,11 @@ class renamer:
         # Side Effects:	None
         # Relies on:	Utils.getoutputsimplecommand
         #-
-        parts = self.sourcedir.split()
+        parts = self.sourcedir.split('/')
         slotname = ''
         for k in parts:
             if 'slot' in k:
-                slotname = k
+                slotname = '/mnt/' + k
                 break
         if slotname == '':
             print('renamer:FindID cannot find slot name in', self.sourcedir)
