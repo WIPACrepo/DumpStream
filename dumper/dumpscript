@@ -26,7 +26,14 @@ while [[ ${ok} == 1 ]]
           sudo rsync -av $1 $2 >> ${uuidlogname}
           if [[ $? != 0 ]]
             then
-              echo "FAILURE at $1  to $2"
+              echo "FAILURE at $1  to $2 ; try again"
+              sudo rsync -av $1 $2 >> ${uuidlogname}
+              if [[ $? != 0 ]]
+                then
+                  echo "ERROR TWICE $1 to $2"
+                else
+                  donejobs=$(( donejobs + 1 ))
+                fi
               continue
             else
               donejobs=$(( donejobs + 1 ))
