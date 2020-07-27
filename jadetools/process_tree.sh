@@ -23,7 +23,7 @@ echo "process_tree.sh ENTRANCE DEBUG $0"
 
 ##
 # First execute the file catalog loading script
-if ! env -i ./load_filecatalog "$1"
+if ! env -i ./load_filecatalog_tree "$1"
    then
       echo "Giving up trying to load $1 into the file catalog"
       exit 1
