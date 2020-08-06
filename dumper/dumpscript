@@ -46,8 +46,6 @@ while [[ ${ok} == 1 ]]
     shift 2
   done
 #
-/usr/bin/curl -sS -X POST -H Content-Type:application/x-www-form-urlencoded \
-http://archivecontrol.wipac.wisc.edu:80/glue/timeset/LastDumpEnded
 
 echo "SUMMARY ${expectedjobs} ${donejobs}"
 if [[ "${firstargument}" == "" ]]; then echo "Nothing to do/was done?"; exit 1; fi
@@ -57,5 +55,9 @@ echo "Running renamer"
 python3 renamer.py ${firstargument}
 echo "Running findfull"
 python3 findfull.py ${allargs}
+echo "Set dump status in DB"
+/usr/bin/curl -sS -X POST -H Content-Type:application/x-www-form-urlencoded \
+http://archivecontrol.wipac.wisc.edu:80/glue/timeset/LastDumpEnded
+
 echo "Done"
 exit 0
