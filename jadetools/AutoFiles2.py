@@ -272,6 +272,13 @@ class AutoFiles():
         #
         for chunk in bulkList:
             dname = chunk['idealName']
+            disposable = False
+            for datatype in self.apriori:
+                if datatype in dname:
+                    disposable = True
+                    break
+            if not disposable:
+                continue	# Only delete specified types of files!
             dirkey = chunk['dirkey']
             match = self.MatchIdealToRealDir(dname)
             if match == '':
