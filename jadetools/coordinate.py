@@ -117,16 +117,16 @@ class coordinate():
         for module in self.moduleInfo:
             infom = self.moduleInfo[module]
             if infom[0] > infom[2]:
-                for _ in range(infom[0] - infom[2]):
-                    cmd = [self.cmdssh, 'jadelta@' + emptyList[whichHost], self.workerscripts + infom[1]]
-                    answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
-                    if code != 0:
-                        print('coordinate::Launch', cmd, answer, error, code)
-                        return
-                    whichHost = whichHost + 1
-                    # Are we out of free hosts?
-                    if whichHost > numberFree - 1:
-                        return
+                # Fire off no more than 1 of each type at a time
+                cmd = [self.cmdssh, 'jadelta@' + emptyList[whichHost], self.workerscripts + infom[1]]
+                answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
+                if code != 0:
+                    print('coordinate::Launch', cmd, answer, error, code)
+                    return
+                whichHost = whichHost + 1
+                # Are we out of free hosts?
+                if whichHost > numberFree - 1:
+                    return
         return
 
 if __name__ == '__main__':
