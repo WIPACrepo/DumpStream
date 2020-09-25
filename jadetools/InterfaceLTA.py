@@ -11,6 +11,7 @@ import subprocess
 import socket
 import os
 import sys
+from datetime import datetime
 import requests
 import Utils as U
 
@@ -55,9 +56,10 @@ class InterfaceLTA():
         # Relies on:	REST server working
         #		Utils.mangle
         #-
+        hostname = socket.gethostname()
         if JNBDEBUG:
-            print('InterfaceLTA::DEBUG: GetToken, PID=', str(os.getpid()))
-        answer = requests.post(U.targetgluetoken + U.mangle(socket.gethostname()))
+            print('InterfaceLTA::DEBUG: GetToken, PID=', str(os.getpid()), datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+        answer = requests.post(U.targetgluetoken + U.mangle(hostname))
         gmycode = answer.text
         if gmycode == '1':
             return False
