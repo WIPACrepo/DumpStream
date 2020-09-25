@@ -54,7 +54,8 @@ if [[ -f /usr/bin/curl ]]
     CURL=/bin/curl
   fi
 cdate=$( date +%s )
-manglecom=$( "${dirkey}@LTArequest@${ltaid}" )
+#manglecom=$( "${dirkey}@LTArequest@${ltaid}" )
+manglecom="${dirkey}@LTArequest@${ltaid}"
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target="http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}"
 if ! ${CURL} ${CURLARGS} "${target}"
