@@ -1,3 +1,4 @@
 #!/bin/bash
 hn=`/bin/hostname -s`
-/home/jadelta/deleter-return >& /home/jadelta/delret.run.${hn}.log &
+c=`/bin/date +%s`
+/home/jadelta/deleter-return >& /home/jadelta/delret.run.${hn}.${c}.log &

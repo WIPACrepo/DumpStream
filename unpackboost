@@ -1,3 +1,4 @@
 #!/bin/bash
 hn=`/bin/hostname -s`
-/home/jadelta/unpacker >& /home/jadelta/unpacker.run.${hn}.log &
+c=`/bin/date +%s`
+/home/jadelta/unpacker >& /home/jadelta/unpacker.run.${hn}.${c}.log &

@@ -1,3 +1,4 @@
 #!/bin/bash
 hn=`/bin/hostname -s`
-/home/jadelta/dumpcontrol/DumpStream/jadetools/onedelete >& /home/jadelta/delete.run.${hn}.log &
+c=`/bin/date +%s`
+/home/jadelta/dumpcontrol/DumpStream/jadetools/onedelete >& /home/jadelta/delete.run.${hn}.${c}.log &
