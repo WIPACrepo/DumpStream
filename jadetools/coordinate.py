@@ -35,6 +35,9 @@ class coordinate():
         self.countActiveBundles = 0
         self.countActiveChecks = 0
         self.countActiveDeletes = 0
+        self.countActiveUnpacker = 0
+        self.countActiveSiteVerifier = 0
+        self.countActiveDeletesReturn = 0
         self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
         self.cmdping = '/bin/ping'
         self.cmdssh = '/usr/bin/ssh'
@@ -84,7 +87,7 @@ class coordinate():
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
-            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer:
+            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer and 'delete-return' not in answer and 'unpacker' not in answer and 'site-move-verifier' not in answer:
                 emptyList.append(host)
                 continue
             if 'InterfaceLTA' in answer:
@@ -93,9 +96,18 @@ class coordinate():
                 self.countActiveBundles = self.countActiveBundles + 1
             if 'AutoFiles2' in answer:
                 self.countActiveDeletes = self.countActiveDeletes + 1
+            if 'delete-return' in answer:
+                self.countActiveDeletesReturn = self.countActiveDeletesReturn + 1
+            if 'unpacker' in answer:
+                self.countActiveUnpacker = self.countActiveUnpacker + 1
+            if 'site-move-verifier' in answer:
+                self.countActiveSiteVerifier = self.countActiveSiteVerifier + 1
         self.moduleInfo['bundler'][2] = self.countActiveBundles
         self.moduleInfo['check'][2] = self.countActiveChecks
         self.moduleInfo['delete'][2] = self.countActiveDeletes
+        self.moduleInfo['unpacker'][2] = self.countActiveUnpacker
+        self.moduleInfo['site-move-verifier-return'][2] = self.countActiveSiteVerifier
+        self.moduleInfo['delete-return'][2] = self.countActiveDeletesReturn
         return emptyList
     #
     def Launch(self):
