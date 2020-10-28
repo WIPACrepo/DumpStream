@@ -1,0 +1,3 @@
+#!/bin/bash
+hn=`/bin/hostname -s`
+/home/jadelta/unpacker >& /home/jadelta/unpacker.run.${hn}.log &

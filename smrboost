@@ -1,0 +1,3 @@
+#!/bin/bash
+hn=`/bin/hostname -s`
+/home/jadelta/sm-verifier-return >& /home/jadelta/smr.run.${hn}.log &

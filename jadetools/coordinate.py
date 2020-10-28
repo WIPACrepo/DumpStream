@@ -28,6 +28,9 @@ class coordinate():
         self.moduleInfo['bundler'] = [3, 'bundlerboost', 0]
         self.moduleInfo['check'] = [5, 'checkboost', 0]
         self.moduleInfo['delete'] = [1, 'delboost', 0]
+        self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
+        self.moduleInfo['unpacker'] = [1, 'unpackboost', 0]
+        self.moduleInfo['site-move-verifier-return'] = [1, 'smrboost', 0]
         self.candidatePool = []
         self.countActiveBundles = 0
         self.countActiveChecks = 0
