@@ -1836,10 +1836,10 @@ def processingstatus():
     ToDoTree = []
     ToDoTreeCount = {}
     for x in stuff:
-        dire = x[0]
+        dire = x['idealName']
         if dire[-1] == '/':
             dire = dire[0:-1]
-        status = x[1]
+        status = x['status']
         lowerdir = re.sub('\/20..\/', '/XXXX/', os.path.dirname(dire))
         if status == 'unclaimed':
             if lowerdir not in ToDoTree:
@@ -1853,14 +1853,18 @@ def processingstatus():
                 workingTreeCount[lowerdir] = 1
             else:
                 workingTreeCount[lowerdir] = workingTreeCount[lowerdir] + 1
-    retstr = '<!DOCTYPE HTML><HTML><HEAD><TITLE>Directory Work in Progress</title></head><body><table class="selframe" cellspacing=0 align=center>'
+    retstr = '<!DOCTYPE HTML><HTML><HEAD><TITLE>Directory Work in Progress</title></head><body>'
+    retstr = retstr + '<h1>Directory Work in Progress</h1>'
+    retstr = retstr + '<table class="selframe" border=1 cellspacing=0 align=center>'
     retstr = retstr + '<tr><td>Directories being processed</td><td>Count</td></tr>'
     if len(workingTreeCount) <= 0:
         retstr = retstr + '<tr><td>Nothing</td><td>0</td></tr>'
     else:
         for line in workingTreeCount:
             retstr = retstr + '<tr><td>' + line + '</td><td>' + str(workingTreeCount[line]) + '</td></tr>'
-    retstr = retstr + '</table><hr><tr><td>Directories awaiting processing</td><td>Count</td></tr>'
+    retstr = retstr + '</table><hr>'
+    retstr = retstr + '<table class="selframe" border=1 cellspacing=0 align=center>'
+    retstr = retstr + '<tr><td>Directories awaiting processing</td><td>Count</td></tr>'
     if len(ToDoTreeCount) <= 0:
         retstr = retstr + '<tr><td>Nothing</td><td>0</td></tr>'
     else:
