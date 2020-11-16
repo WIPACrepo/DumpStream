@@ -2,6 +2,7 @@
 import os
 import sys
 import site
+import re
 python_home = '/opt/testing/rest/venv'
 #Calc the path to site_packages directory
 python_version = '.'.join(map(str, sys.version_info[:2]))
@@ -1823,6 +1824,51 @@ def modifydirectory(estring):
         print('modifydirectory failed the update', query, param, stuff)
         return 'FAILURE to update'
     
+
+@app.route("/processingstatus", methods=["GET"])
+def processingstatus():
+    stuff = query_db_final('SELECT idealName,status from FullDirectory where status in (\"unclaimed\",\"LTArequest\",\"processing\")')
+    if len(stuff) <= 0:
+        return ''
+    # classify by tree-type
+    workingTree = []
+    workingTreeCount = {}
+    ToDoTree = []
+    ToDoTreeCount = {}
+    for x in stuff:
+        dire = x[0]
+        if dire[-1] == '/':
+            dire = dire[0:-1]
+        status = x[1]
+        lowerdir = re.sub('\/20..\/', '/XXXX/', os.path.dirname(dire))
+        if status == 'unclaimed':
+            if lowerdir not in ToDoTree:
+                ToDoTree.append(lowerdir)
+                ToDoTreeCount[lowerdir] = 1
+            else:
+                ToDoTreeCount[lowerdir] = ToDoTreeCount[lowerdir] + 1
+        else:
+            if lowerdir not in workingTree:
+                workingTree.append(lowerdir)
+                workingTreeCount[lowerdir] = 1
+            else:
+                workingTreeCount[lowerdir] = workingTreeCount[lowerdir] + 1
+    retstr = '<!DOCTYPE HTML><HTML><HEAD><TITLE>Directory Work in Progress</title></head><body><table class="selframe" cellspacing=0 align=center>'
+    retstr = retstr + '<tr><td>Directories being processed</td><td>Count</td></tr>'
+    if len(workingTreeCount) <= 0:
+        retstr = retstr + '<tr><td>Nothing</td><td>0</td></tr>'
+    else:
+        for line in workingTreeCount:
+            retstr = retstr + '<tr><td>' + line + '</td><td>' + str(workingTreeCount[line]) + '</td></tr>'
+    retstr = retstr + '</table><hr><tr><td>Directories awaiting processing</td><td>Count</td></tr>'
+    if len(ToDoTreeCount) <= 0:
+        retstr = retstr + '<tr><td>Nothing</td><td>0</td></tr>'
+    else:
+        for line in ToDoTreeCount:
+            retstr = retstr + '<tr><td>' + line + '</td><td>' + str(ToDoTreeCount[line]) + '</td></tr>'
+    retstr = retstr + '</table></body></html>'
+    return retstr
+
 
 ###################################################
 #####
