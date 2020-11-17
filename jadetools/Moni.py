@@ -419,7 +419,7 @@ class MoniLTA():
                         unprocessed = int(h[mtype])
                     if str(mtype) == 'staged':
                         inprogress = int(h[mtype])
-                    if str(mtype) == 'done' of str(mtype) == 'cleaned':
+                    if str(mtype) == 'done' or str(mtype) == 'cleaned':
                         withlta = int(h[mtype]) + withlta
         if DEBUG_JNB:
             print(string_begin)
@@ -476,7 +476,7 @@ class MoniLTA():
         rightthen = datetime.fromtimestamp(mktime(stripped))
         diff = rightnow - rightthen
         seconds = int(diff.days*86400 + diff.seconds)
-        if seconds > self.OVERDUE_SHORT:
+        if seconds > self.config['OVERDUE_SHORT']:
             return False
         return True
 
