@@ -452,8 +452,8 @@ class MoniLTA():
             mess = 'Info'
         if crit == 2:
             mess = 'Crit'
-        dump_info_string = ('readyDirs=' + str(unprocessed) + ' interfacing=' 
-                            + str(inprogress) + ' withLTA=' + str(withlta) + ' ')
+        dump_info_string = ('readyDirs=' + str(unprocessed) + ' processing/or/LTA=' 
+                            + str(inprogress) + ' done=' + str(withlta) + ' ')
         return str(crit) + ' DumpModules ' + errors +' | ' + dump_info_string + ' ' + mess
     #
     def CheckDeleter(self):
