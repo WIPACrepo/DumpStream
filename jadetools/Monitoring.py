@@ -116,7 +116,8 @@ else:
     nstats = 'total=' + str(my_json['total']) + ' | ' + 'unstaged=' + str(my_json['unstaged'])
     nstats = nstats + ' | ' + 'staged= ' + str(my_json['staged'])
     nstats = nstats + ' | ' + 'done= ' + str(my_json['done'])
-    recount = int(my_json['unstaged']) + int(my_json['staged']) + int(my_json['done'])
+    nstats = nstats + ' | ' + 'cleaned= ' + str(my_json['cleaned'])
+    recount = int(my_json['unstaged']) + int(my_json['staged']) + int(my_json['done']) + int(my_json['cleaned'])
     if recount != int(my_json['total']):
         nstats = nstats + '  and ' + str(recount - int((my_json['total']))) + ' not accounted for'
 U.logit('FullDirectories= ', nstats)

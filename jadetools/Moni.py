@@ -419,8 +419,8 @@ class MoniLTA():
                         unprocessed = int(h[mtype])
                     if str(mtype) == 'staged':
                         inprogress = int(h[mtype])
-                    if str(mtype) == 'done':
-                        withlta = int(h[mtype])
+                    if str(mtype) == 'done' of str(mtype) == 'cleaned':
+                        withlta = int(h[mtype]) + withlta
         if DEBUG_JNB:
             print(string_begin)
         #

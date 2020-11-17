@@ -1521,12 +1521,12 @@ def enterreadydir(estring):
 # Count the ready directories
 @app.route("/dumping/countready", methods=["GET"])
 def countready():
-    # total, unstaged, staged, done
-    query = 'SELECT count(*) AS total, sum(case when toLTA=0 then 1 else 0 end) AS unstaged, '
-    query = query + 'sum(case when toLTA=1 then 1 else 0 end) AS staged, '
-    query = query + 'sum(case when toLTA=2 then 1 else 0 end) AS done, '
-    query = query + 'sum(case when toLTA=3 then 1 else 0 end) AS cleaned '
-    query = query + 'FROM FullDirectories GROUP BY toLTA;'
+    # total, unstaged, staged, done, cleaned
+    query = 'SELECT count(*) AS total, sum(case when status=\'unclaimed\' then 1 else 0 end) as unstaged,'
+    query = query + ' sum(case when status in (\'processing\', \'LTArequest\') then 1 else 0 end) as staged,' 
+    query = query + ' sum(case when status in (\'filesdeleted\', \'neverdelete\') then 1 else 0 end) as cleaned,'
+    query = query + ' sum(case when status=\'problem\' then 1 else 0 end) as problem'
+    query = query + ' FROM FullDirectory;'
     try:
         stuff = query_db_final(query)
     except:

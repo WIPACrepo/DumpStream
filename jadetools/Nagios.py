@@ -13,7 +13,7 @@ USEHEARTBEATS = False
 
 NagiosError = ''
 NagiosWarning = ''
-THRESHOLDS = {'Untouched':10, 'NERSCProblem':0, 'NERSCClean':20, 'LocalDeleted':20, 'unstaged':20}
+THRESHOLDS = {'Untouched':10, 'NERSCProblem':0, 'NERSCClean':20, 'LocalDeleted':20, 'unstaged':8000}
 nstats = 'DB'
 
 ####
