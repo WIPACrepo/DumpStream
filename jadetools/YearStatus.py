@@ -30,7 +30,8 @@ class YearStatus():
         self.getLTAToken(name)
         #
         self.PREFIX = '/data/exp/IceCube/'
-        self.SUFFIX = ['/unbiased/PFRaw/', '/unbiased/PFDST/', '/internal-system/pDAQ-2ndBld/']
+        #self.SUFFIX = ['/unbiased/PFRaw/', '/unbiased/PFDST/', '/internal-system/pDAQ-2ndBld/']
+        self.SUFFIX = ['/unbiased/PFRaw/', '/unbiased/PFDST/', '/internal-system/pDAQ-2ndBld/', '/filtered/PFFilt/', '/filtered/level2/']
         self.MONINFO = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         self.TAGLIST = []
         for month in range(12):
