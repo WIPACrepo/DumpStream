@@ -13,9 +13,13 @@ eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 source ./env/bin/activate
 # Prepare a blacklist file
 blacklistFile=`echo $1 | cksum | awk '{print $1;}'`
+# Prepare a temp file of what in the specified ($1) directory is in
+# Ric's list.  This is _way_ smaller than Ric's files
+tempFile=`echo $1 | md5sum | awk '{print $1;}'`
+grep "$1" /data/user/eevans/data-exp-2020-0* > ${tempFile}
 for file in $(find "$1" -type f)
   do
-      grep "${file}" /data/user/eevans/data-exp-2020-0* > /dev/null
+      grep "${file}" ${tempFile} > /dev/null
       if [[ $? == 0 ]]; then echo "${file}" >> ${blacklistFile}; fi
   done
 skipoption=""
@@ -23,4 +27,4 @@ fcount=`wc -l ${blacklistFile} | awk '{print $1;}'`
 if [[ ${fcount} -gt 0 ]]; then skipoptions="--blacklist-file ${blacklistFile}"; fi
 # Run
 . ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log warning --timeout 150 ${skipoptions}
-rm ${blacklistFile}
+rm ${blacklistFile} ${tempFile}
