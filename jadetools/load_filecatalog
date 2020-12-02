@@ -22,5 +22,5 @@ skipoption=""
 fcount=`wc -l ${blacklistFile} | awk '{print $1;}'`
 if [[ ${fcount} -gt 0 ]]; then skipoptions="--blacklist-file ${blacklistFile}"; fi
 # Run
-. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log info ${skipoptions}
+. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log warning --timeout 150 ${skipoptions}
 rm ${blacklistFile}
