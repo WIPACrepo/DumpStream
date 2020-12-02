@@ -1,7 +1,8 @@
-#/bin/bash
+#!/bin/bash
 # load_filecatalog
 #  Assumes we are running from the jadelta account with the filecatalog
 #   environment setup
+declare -i fcount
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 1; fi
 
 echo "load_filecatalog ENTRANCE DEBUG"
@@ -10,5 +11,16 @@ cd /home/jadelta/filecatalog/file_catalog
 # Setup stuff
 eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
 source ./env/bin/activate
+# Prepare a blacklist file
+blacklistFile=`echo $1 | cksum | awk '{print $1;}'`
+for file in $(find "$1" -type f)
+  do
+      grep "${file}" /data/user/eevans/data-exp-2020-0* > /dev/null
+      if [[ $? == 0 ]]; then echo "${file}" >> ${blacklistFile}; fi
+  done
+skipoption=""
+fcount=`wc -l ${blacklistFile} | awk '{print $1;}'`
+if [[ ${fcount} -gt 0 ]]; then skipoptions="--blacklist-file ${blacklistFile}"; fi
 # Run
-. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log info
+. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log info ${skipoptions}
+rm ${blacklistFile}
