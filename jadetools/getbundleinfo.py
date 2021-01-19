@@ -27,7 +27,8 @@ class BunCheck():
         self.bearer = BearerAuth(token)
         self.apriori = ['PFRaw', 'PFDST', 'pDAQ-2ndBld']
         self.bstati = {}
-        for status in ['specified', 'created', 'staged', 'transferring', 'taping', 'verifying', 'completed', 'detached', 'source-deleted', 'deleted', 'finished']:
+        # Note that "quarantine" is not "quarantined".  That's deliberate, so I don't match the keyword.
+        for status in ['specified', 'created', 'staged', 'transferring', 'taping', 'verifying', 'completed', 'detached', 'source-deleted', 'deleted', 'finished', 'quarantine']:
             self.bstati[status] = 0
         # This doesn't look promising by itself, with only the LTA server's info
         self.rstati = {}
@@ -89,7 +90,7 @@ class BunCheck():
         #-
         try:
             tf = open(tokenfilename, 'r')
-            token = tf.readline()
+            token = tf.readline().strip()
             tf.close()
             return token
         except Exception as e:
@@ -126,8 +127,17 @@ class BunCheck():
         # Side Effects:	Call to REST server
         # Relies on:	REST server
         #-
-        bunlist = requests.get('https://lta.icecube.aq/Bundles?query', auth=self.bearer)
-        thisb = bunlist.json()['results']
+        try:
+            #bunlist = requests.get('https://lta.icecube.aq/Bundles?query', auth=self.bearer)
+            bunlist = requests.get('https://lta.icecube.aq/Bundles?contents=0', auth=self.bearer)
+        except Exception as e:
+            print('getbundleinfo: GetBundleLs failed to get a list of bundles', e)
+            sys.exit(4)
+        try:
+            thisb = bunlist.json()['results']
+        except Exception as e:
+            print('getbundleinfo: GetBundleLs failed to read the list of bundles', e, bunlist.text)
+            sys.exit(4)
         newuuid = []
         for js in thisb:
             if js not in self.doneuuid:
@@ -198,6 +208,8 @@ class BunCheck():
         #
         # append the json histogram bait
         try:
+            # Count the number of quarantined bundles
+            self.bstati['quarantine'] = len(self.quarinfo)
             outfile = open(self.histfile, 'a')
             outfile.write(',')
             json.dump(self.bstati, outfile)

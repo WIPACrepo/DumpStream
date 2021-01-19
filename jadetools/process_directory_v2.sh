@@ -28,6 +28,7 @@ echo "process_directory_v2.sh ENTRANCE DEBUG $* ${idate}"
 if ! env -i ./load_filecatalog "$1"
    then
       ldate=$( date +%s )
+      echo $1 >> CUMULATIVEFAILURES
       echo "Giving up trying to load $1 into the file catalog, ${ldate}"
       exit 1
    fi 
@@ -39,6 +40,7 @@ echo "${alls}" | grep "$1" >& /dev/null
 if [[ $? != 0 ]]
    then
       tdate=$( date +%s )
+      echo $1 >> CUMULATIVEFAILURES
       echo "Giving up trying to tell the bundler about $1, ${tdate}"
       echo "${alls}"
       exit 2
@@ -60,7 +62,12 @@ CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target="http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}"
 if ! ${CURL} ${CURLARGS} "${target}"
   then
+    echo $1 >> CUMULATIVEFAILURES
     echo "FAILURE w/ set status to LTArequest ${cdate}"
+    echo " target was ${target}"
+    echo " ltaid was ${ltaid}"
+    echo " alls was ${alls}"
+    echo "ENDFAILUREBLOCK"
     exit 5
   fi
 
