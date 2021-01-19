@@ -39,11 +39,15 @@ alls=$(env -i ./tell_bundlemaker "$1")
 echo "${alls}" | grep "$1" >& /dev/null
 if [[ $? != 0 ]]
    then
-      tdate=$( date +%s )
-      echo $1 >> CUMULATIVEFAILURES
-      echo "Giving up trying to tell the bundler about $1, ${tdate}"
-      echo "${alls}"
-      exit 2
+      # Is this a duplicate request?  Go on anyhow.
+      echo "${alls}" | grep 'Duplicates TransferRequest' >& /dev/null
+      if [[ $? != 0 ]]; then
+         tdate=$( date +%s )
+         echo $1 >> CUMULATIVEFAILURES
+         echo "Giving up trying to tell the bundler about $1, ${tdate}"
+         echo "${alls}"
+         exit 2
+      fi
    fi
 ltaid=$(echo "${alls}" | awk '{print $1;}')
 
@@ -60,7 +64,7 @@ cdate=$( date +%s )
 manglecom="${dirkey}@LTArequest@${ltaid}"
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target="http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}"
-if ! ${CURL} ${CURLARGS} "${target}"
+if ! ${CURL} "${CURLARGS}" "${target}"
   then
     echo $1 >> CUMULATIVEFAILURES
     echo "FAILURE w/ set status to LTArequest ${cdate}"
