@@ -64,7 +64,7 @@ cdate=$( date +%s )
 manglecom="${dirkey}@LTArequest@${ltaid}"
 CURLARGS="-sS -X POST -H Content-Type:application/x-www-form-urlencoded"
 target="http://archivecontrol.wipac.wisc.edu/directory/modify/${manglecom}"
-if ! ${CURL} "${CURLARGS}" "${target}"
+if ! ${CURL} ${CURLARGS} "${target}"
   then
     echo $1 >> CUMULATIVEFAILURES
     echo "FAILURE w/ set status to LTArequest ${cdate}"

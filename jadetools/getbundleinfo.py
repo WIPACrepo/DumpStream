@@ -1,8 +1,34 @@
 import os
 import sys
 #import glob
+import datetime
 import json
+import sqlite3
 import requests
+
+# Utility for massaging database return info
+def make_dicts(cursor, row):
+    return dict((cursor.description[idx][0], value)
+                for idx, value in enumerate(row))
+
+#
+def deltaT(oldtimestring):
+    ''' Return the difference in time between the given time and now '''
+    #+
+    # Arguments:	old time in '%Y-%m-%d %H:%M:%S' format
+    # Returns:		integer time difference in minutes
+    # Side Effects:	None
+    # Relies on:	Nothing
+    #-
+    current = datetime.datetime.now()
+    try:
+        oldt = datetime.datetime.strptime(oldtimestring, '%Y-%m-%d %H:%M:%S')
+        difference = current - oldt
+        delta = int(difference.seconds/60 + difference.days*60*24)
+    except:
+        delta = -1
+    return delta
+
 
 class BearerAuth(requests.auth.AuthBase):
     ''' Utility class for using the token with requests package '''
@@ -69,6 +95,12 @@ class BunCheck():
         except:
             print('BunCheck:__init__ failed to read request file', reqfile)
             sys.exit(1)
+        try:
+            self.sqlitedb = sqlite3.connect('lastuse.db')
+            self.sqlitedb.row_factory = make_dicts
+        except:
+            print('BunCheck:__init__ failed to read lastuse.db')
+            sys.exit(1)
         # Dumper info:  abandoned filesdeleted finished LTArequest neverdelete processing unclaimed
         # From FullDirectory
         # Only unclaimed, processing, and LTArequest are significant in looking for bottlenecks.
@@ -79,6 +111,33 @@ class BunCheck():
         # some updating code somewhere, which might be simpler to produce and maintain.
         #
 
+    #
+    def query_db(self, query, args=(), one=False):
+        ''' Query the sqlite3 db.  Do not close the connection '''
+        # If the DB wasn't opened, the program should have exited already
+        try:
+            cur = self.sqlitedb.execute(query, args)
+        except sqlite3.Error as e:
+            self.sqlitedb.close()
+            print('BunCheck:query_db failure', query, args, e)
+            sys.exit(2)
+        rv = cur.fetchall()
+        cur.close()
+        return (rv[0] if rv else None) if one else rv
+    #
+    def insert_db(self, query, args=()):
+        ''' Insert into or update the sqlite3 db.  Do not close the connection '''
+        # If the DB wasn't opened, the program should have exited already
+        try:
+            cur = self.sqlitedb.execute(query, args)
+        except sqlite3.Error as e:
+            self.sqlitedb.close()
+            print('BunCheck:insert_db failure', query, args, e)
+            sys.exit(2)
+        #
+        _ = cur.fetchall()
+        self.sqlitedb.commit()
+        cur.close()
     #
     def getLTAToken(self, tokenfilename):
         ''' Read the LTA REST server token from file "tokenfilename"; set it for the class '''
@@ -156,6 +215,39 @@ class BunCheck():
         bunlist = requests.get('https://lta.icecube.aq/Bundles/' + str(uuid), auth=self.bearer)
         thisb = bunlist.json()
         status = thisb['status']
+        # INSERT CHECK AGAINST OTHER DB
+        query = 'SELECT * FROM bundle WHERE buuid=?'
+        args = (uuid,)
+        localanswer = self.query_db(query, args)
+        # Different actions depending on whether it is present in the rapid db or not
+        if len(localanswer) == 0:
+            # load the current info into the database if it isn't there
+            xclaim = ''
+            if thisb['claimed'] == 'true':
+                xclaim = thisb['claimant']
+            erro = ''
+            args = (uuid, thisb['path'], thisb['status'], thisb['request'], xclaim, erro)
+            querya = 'INSERT INTO bundle (buuid,path,laststatus,lastchangetime,requestuuid,claimant,error)'
+            queryb = ' VALUES (?,?,?,datetime(\'now\',\'localtime\'),?,?,?)'
+            try:
+                self.insert_db(querya + queryb, args)
+            except Exception as e:
+                print('GetBundleInfo: Failed to update_db with initial entry', e)
+                sys.exit(4)
+        else:
+            # The current bundle is in the database, check its status
+            localans = localanswer[0]
+            if localans['laststatus'] == thisb['status']:
+                # Nothing has changed
+                if status in donetypes:
+                    if uuid not in self.doneuuid:
+                        self.doneuuid.append(uuid)
+                    return
+                # Check how long it has been.
+                deltat = deltaT(localans['lastchangetime'])
+                if deltat > 86400:
+                    print('Bundle', uuid, 'has been in', status, 'for', deltat, 'seconds')
+                    return
         # If this bundle is done, add it to the donelist that we'll write out later
         if status in donetypes:
             self.doneuuid.append(thisb['uuid'])
