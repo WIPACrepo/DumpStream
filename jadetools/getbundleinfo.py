@@ -245,8 +245,9 @@ class BunCheck():
                     return
                 # Check how long it has been.
                 deltat = deltaT(localans['lastchangetime'])
-                if deltat > 86400:
-                    print('Bundle', uuid, 'has been in', status, 'for', deltat, 'seconds')
+                #print(uuid, deltat, thisb['status'], localans['lastchangetime'])
+                if deltat > 1440:
+                    print('Bundle', uuid, 'has been in', status, 'for', deltat, 'minutes')
                     return
         # If this bundle is done, add it to the donelist that we'll write out later
         if status in donetypes:
