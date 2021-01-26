@@ -10,7 +10,7 @@ class coordinate():
     def __init__(self):
         self.workerpool = []
         self.workerpool.append('c9-1.icecube.wisc.edu')
-        self.workerpool.append('c9-2.icecube.wisc.edu')
+        #hardware problem self.workerpool.append('c9-2.icecube.wisc.edu')
         self.workerpool.append('c9-3.icecube.wisc.edu')
         self.workerpool.append('c9-4.icecube.wisc.edu')
         self.workerpool.append('c8-6.icecube.wisc.edu')
