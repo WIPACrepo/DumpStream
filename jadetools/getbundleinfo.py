@@ -232,7 +232,7 @@ class BunCheck():
             try:
                 self.insert_db(querya + queryb, args)
             except Exception as e:
-                print('GetBundleInfo: Failed to update_db with initial entry', e)
+                print('GetBundleInfo: Failed to insert_db with initial entry', e)
                 sys.exit(4)
         else:
             # The current bundle is in the database, check its status
@@ -248,7 +248,16 @@ class BunCheck():
                 #print(uuid, deltat, thisb['status'], localans['lastchangetime'])
                 if deltat > 1440:
                     print('Bundle', uuid, 'has been in', status, 'for', deltat, 'minutes')
-                    return
+                    #return
+            else:
+                # It has changed state.  Update the DB.
+                queryu = 'UPDATE bundle SET status=? WHERE buuid=?'
+                args = (thisb['status'], uuid)
+                try:
+                    self.insert_db(queryu, args)
+                except Exception as e:
+                    print('GetBundleInfo: Failed to update_db with new status', args, e)
+                    sys.exit(4)
         # If this bundle is done, add it to the donelist that we'll write out later
         if status in donetypes:
             self.doneuuid.append(thisb['uuid'])
