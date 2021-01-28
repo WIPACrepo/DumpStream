@@ -251,7 +251,7 @@ class BunCheck():
                     #return
             else:
                 # It has changed state.  Update the DB.
-                queryu = 'UPDATE bundle SET status=? WHERE buuid=?'
+                queryu = 'UPDATE bundle SET laststatus=? WHERE buuid=?'
                 args = (thisb['status'], uuid)
                 try:
                     self.insert_db(queryu, args)
