@@ -6,7 +6,7 @@ declare -i fcount
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 1; fi
 
 echo "load_filecatalog ENTRANCE DEBUG"
-cd /home/jadelta/filecatalog/file_catalog
+cd /home/jadelta/newfilecatalog/file_catalog-indexer
 
 # Setup stuff
 eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
@@ -23,8 +23,10 @@ for file in $(find "$1" -type f)
       if [[ $? == 0 ]]; then echo "${file}" >> ${blacklistFile}; fi
   done
 skipoption=""
-fcount=`wc -l ${blacklistFile} | awk '{print $1;}'`
+fcount=`wc -l ${blacklistFile} 2>/dev/null | awk '{print $1;}'`
 if [[ ${fcount} -gt 0 ]]; then skipoptions="--blacklist-file ${blacklistFile}"; fi
 # Run
-. ./resources/indexer_env.sh python `pwd`/resources/indexer/indexer.py -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log warning --timeout 150 ${skipoptions}
-rm ${blacklistFile} ${tempFile}
+$SROOT/metaprojects/combo/stable/env-shell.sh `pwd`/indexer.py  -t `cat /home/jadelta/lta/service-token` --site WIPAC $1 --log warning --timeout 150 ${skipoptions}
+LASTERROR=$?
+rm -f ${blacklistFile} ${tempFile}
+exit ${LASTERROR}
