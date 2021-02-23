@@ -6,7 +6,7 @@ declare -i fcount
 if [[ ! -d "$1" ]]; then echo "$1 is not a directory"; exit 1; fi
 
 echo "load_filecatalog ENTRANCE DEBUG"
-cd /home/jadelta/newfilecatalog/file_catalog-indexer
+cd /home/jadelta/newfilecatalog/file-catalog-indexer
 
 # Setup stuff
 eval `/cvmfs/icecube.opensciencegrid.org/py3-v4.1.0/setup.sh`
