@@ -39,8 +39,8 @@ class MoniLTA():
         self.bearer = BearerAuth(self.token)
         self.ReadConfig(configname)
         self.modules = ['picker', 'bundler', 'nersc_mover', 'nersc_verifier', 
-                        'site_move_verifier', 'replicator', 'deleter',  
-                        'rucio_detacher', 'rucio_stager', 'transfer_request_finisher']
+                        'site_move_verifier', 'gridftp-replicator', 'deleter',  
+                        'rate_limiter', 'transfer_request_finisher']
         # 'health' isn't needed, but is a possibility
         if os.path.isfile('/usr/bin/mv'):
             self.execmv = '/usr/bin/mv'
