@@ -13,7 +13,7 @@ class Mounter():
         accounted for '''
     def __init__(self):
         self.broken = [5]
-        self.numberslots = 25
+        self.numberslots = 27
         self.range = []
         for i in range(1, self.numberslots + 1):
             if i not in self.broken:
