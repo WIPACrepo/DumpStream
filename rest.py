@@ -1120,10 +1120,10 @@ def polediskinfobyslot(estring):
     try:
         inum = int(unstring)
     except:
-        print('polediskinfobyslot:  invalid slot number (1-12)', estring)
+        print('polediskinfobyslot:  invalid slot number (1-25)', estring)
         return ''
-    if inum < 1 or inum > 12:
-        print('polediskinfobyslot:  slot number out of range (1-12)', inum)
+    if inum < 1 or inum > 25:
+        print('polediskinfobyslot:  slot number out of range (1-25)', inum)
         return ''
     params = (unstring, )
     try:
@@ -1321,7 +1321,7 @@ def olddumptarget():
 ####
 # Get the contents of all the slots.  This will point to
 # the PoleDisk information.  It hardly seems worth the
-# hassle to select info by slot--there are only 12 and
+# hassle to select info by slot--there are only 25 and
 # the info is lightweight
 @app.route("/dumping/slotcontents", methods=["GET"])
 def getslotcontents():
@@ -1365,8 +1365,8 @@ def setslot(estring):
     except:
         print('setslot wants integer arguments:  slot# and poledisk_id', estring)
         return 'FAILURE'
-    if testint1 < 1 or testint1 > 12 or testint2 < 0:
-        print('setslot wants the first argument 1..12, the second poledisk_id', estring)
+    if testint1 < 1 or testint1 > 25 or testint2 < 0:
+        print('setslot wants the first argument 1..25, the second poledisk_id', estring)
         return 'FAILURE'
     query = 'UPDATE SlotContents SET poledisk_id = ? WHERE slotnumber = ?'
     params = (words[1], words[0])

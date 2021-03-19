@@ -190,7 +190,7 @@ def InventoryOne(slotlocation):
 def SetSlotsPoleID(slotnum, poleidnum):
     ''' Set the poleID for the given slot in the database '''
     #+
-    # Arguments:	slotnumber (1-12)
+    # Arguments:	slotnumber (1-25)
     #			pole id number (ID for that disk entry)
     # Returns:		Nothing
     # Side Effects:	Changes database
