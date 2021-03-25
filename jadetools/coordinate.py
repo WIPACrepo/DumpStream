@@ -25,11 +25,11 @@ class coordinate():
         self.workerpool.append('c9-11.icecube.wisc.edu')
         self.workerpool.append('c9-12.icecube.wisc.edu')
         self.moduleInfo = {}
-        self.moduleInfo['bundler'] = [4, 'bundlerboost', 0]
-        self.moduleInfo['check'] = [4, 'checkboost', 0]
+        self.moduleInfo['bundler'] = [6, 'bundlerboost', 0]
+        self.moduleInfo['check'] = [6, 'checkboost', 0]
         self.moduleInfo['delete'] = [1, 'delboost', 0]
-        self.moduleInfo['site-move-verifier-return'] = [1, 'smrboost', 0]
-        self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
+        #self.moduleInfo['site-move-verifier-return'] = [1, 'smrboost', 0]
+        #self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
         self.moduleInfo['gridftp'] = [3, 'gridftpboost', 0]
         #self.moduleInfo['unpacker'] = [1, 'unpackboost', 0]
         self.candidatePool = []
@@ -111,8 +111,8 @@ class coordinate():
         self.moduleInfo['check'][2] = self.countActiveChecks
         self.moduleInfo['delete'][2] = self.countActiveDeletes
         #self.moduleInfo['unpacker'][2] = self.countActiveUnpacker
-        self.moduleInfo['site-move-verifier-return'][2] = self.countActiveSiteVerifier
-        self.moduleInfo['delete-return'][2] = self.countActiveDeletesReturn
+        #self.moduleInfo['site-move-verifier-return'][2] = self.countActiveSiteVerifier
+        #self.moduleInfo['delete-return'][2] = self.countActiveDeletesReturn
         self.moduleInfo['gridftp'][2] = self.countActiveGridftp
         return emptyList
     #
