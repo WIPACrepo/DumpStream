@@ -1,4 +1,4 @@
 #!/bin/bash
 hn=`/bin/hostname -s`
 c=`/bin/date +%s`
-/home/jadelta/deleter-return >& /home/jadelta/delret.run.${hn}.${c}.log &
+/home/jadelta/deleter-return >& /mnt/lfss/jade-lta/log/delret.run.${hn}.${c}.log &

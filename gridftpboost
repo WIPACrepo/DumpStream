@@ -1,0 +1,3 @@
+#!/bin/bash
+hn=`/bin/hostname -s`
+/home/jadelta/pipe0gridftp >& /mnt/lfss/jade-lta/log/pipe0gridftp.run.${hn}.log &
