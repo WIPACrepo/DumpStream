@@ -25,8 +25,8 @@ class coordinate():
         self.workerpool.append('c9-11.icecube.wisc.edu')
         self.workerpool.append('c9-12.icecube.wisc.edu')
         self.moduleInfo = {}
-        self.moduleInfo['bundler'] = [6, 'bundlerboost', 0]
-        self.moduleInfo['check'] = [6, 'checkboost', 0]
+        self.moduleInfo['bundler'] = [5, 'bundlerboost', 0]
+        self.moduleInfo['check'] = [5, 'checkboost', 0]
         self.moduleInfo['delete'] = [1, 'delboost', 0]
         #self.moduleInfo['site-move-verifier-return'] = [1, 'smrboost', 0]
         #self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
@@ -41,7 +41,7 @@ class coordinate():
         self.countActiveSiteVerifier = 0
         self.countActiveDeletesReturn = 0
         self.countActiveGridftp = 0
-        self.countActiveRateLimit = 0
+        self.countActiveRatelimit = 0
         self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
         self.cmdping = '/bin/ping'
         self.cmdssh = '/usr/bin/ssh'
