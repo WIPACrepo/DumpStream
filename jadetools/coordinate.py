@@ -92,7 +92,7 @@ class coordinate():
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
-            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer and 'delete-return' not in answer and 'unpacker' not in answer and 'site-move-verifier' not in answer:
+            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer and 'delete-return' not in answer and 'unpacker' not in answer and 'gridftp' not in answer and 'site-move-verifier' not in answer and rate not in answer:
                 emptyList.append(host)
                 continue
             if 'InterfaceLTA' in answer:
