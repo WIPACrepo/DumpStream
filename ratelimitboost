@@ -1,0 +1,3 @@
+#!/bin/bash
+hn=`/bin/hostname -s`
+/home/jadelta/pipe0ratelimit >& /mnt/lfss/jade-lta/log/pipe0ratelimit.run.${hn}.log &

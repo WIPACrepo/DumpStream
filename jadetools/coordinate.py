@@ -31,6 +31,7 @@ class coordinate():
         #self.moduleInfo['site-move-verifier-return'] = [1, 'smrboost', 0]
         #self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
         self.moduleInfo['gridftp'] = [3, 'gridftpboost', 0]
+        self.moduleInfo['ratelimit'] = [1, 'ratelimitboost', 0]
         #self.moduleInfo['unpacker'] = [1, 'unpackboost', 0]
         self.candidatePool = []
         self.countActiveBundles = 0
@@ -40,6 +41,7 @@ class coordinate():
         self.countActiveSiteVerifier = 0
         self.countActiveDeletesReturn = 0
         self.countActiveGridftp = 0
+        self.countActiveRateLimit = 0
         self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
         self.cmdping = '/bin/ping'
         self.cmdssh = '/usr/bin/ssh'
@@ -107,6 +109,8 @@ class coordinate():
                 self.countActiveSiteVerifier = self.countActiveSiteVerifier + 1
             if 'gridftp' in answer:
                 self.countActiveGridftp = self.countActiveGridftp + 1
+            if 'ratelimit' in answer:
+                self.countActiveRatelimit = self.countActiveRatelimit + 1
         self.moduleInfo['bundler'][2] = self.countActiveBundles
         self.moduleInfo['check'][2] = self.countActiveChecks
         self.moduleInfo['delete'][2] = self.countActiveDeletes
@@ -114,6 +118,7 @@ class coordinate():
         #self.moduleInfo['site-move-verifier-return'][2] = self.countActiveSiteVerifier
         #self.moduleInfo['delete-return'][2] = self.countActiveDeletesReturn
         self.moduleInfo['gridftp'][2] = self.countActiveGridftp
+        self.moduleInfo['ratelimit'][2] = self.countActiveRatelimit
         return emptyList
     #
     def Launch(self):
