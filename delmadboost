@@ -1,0 +1,4 @@
+#!/bin/bash
+hn=`/bin/hostname -s`
+c=`/bin/date +%s`
+/home/jadelta/deleter-madison >& /mnt/lfss/jade-lta/log/delmad.run.${hn}.${c}.log &
