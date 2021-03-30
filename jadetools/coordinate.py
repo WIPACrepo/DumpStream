@@ -32,6 +32,7 @@ class coordinate():
         #self.moduleInfo['delete-return'] = [1, 'delretboost', 0]
         self.moduleInfo['gridftp'] = [3, 'gridftpboost', 0]
         self.moduleInfo['ratelimit'] = [1, 'ratelimitboost', 0]
+        self.moduleInfo['deletemadison'] = [1, 'delmadboost', 0]
         #self.moduleInfo['unpacker'] = [1, 'unpackboost', 0]
         self.candidatePool = []
         self.countActiveBundles = 0
@@ -42,6 +43,7 @@ class coordinate():
         self.countActiveDeletesReturn = 0
         self.countActiveGridftp = 0
         self.countActiveRatelimit = 0
+        self.countLocalDelete = 0
         self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
         self.cmdping = '/bin/ping'
         self.cmdssh = '/usr/bin/ssh'
@@ -92,7 +94,7 @@ class coordinate():
             answer, _, code = U.getoutputerrorsimplecommand(cmd, 1)
             if code != 0:
                 continue
-            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer and 'delete-return' not in answer and 'unpacker' not in answer and 'gridftp' not in answer and 'site-move-verifier' not in answer and rate not in answer:
+            if 'InterfaceLTA' not in answer and 'bundler' not in answer and 'AutoFiles2' not in answer and 'delete-return' not in answer and 'unpacker' not in answer and 'gridftp' not in answer and 'site-move-verifier' not in answer and 'rate' not in answer and 'pipe0-deleter' not in answer:
                 emptyList.append(host)
                 continue
             if 'InterfaceLTA' in answer:
@@ -111,6 +113,8 @@ class coordinate():
                 self.countActiveGridftp = self.countActiveGridftp + 1
             if 'ratelimit' in answer:
                 self.countActiveRatelimit = self.countActiveRatelimit + 1
+            if 'pipe0-deleter' in answer:
+                self.countLocalDelete = self.countLocalDelete + 1
         self.moduleInfo['bundler'][2] = self.countActiveBundles
         self.moduleInfo['check'][2] = self.countActiveChecks
         self.moduleInfo['delete'][2] = self.countActiveDeletes
@@ -119,6 +123,7 @@ class coordinate():
         #self.moduleInfo['delete-return'][2] = self.countActiveDeletesReturn
         self.moduleInfo['gridftp'][2] = self.countActiveGridftp
         self.moduleInfo['ratelimit'][2] = self.countActiveRatelimit
+        self.moduleInfo['deletemadison'][2] = self.countLocalDelete
         return emptyList
     #
     def Launch(self):
