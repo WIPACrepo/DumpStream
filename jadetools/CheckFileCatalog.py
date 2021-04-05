@@ -81,7 +81,8 @@ class CheckFileCatalog():
         #
         directoryFrag = '^/data/exp/' + dwords[1]
         #
-        query_dictn = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
+        #query_dictn = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
+        query_dictn = {"locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
         query_jsonn = json.dumps(query_dictn)
         overalln = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonn}'
         rn = requests.get(overalln, auth=BearerAuth(self.token))
