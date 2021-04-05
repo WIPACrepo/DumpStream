@@ -22,7 +22,7 @@ import requests
 import Utils as U
 import CheckFileCatalog as LC
 
-JNB_DEBUG = False
+JNB_DEBUG = True
 JNB_DEBUG_REMOVE = False
 #######################################################
 #
@@ -195,7 +195,7 @@ class AutoFiles():
             print('compareDirectoryToArchive could not parse the exp in the directory name', directory)
             return 2
         #
-        directoryFrag = dwords[1]
+        directoryFrag = '^/data/exp/' + dwords[1]
         #
         query_dictw = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "WIPAC"}, "logical_name": {"$regex": directoryFrag}}
         query_jsonw = json.dumps(query_dictw)
@@ -267,8 +267,8 @@ class AutoFiles():
         bulkList = U.UnpackDBReturnJson(bulkReceive.text)
         breturn = []
         if len(bulkList) <= 0:
+            print('jnb bulklist=0')
             return breturn
-        breturn = []
         #
         for chunk in bulkList:
             dname = chunk['idealName']
@@ -440,10 +440,12 @@ class AutoFiles():
             return
         #
         directoryTriples = self.GetFullDirsDone()
+        print('jnb directoryTriples#=', len(directoryTriples))
         if len(directoryTriples) <= 0:
             self.ReleaseToken()
             return
         transferRows = self.GetAllTransfer(directoryTriples)
+        print('jnb transferRows#=', len(transferRows))
         if len(transferRows) <= 0:
             self.ReleaseToken()
             return
