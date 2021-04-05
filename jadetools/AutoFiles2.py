@@ -197,45 +197,24 @@ class AutoFiles():
         #
         directoryFrag = '^/data/exp/' + dwords[1]
         #
-        query_dictw = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "WIPAC"}, "logical_name": {"$regex": directoryFrag}}
-        query_jsonw = json.dumps(query_dictw)
-        overallw = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonw}'
-        rw = requests.get(overallw, auth=self.bearer)
-        #
         query_dictn = {"locations.archive": {"$eq": True,}, "locations.site": {"$eq": "NERSC"}, "logical_name": {"$regex": directoryFrag}}
         query_jsonn = json.dumps(query_dictn)
         overalln = self.config['FILE_CATALOG_REST_URL'] + f'/api/files?query={query_jsonn}'
         rn = requests.get(overalln, auth=self.bearer)
         # Try to unpack the info.
         try:
-            fileWIPAC = rw.json()['files']
-        except:
-            print('compareDirectoryToArchive failed to unpack WIPAC-based files')
-            return 3
-        try:
             fileNERSC = rn.json()['files']
         except:
             print('compareDirectoryToArchive failed to unpack NERSC-based files')
             return 4
-        if len(fileWIPAC) <= 0 or len(fileNERSC) <= 0:
+        if len(fileNERSC) <= 0:
             return 5
         #
-        wip = []
         ner = []
-        for z in fileWIPAC:
-            wip.append(z['logical_name'])
         for z in fileNERSC:
             ner.append(z['logical_name'])
         # logical_name
         for ff in foundFiles:
-            foundIt = False
-            for arch in wip:
-                if ff in arch:
-                    foundIt = True
-                    break
-            if not foundIt:
-                return 6
-            #
             foundIt = False
             for arch in ner:
                 if ff in arch:
