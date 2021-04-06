@@ -285,13 +285,15 @@ class AutoFiles():
         #  we have a safe area for deletion, return the real path
         # If not, this isn't safe, print an error and return ''
         # Note that the /ceph/ directories, not being in the list of dump
-        # targets, will not be deleted.
+        # targets, should not be deleted.
         dumpTargets = U.GiveTarget()
         try:
             realPath = os.path.realpath(idealDir)
         except:
             print('MatchIdealToRealDir failed to find a real path for', idealDir)
             return ''
+        if '/ceph/' in realPath:
+            return ''   # readonly
         for targ in dumpTargets:
             if targ in realPath:
                 return realPath
