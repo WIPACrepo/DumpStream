@@ -25,6 +25,15 @@ class CheckFileCatalog():
     ''' Encapsulate the FileCatalog code '''
     #
     def __init__(self, name='service-token', configname='Dump.json'):
+    #+
+    # Arguments:   optional name of service token file; default service-token
+    #               optional name of configuration file; default Dump.json
+    # Returns:      Nothing
+    # Side Effects: Subroutine reads a file
+    # Relies on:    getLTAToken
+    #	            ReadConfig
+    #               U.GiveTarget
+    #-
         self.tokenfilename = name
         self.configfilename = configname
         self.getLTAToken(name)
@@ -38,6 +47,12 @@ class CheckFileCatalog():
     ##
     def getLTAToken(self, name):
         ''' Read the LTA REST server token from file "name"; return the same '''
+        #+
+        # Arguments:    token file name string
+        # Returns:      token
+        # Side Effects: reads a file, if possible
+        # Relies on:    file with token
+        #-
         try:
             tf = open(name, 'r')
             self.token = tf.readline()
@@ -49,6 +64,12 @@ class CheckFileCatalog():
     def ReadConfig(self):
         '''  Read the configuration -- which filesystems and what limits
             from the specified file '''
+        #+
+        # Arguments:    configuration file name
+        # Returns:      json with configuration from file
+        # Side Effects: reads a file
+        # Relies on:    file exists, has json configuration
+        #-
         try:
             with open(self.configfilename) as f:
                 data = json.load(f)
@@ -59,10 +80,16 @@ class CheckFileCatalog():
     ###
     def compareDirectoryToArchive(self, directory):
         ''' Does the listing of the directory include files not found
-            in the locally (WIPAC) archived or remotely (NERSC) archived
+            in the remotely (NERSC) archived
             list?  If so, return a non-zero code
             If everything is in the archive lists, return 0 '''
-        #
+        #+
+        # Arguments:	directory name
+        # Returns:	0 if everything present is archived, else codes
+        # Side Effects:	query file-catalog
+        # Relies on:	U.getoutputerrorsimplecommand with ls
+        #		file-catalog OK
+        #-
         cmd = [self.execls, directory]
         answer, error, code = U.getoutputerrorsimplecommand(cmd, 2)
         if code != 0 or len(error) > 2:
@@ -111,6 +138,7 @@ class CheckFileCatalog():
     #
     def GetFullDirsNotEmptied(self):
         ''' Return an array of FullDirectories where toLTA=2, only of expected types '''
+        #+
         # Arguments:    None
         # NOT USED
         # Returns:      array of idealNames from FullDirectories
@@ -139,6 +167,7 @@ class CheckFileCatalog():
                not the true data warehouse.  It should be linked to
                from the warehouse 
             returns True if OK; False if something not OK '''
+        #+
         # Arguments:    directory path name
         # NOT USED
         # Returns:      boolean
@@ -149,6 +178,8 @@ class CheckFileCatalog():
         if not os.path.isdir(logicalDirectoryName):
             return False
         if self.dumptargetdir not in os.path.realpath(logicalDirectoryName):
+            return False
+        if '/ceph/' in os.path.realpath(logicalDirectoryName):
             return False
         return True
 

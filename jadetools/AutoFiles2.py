@@ -20,9 +20,8 @@ import json
 import socket
 import requests
 import Utils as U
-import CheckFileCatalog as LC
 
-JNB_DEBUG = True
+JNB_DEBUG = False
 JNB_DEBUG_REMOVE = False
 #######################################################
 #
@@ -49,7 +48,6 @@ class AutoFiles():
         # Relies on:	getLTAToken
         #		BearerAuth
         #		Utils.GiveTarget
-        #		CheckFileCatalog
         #		ReadConfig
         #-
         token = self.getLTAToken(name)
@@ -62,7 +60,6 @@ class AutoFiles():
         self.apriori = ['PFRaw', 'PFDST', 'pDAQ-2ndBld']
         self.dumptargetdir = U.GiveTarget()
         self.dirsplit = '/exp/'
-        self.checker = LC.CheckFileCatalog()
     #
     def getLTAToken(self, tokenfilename):
         ''' Read the LTA REST server token from file "tokenfilename"; set it for the class '''
@@ -238,7 +235,7 @@ class AutoFiles():
         # Relies on:	MatchIdealToRealDir
         #		Utils.mangle
         #		Utils.UnpackDBReturnJson
-        #		My REST server working
+        #		My REST server working (FullDirectory)
         #		Working with /data/exp dumps!
         #-
         # Request everything handed off, and parse it for the handed-off
@@ -287,6 +284,8 @@ class AutoFiles():
         # If one of the list of dump targets is in the real path
         #  we have a safe area for deletion, return the real path
         # If not, this isn't safe, print an error and return ''
+        # Note that the /ceph/ directories, not being in the list of dump
+        # targets, will not be deleted.
         dumpTargets = U.GiveTarget()
         try:
             realPath = os.path.realpath(idealDir)
@@ -411,7 +410,9 @@ class AutoFiles():
         #		Lots of LTA REST server accesses
         #		Access my REST server
         #		Print errors
-        # Relies on:	GetFullDirsDone
+        # Relies on:	GetToken
+        #		ReleaseToken
+        #		GetFullDirsDone
         #		GetAllTransfer
         #		AreTransfersComplete
         #		compareDirectoryToArchive
@@ -433,7 +434,7 @@ class AutoFiles():
             return
         for transfer in transferRows:
             if self.AreTransfersComplete(transfer):
-                answerkey = self.checker.compareDirectoryToArchive(transfer[0])
+                answerkey = self.compareDirectoryToArchive(transfer[0])
                 if answerkey != 0:
                     if JNB_DEBUG:
                         print('FindAndDelete: not in Archive', transfer[0], answerkey)
