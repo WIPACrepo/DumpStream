@@ -13,17 +13,22 @@ class coordinate():
         #hardware problem self.workerpool.append('c9-2.icecube.wisc.edu')
         self.workerpool.append('c9-3.icecube.wisc.edu')
         self.workerpool.append('c9-4.icecube.wisc.edu')
-        self.workerpool.append('c8-6.icecube.wisc.edu')
         self.workerpool.append('c9-5.icecube.wisc.edu')
-        self.workerpool.append('c8-7.icecube.wisc.edu')
         self.workerpool.append('c9-6.icecube.wisc.edu')
-        self.workerpool.append('c8-8.icecube.wisc.edu')
-        self.workerpool.append('c9-7.icecube.wisc.edu')
+        #self.workerpool.append('c9-7.icecube.wisc.edu')  #lfs7 mount issue
         self.workerpool.append('c9-8.icecube.wisc.edu')
-        self.workerpool.append('c8-12.icecube.wisc.edu')
+        self.workerpool.append('c9-9.icecube.wisc.edu')
         self.workerpool.append('c9-10.icecube.wisc.edu')
         self.workerpool.append('c9-11.icecube.wisc.edu')
         self.workerpool.append('c9-12.icecube.wisc.edu')
+        self.workerpool.append('c8-5.icecube.wisc.edu')
+        self.workerpool.append('c8-6.icecube.wisc.edu')
+        self.workerpool.append('c8-7.icecube.wisc.edu')
+        self.workerpool.append('c8-8.icecube.wisc.edu')
+        self.workerpool.append('c8-9.icecube.wisc.edu')
+        self.workerpool.append('c8-10.icecube.wisc.edu')
+        self.workerpool.append('c8-11.icecube.wisc.edu')
+        self.workerpool.append('c8-12.icecube.wisc.edu')
         self.moduleInfo = {}
         self.moduleInfo['bundler'] = [5, 'bundlerboost', 0]
         self.moduleInfo['check'] = [5, 'checkboost', 0]
