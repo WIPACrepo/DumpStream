@@ -1,5 +1,7 @@
 {
   "hotlimit" : 2,
+  "debuglevel" : 0,
+  "debugmode" : false,
   "available" : [
      "c9-1.icecube.wisc.edu",
      "c9-3.icecube.wisc.edu",
