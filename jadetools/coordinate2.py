@@ -112,17 +112,18 @@ class coordinate():
                 if not mtype["on"]:
                     continue   # nothing to do
                 if int(mtype["count"]) <= self.countModule[prekey + mtype["name"]]:
-                    for host in self.candidatePool:
-                        # Don't launch hot jobs into busy nodes
-                        if self.candidatePool[host] >= self.config.hotlimit and mtype["hot"]:
-                            continue
-                        cmd = [self.cmdssh, 'jadelta@' + host, self.workerscripts + mtype["submitter"]]
-                        answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
-                        if code != 0:
-                            print('coordinate::Launch', cmd, answer, error, code)
-                            return
-
-                                
+                    continue   # all set already
+                for host in self.candidatePool:
+                    # Don't launch hot jobs into busy nodes
+                    if self.candidatePool[host] >= self.config.hotlimit and mtype["hot"]:
+                        continue
+                    cmd = [self.cmdssh, 'jadelta@' + host, self.workerscripts + mtype["submitter"]]
+                    if int(self.config["debuglevel"]) > 0:
+                        print(cmd)
+                    answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
+                    if code != 0:
+                        print('coordinate::Launch', cmd, answer, error, code)
+                        return
     #
 
 if __name__ == '__main__':
