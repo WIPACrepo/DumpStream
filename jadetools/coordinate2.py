@@ -124,6 +124,7 @@ class coordinate():
                     if code != 0:
                         print('coordinate::Launch', cmd, answer, error, code)
                         return
+                    self.countModule[prekey + mtype["name"]] += 1
     #
 
 if __name__ == '__main__':
