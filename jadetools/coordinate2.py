@@ -28,7 +28,8 @@ class coordinate():
                 key = prekey + y["name"]
                 self.countModule[key] = 0
         #
-        self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
+        #self.workerscripts = '/home/jadelta/dumpcontrol/DumpStream/'
+        self.workerscripts = '/home/jadelta/'
         self.cmdping = '/bin/ping'
         self.cmdssh = '/usr/bin/ssh'
         # Find out which systems are actually available
@@ -94,6 +95,8 @@ class coordinate():
             count = 0
             replies = answer.splitlines()
             for line in replies:
+                if self.config["debuglevel"] > 1:
+                    print(host, line)
                 for pipe in self.pipes:
                     prekey = pipe["pipe"] + '_'
                     for mtype in pipe["types"]:
@@ -103,6 +106,9 @@ class coordinate():
                                 count = count + 1   # another CPU-heavy job running
             # At this point, for this host, we have the number of high-CPU/high-I/O jobs
             self.candidatePool[host] = count
+        if int(self.config["debuglevel"]) > 0:
+            print('coordinate2::Launch candidatePool', self.candidatePool)
+            print('coordinate2::Launch candidatePool', self.countModule)
         #
         # Now do the scan by type, see what's missing, and then locate a host to run the job
         # Then run it.  This preferentially loads the hosts at the start of the list.
@@ -111,18 +117,26 @@ class coordinate():
             for mtype in pipe["types"]:
                 if not mtype["on"]:
                     continue   # nothing to do
-                if int(mtype["count"]) <= self.countModule[prekey + mtype["name"]]:
+                if int(mtype["count"]) <= int(self.countModule[prekey + mtype["name"]]):
+                    if int(self.config["debuglevel"]) > 0:
+                        print('coordinate2::Launch, alldone', prekey + mtype["name"], mtype["count"], self.countModule[prekey + mtype["name"]])
                     continue   # all set already
                 for host in self.candidatePool:
                     # Don't launch hot jobs into busy nodes
-                    if self.candidatePool[host] >= self.config.hotlimit and mtype["hot"]:
+                    if int(mtype["count"]) <= int(self.countModule[prekey + mtype["name"]]):
+                        continue
+                    if int(self.candidatePool[host]) >= (int(self.config["hotlimit"]) ) and mtype["hot"]:
                         continue
                     cmd = [self.cmdssh, 'jadelta@' + host, self.workerscripts + mtype["submitter"]]
                     if int(self.config["debuglevel"]) > 0:
-                        print(cmd)
-                    answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
+                        print('coordinate2::Launch', cmd, '===', self.countModule[prekey + mtype["name"]], 'vs', mtype["count"])
+                    if self.config["debugmode"]:
+                        print('Ready to launch', cmd)
+                        code = 0
+                    else:
+                        answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
                     if code != 0:
-                        print('coordinate::Launch', cmd, answer, error, code)
+                        print('coordinate2::Launch command failure: ', cmd, answer, error, code)
                         return
                     self.countModule[prekey + mtype["name"]] += 1
     #

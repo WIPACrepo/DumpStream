@@ -27,7 +27,7 @@
        "types" : [
          {"name" : "bundler", "count" : 5, "submitter": "bundlerboost", "hot" : true, "key" : "pipe0-bundler", "on" : true},
          {"name" : "check", "count" : 5, "submitter": "checkboost", "hot" : true, "key" : "InterfaceLTA", "on" : true},
-         {"name" : "delete", "count" : 1, "submitter": "delboost", "hot" : false, "key" : "pipe0-deleter", "on" : true},
+         {"name" : "delete", "count" : 1, "submitter": "delboost", "hot" : false, "key" : "AutoFiles", "on" : true},
          {"name" : "gridftp", "count" : 3, "submitter": "gridftpboost", "hot" : true, "key" : "pipe0-gridftp-replicator", "on" : true},
          {"name" : "ratelimit", "count" : 1, "submitter" : "ratelimitboost", "hot" : false, "key" : "pipe0-rate-limiter", "on" : true},
          {"name" : "deletemadison", "count" : 1, "submitter" : "delmadboost", "hot" : false, "key" : "pipe0-delete-madison", "on" : false}]
