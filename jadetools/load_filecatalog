@@ -16,7 +16,11 @@ blacklistFile=`echo $1 | cksum | awk '{print $1;}'`
 # Prepare a temp file of what in the specified ($1) directory is in
 # Ric's list.  This is _way_ smaller than Ric's files
 tempFile=`echo $1 | md5sum | awk '{print $1;}'`
-grep "$1" /data/user/eevans/data-exp-2020-0* > ${tempFile}
+for efile in `ls /data/user/eevans/data-exp-2020-0*`
+  do
+    grep "$1" ${efile} >> ${tempFile}
+  done
+#
 for file in $(find "$1" -type f)
   do
       grep "${file}" ${tempFile} > /dev/null
