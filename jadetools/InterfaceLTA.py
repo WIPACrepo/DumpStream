@@ -14,6 +14,7 @@ import sys
 from datetime import datetime
 import requests
 import Utils as U
+import checkNERSCOnly as NQ
 
 JNBDEBUG = True
 
@@ -100,6 +101,10 @@ class InterfaceLTA():
         #-
         # Parse parameters, if any
         #
+        if not NQ.checkNERSCOnly():
+            if JNBDEBUG:
+                print('InterfaceLTA::ReadyToRun NERSC is near quota')
+            return False
         # Test the utilities
         if not self.GetToken():
             if JNBDEBUG:

@@ -45,7 +45,7 @@ def normalizeAnswer(quotaString):
 
 #####
 #
-class CheckExternals():
+class checkNERSCOnly():
     ''' Encapsulate the NERSC quota check code '''
     def __init__(self, name='service-token', configname='Dump.json'):
         self.tokenfilename = name
