@@ -1,0 +1,14 @@
+#!/bin/bash
+# Run from crontab as i3admin (or modified appropriately) on the disk server
+# This checks for NERSC full (alternatively for NERSC and our own server full)
+# and if OK, runs DumpControl.py, which does the rest of the checking and if
+# needed, dumping.  
+
+cd /opt/i3admin/dumpscripts
+source venv/bin/activate
+logtime=$( date +%s )
+logfile=$( echo "${logtime}.log" )
+#python getNERSCQuota.py >& ${logfile}.x
+python checkNERSCOnly.py >& ${logfile}.x
+if [[ $? != 0 ]]; then echo "blocked"; exit 0; fi
+python DumpControl.py >& ${logfile} &
