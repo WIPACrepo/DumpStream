@@ -6,6 +6,8 @@
      In turn, append these subdirectories to the target and
       check if the resulting directory is full.
       IF SO, add this to FullDirectories.
+    TODO:  Use "find" instead--should simplify the logic
+    TODO:  Use as a separate stage, and run checksums later; _then_ add to FullDirectories
 '''
 
 import sys
