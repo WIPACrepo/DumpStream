@@ -7,7 +7,6 @@ import sys
 import datetime
 import json
 import subprocess
-import copy
 import os
 import requests
 # IMPORT_db.py 
@@ -407,14 +406,16 @@ def flagBundleStatus(key, newstatus):
     #-
     if str(newstatus) not in BUNDLESTATI:
         return 'Failure', newstatus + ' is not allowed', '1'
-    fbposturl = copy.deepcopy(basicposturl)
+    #fbposturl = copy.deepcopy(basicposturl)
     comstring = mangle(str(newstatus) + ' ' + str(key))
-    fbposturl.append(targetupdatebundlestatus + comstring)
-    foutp, ferro, fcode = getoutputerrorsimplecommand(fbposturl, 15)
+    #fbposturl.append(targetupdatebundlestatus + comstring)
+    fbposturl = targetupdatebundlestatus + comstring
+    answers = requests.post(fbposturl)
+    foutp = answers.text
     if len(foutp) > 0:
         print('Failure in updating Bundlestatus to ' + str(newstatus)
               + 'for key ' + str(key) + ' : ' + str(foutp))
-    return foutp, ferro, fcode
+    return foutp, 0, answers.status_code
 
 #
 def deltaT(oldtimestring):
@@ -462,11 +463,13 @@ def patchBundle(bundleid, columntype, newvalue, manyok):
     # Relies on:	REST server working
     #-
     #
-    geturlx = copy.deepcopy(basicgeturl)
-    geturlx.append(targetbundleget + mangle(str(bundleid)))
-    ansx, errx, codx = getoutputerrorsimplecommand(geturlx, 1)
+    #geturlx = copy.deepcopy(basicgeturl)
+    #geturlx.append(targetbundleget + mangle(str(bundleid)))
+    geturlx = targetbundleget + mangle(str(bundleid))
+    answers = requests.get(geturlx)
+    ansx = answers.text
     if len(ansx) <= 0:
-        print('patchBundle initial query failed failed', ansx, errx, codx, bundleid)
+        print('patchBundle initial query failed failed', ansx, answers.status_code, bundleid)
         sys.exit(12)
     try:
         my_jsonx = json.loads(singletodouble(massage(ansx)))
@@ -478,12 +481,14 @@ def patchBundle(bundleid, columntype, newvalue, manyok):
     if len(my_jsonx) > 1 and not manyok:
         return 'TooMany'
     #
-    posturlx = copy.deepcopy(basicposturl)
+    #posturlx = copy.deepcopy(basicposturl)
     comm = str(bundleid) + ':' + str(columntype)+ ':' + str(newvalue)
-    posturlx.append(targetbundlepatch + mangle(comm))
-    ansx, errx, codx = getoutputerrorsimplecommand(posturlx, 1)
+    #posturlx.append(targetbundlepatch + mangle(comm))
+    posturlx = targetbundlepatch + mangle(comm)
+    answers = requests.post(posturlx)
+    ansx = answers.text
     if 'OK' not in ansx:
-        print('patchBundle update failed', ansx, errx, codx, comm)
+        print('patchBundle update failed', ansx, answers.status_code, comm)
         sys.exit(12)
     return 'OK'
 #
@@ -499,14 +504,15 @@ def AddActiveDir(a_dirname):
     #                   change entry in ActiveDirectory
     # Relies on:        REST server working
     #-
-    posturl = copy.deepcopy(basicposturl)
-    posturl.append(targetbundleactivediradd + mangle(a_dirname))
-    try:
-        a_ans, a_err, a_code = getoutputerrorsimplecommand(posturl, 20)
-        if len(ans) > 2:
-            print('AddActiveDir returned', a_dirname, str(ans))
-    except:
-        print('AddActiveDir error', a_dirname, str(a_ans), a_err, a_code)
+    #posturl = copy.deepcopy(basicposturl)
+    #posturl.append(targetbundleactivediradd + mangle(a_dirname))
+    posturl = targetbundleactivediradd + mangle(a_dirname)
+    answers = requests.post(posturl)
+    a_ans = answers.text
+    if 'FAILURE' in a_ans:
+        print('AddActiveDir error', a_dirname, a_ans, answers.status_code)
+    if len(a_ans) > 2:
+        print('AddActiveDir returned', a_dirname, a_ans)
     return ''
 
 def RemoveActiveDir(a_dirname):
@@ -518,14 +524,15 @@ def RemoveActiveDir(a_dirname):
     #                   change entry in ActiveDirectory
     # Relies on:        REST server working
     #-
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetbundleactivedirremove + mangle(a_dirname))
-    try:
-        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
-        if len(ans) > 2:
-            print('RemoveActiveDir returned', a_dirname, str(a_ans))
-    except:
-        print('RemoveActiveDir error', a_dirname, str(a_ans), a_err, a_code)
+    #geturl = copy.deepcopy(basicgeturl)
+    #geturl.append(targetbundleactivedirremove + mangle(a_dirname))
+    geturl = targetbundleactivedirremove + mangle(a_dirname)
+    answers = requests.get(geturl)
+    a_ans = answers.text
+    if 'FAILURE' in a_ans:
+        print('RemoveActiveDir error', a_dirname, a_ans)
+    if len(a_ans) > 2:
+        print('RemoveActiveDir returned', a_dirname, a_ans)
     return ''
 
 def FindActiveDir(a_dirname):
@@ -536,14 +543,15 @@ def FindActiveDir(a_dirname):
     # Side Effects:     print error if problem
     # Relies on:        REST server working
     #-
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetbundleactivedirfind + mangle(a_dirname))
-    try:
-        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
-        return singletodouble(massage(a_ans))
-    except:
-        print('FindActiveDir error', a_dirname, str(a_ans), a_err, a_code)
-    return []
+    #geturl = copy.deepcopy(basicgeturl)
+    #geturl.append(targetbundleactivedirfind + mangle(a_dirname))
+    geturl = targetbundleactivedirfind + mangle(a_dirname)
+    answers = requests.get(geturl)
+    a_ans = answers.text
+    if answers.status_code != 200 or 'FAILURE' in a_ans:
+        print('FindActiveDir error', a_dirname, str(a_ans), answers.status_code)
+        return []
+    return singletodouble(massage(a_ans))
 
 ###
 #
@@ -557,12 +565,13 @@ def FindBundlesWithDir(a_dirname, a_status='Unknown'):
     # Side Effects:	print error if problem
     # Relies on:	REST server working
     #-
-    geturl = copy.deepcopy(basicgeturl)
-    geturl.append(targetbundlegetlike + mangle(a_dirname + ' ' + str(a_status)))
-    try:
-        a_ans, a_err, a_code = getoutputerrorsimplecommand(geturl, 20)
-    except:
-        print('FindBundlesWithDir error', a_dirname, str(a_ans), a_err, a_code)
+    #geturl = copy.deepcopy(basicgeturl)
+    #geturl.append(targetbundlegetlike + mangle(a_dirname + ' ' + str(a_status)))
+    geturl = targetbundlegetlike + mangle(a_dirname + ' ' + str(a_status))
+    answers = requests.get(geturl)
+    a_ans = answers.text
+    if answers.status_code != 200:
+        print('FindBundlesWithDir error', a_dirname, a_ans, answers.status_code)
         return []
     if len(a_ans) < 2:
         return []
@@ -589,11 +598,13 @@ def RetrieveDesiredTrees():
     # Side Effects:     print and die on error
     # Relies on:        REST server working
     #-
-    i1geturl = copy.deepcopy(basicgeturl)
-    i1geturl.append(targetdumpingwantedtrees)
-    i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
-    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
-        print('Get trees failure', i1geturl, i1outp, i1erro)
+    #i1geturl = copy.deepcopy(basicgeturl)
+    #i1geturl.append(targetdumpingwantedtrees)
+    #i1outp, i1erro, i1code = getoutputerrorsimplecommand(i1geturl, 1)
+    answers = requests.get(targetdumpingwantedtrees)
+    i1outp = answers.text
+    if 'FAILURE' in i1outp:
+        print('Get trees failure', i1outp)
         sys.exit(0)
     desiredtrees = []
     my_json = json.loads(singletodouble(i1outp))
@@ -612,11 +623,13 @@ def GiveTarget():
     # Side Effects:     print and die on failure
     # Relies on:        REST server working
     #-
-    gtgeturl = copy.deepcopy(basicgeturl)
-    gtgeturl.append(targetdumpingdumptarget)
-    gtoutp, gterro, gtcode = getoutputerrorsimplecommand(gtgeturl, 1)
-    if int(gtcode) != 0 or 'FAILURE' in str(gtoutp):
-        print('Get Target directory failed', gtoutp, gterro)
+    #gtgeturl = copy.deepcopy(basicgeturl)
+    #gtgeturl.append(targetdumpingdumptarget)
+    #gtoutp, gterro, gtcode = getoutputerrorsimplecommand(gtgeturl, 1)
+    answers = requests.get(targetdumpingdumptarget)
+    gtoutp = answers.text
+    if 'FAILURE' in gtoutp:
+        print('Get Target directory failed', gtoutp)
         sys.exit(0)
     dump_json = json.loads(singletodouble(gtoutp))
     try:
@@ -700,10 +713,12 @@ def IsDirectoryFull(idirectory):
         return False
     ifound = len(str(idfoutp).split())
     #
-    idfgeturl = copy.deepcopy(basicgeturl)
-    idfgeturl.append(targetdumpinggetexpected + mangle(idirectory))
-    idfoutp, idferro, idfcode = getoutputerrorsimplecommand(idfgeturl, 1)
-    if idfcode != 0 or len(idfoutp) <= 0:
+    #idfgeturl = copy.deepcopy(basicgeturl)
+    #idfgeturl.append(targetdumpinggetexpected + mangle(idirectory))
+    #idfoutp, idferro, idfcode = getoutputerrorsimplecommand(idfgeturl, 1)
+    answers = requests.get(targetdumpinggetexpected + mangle(idirectory))
+    idfoutp = answers.text
+    if len(idfoutp) <= 0:
         return False
     try:
         exnumber = int(idfoutp)
@@ -770,11 +785,14 @@ def DumperTodo():
     # Side Effects:     print and die if failure
     # Relies on:        REST server working
     #-
-    dtgeturl = copy.deepcopy(basicgeturl)
-    dtgeturl.append(targetdumpingstate)
-    dtoutp, dterro, dtcode = getoutputerrorsimplecommand(dtgeturl, 1)
-    if int(dtcode) != 0 or 'FAILURE' in str(dtoutp):
-        print('Get Dumper state failed', dtoutp, dterro)
+    #dtgeturl = copy.deepcopy(basicgeturl)
+    #dtgeturl.append(targetdumpingstate)
+    #dtoutp, dterro, dtcode = getoutputerrorsimplecommand(dtgeturl, 1)
+    dgeturl = targetdumpingstate
+    answers = requests.get(dgeturl)
+    dtoutp = answers.text
+    if 'FAILURE' in dtoutp:
+        print('Get Dumper state failed', dtoutp, dgeturl)
         sys.exit(0)
     # status, nextAction
     try:
@@ -803,11 +821,13 @@ def DumperSetState(value):
     if value not in DumperStatusOptions:
         print('DumperSetState:  invalid state to set', value)
         sys.exit(0)
-    dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingstatus + mangle(value))
-    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
-    if int(dcode) != 0 or 'FAILURE' in str(doutp):
-        print('DumperSetState: failed to set', value, doutp, derro)
+    #dposturl = copy.deepcopy(basicposturl)
+    #dposturl.append(targetdumpingstatus + mangle(value))
+    #doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    dposturl = targetdumpingstatus + mangle(value)
+    answers = requests.post(dposturl)
+    if 'FAILURE' in answers.text:
+        print('DumperSetState: failed to set', value, answers.text, dposturl)
         sys.exit(0)
 ####
 #
@@ -822,11 +842,13 @@ def DumperSetNext(value):
     if value not in DumperNextOptions:
         print('DumperSetNext:  invalid state to set', value)
         sys.exit(0)
-    dposturl = copy.deepcopy(basicposturl)
-    dposturl.append(targetdumpingnext + mangle(value))
-    doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
-    if int(dcode) != 0 or 'FAILURE' in str(doutp):
-        print('DumperSetNext: failed to set', value, doutp, derro)
+    #dposturl = copy.deepcopy(basicposturl)
+    #dposturl.append(targetdumpingnext + mangle(value))
+    #doutp, derro, dcode = getoutputerrorsimplecommand(dposturl, 1)
+    dposturl = targetdumpingnext + mangle(value)
+    answers = requests.post(dposturl)
+    if 'FAILURE' in answers.text:
+        print('DumperSetNext: failed to set', value, answers.text, dposturl)
         sys.exit(0)
 
 ####
@@ -867,10 +889,15 @@ def SetPoleDiskStatus(spid, sstatus):
     if sstatus not in PoleDiskStatusOptions:
         print('SetPoleDiskStatus:  bad status', sstatus)
         sys.exit(0)
-    sarg = mangle(str(spid) + ' ' + sstatus)
-    spposturl = copy.deepcopy(basicposturl)
-    spposturl.append(targetdumpingpoledisksetstatus + sarg)
-    spoutp, sperro, spcode = getoutputerrorsimplecommand(spposturl, 1)
-    if int(spcode) != 0 or 'FAILURE' in str(spoutp):
-        print('SetPoleDiskStatus: Set status failed', sarg, sperro)
+    #sarg = mangle(str(spid) + ' ' + sstatus)
+    #spposturl = copy.deepcopy(basicposturl)
+    #spposturl.append(targetdumpingpoledisksetstatus + sarg)
+    sposturl = targetdumpingpoledisksetstatus + mangle(str(spid) + ' ' + sstatus)
+    answers = requests.post(sposturl)
+    if 'FAILURE' in answers.text:
+        print('SetPoleDiskStatus: Set status failed', answers.text, str(spid) + ' ' + sstatus)
         sys.exit(0)
+    #spoutp, sperro, spcode = getoutputerrorsimplecommand(spposturl, 1)
+    #if int(spcode) != 0 or 'FAILURE' in str(spoutp):
+    #    print('SetPoleDiskStatus: Set status failed', sarg, sperro)
+    #    sys.exit(0)
