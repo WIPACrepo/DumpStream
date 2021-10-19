@@ -3,8 +3,8 @@
 import sys
 import datetime
 import json
-import copy
 import os
+import requests
 import Utils as U
 
 ##########
@@ -197,11 +197,14 @@ def SetSlotsPoleID(slotnum, poleidnum):
     # Relies on:	REST server working
     #-
     case = U.mangle(str(slotnum) + ' ' + str(poleidnum))
-    ssposturl = copy.deepcopy(U.basicposturl)
-    ssposturl.append(U.targetdumpingsetslotcontents + case)
-    s1outp, s1err, s2code = U.getoutputerrorsimplecommand(ssposturl, 1)
-    if len(s1outp) != 0 or s2code != 0:
-        print('SetSlotsPoleID failed', case, s1err)
+    #ssposturl = copy.deepcopy(U.basicposturl)
+    #ssposturl.append(U.targetdumpingsetslotcontents + case)
+    ssposturl = U.targetdumpingsetslotcontents + case
+    answers = requests.post(ssposturl)
+    s1outp = answers.text
+    #s1outp, s1err, s2code = U.getoutputerrorsimplecommand(ssposturl, 1)
+    if len(s1outp) != 0 or answers.status_code >=300:
+        print('SetSlotsPoleID failed', case, s1outp, answers.status_code)
         sys.exit(0)
 
 
@@ -222,17 +225,23 @@ def InventoryAll():
     #			InventoryOne
     #			SetSlotsPoleID
     #-
-    i1geturl = copy.deepcopy(U.basicgeturl)
-    i1geturl.append(U.targetdumpingslotcontents)
-    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
-    if int(i1code) != 0:
-        print('SlotContents failure', i1geturl, i1outp, i1erro)
+    #i1geturl = copy.deepcopy(U.basicgeturl)
+    #i1geturl.append(U.targetdumpingslotcontents)
+    i1geturl = U.targetdumpingslotcontents
+    answers = requests.get(i1geturl)
+    i1outp = answers.text
+    #i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
+    if answers.status_code > 300:
+        print('SlotContents failure', i1geturl, i1outp, answers.status_code)
         sys.exit(0)
     my_json = json.loads(U.singletodouble(i1outp))
-    i1geturl = copy.deepcopy(U.basicgeturl)
-    i1geturl.append(U.targetdumpingdumptarget)
-    i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
-    if int(i1code) != 0 or 'FAILURE' in str(i1outp):
+    #i1geturl = copy.deepcopy(U.basicgeturl)
+    #i1geturl.append(U.targetdumpingdumptarget)
+    i1geturl = U.targetdumpingdumptarget
+    answers = requests.get(i1geturl)
+    i1outp = answers.text
+    #i1outp, i1erro, i1code = U.getoutputerrorsimplecommand(i1geturl, 1)
+    if 'FAILURE' in i1outp:
         print('get dump target failure', i1geturl, i1outp)
         sys.exit(0)
     targetareaj = json.loads(U.singletodouble(str(i1outp)))[0]
@@ -255,21 +264,28 @@ def InventoryAll():
         except:
             print('FAILS', diskuuid, targetarea)
             sys.exit(0)
-        i1posturl = copy.deepcopy(U.basicposturl)
-        i1posturl.append(U.targetdumpingpolediskloadfrom + U.mangle(stuffforpd))
-        i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i1posturl, 1)
-        if int(i2code) != 0 or 'FAILURE' in str(i2outp) or '404 Not Found' in str(i2outp):
+        #i1posturl = copy.deepcopy(U.basicposturl)
+        #i1posturl.append(U.targetdumpingpolediskloadfrom + U.mangle(stuffforpd))
+        i1posturl = U.targetdumpingpolediskloadfrom + U.mangle(stuffforpd)
+        answers = requests.post(i1posturl)
+        i2outp = answers.text
+        #i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i1posturl, 1)
+        #if int(i2code) != 0 or 'FAILURE' in str(i2outp) or '404 Not Found' in str(i2outp):
+        if 'FAILURE' in i2outp or answers.status_code > 300:
             print('Load new PoleDisk failed', i1posturl)
-            print(i2outp, i2erro, i2code)
+            print(i2outp, answers.status_code)
             print(stuffforpd)
             sys.exit(0)
         #
         # OK, now I want to read back what I wrote so I get the new poledisk_id
-        i2geturl = copy.deepcopy(U.basicgeturl)
-        i2geturl.append(U.targetdumpingpolediskuuid + U.mangle(diskuuid))
-        i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i2geturl, 1)
-        if len(i2outp) == 0 or 'FAILURE' in str(i2outp):
-            print('Retrive PoleDisk info failed', i2geturl, i2outp, i2erro, i2code)
+        #i2geturl = copy.deepcopy(U.basicgeturl)
+        #i2geturl.append(U.targetdumpingpolediskuuid + U.mangle(diskuuid))
+        i2geturl = U.targetdumpingpolediskuuid + U.mangle(diskuuid)
+        answers = requests.get(i2geturl)
+        i2outp = answers.text
+        #i2outp, i2erro, i2code = U.getoutputerrorsimplecommand(i2geturl, 1)
+        if len(i2outp) == 0 or 'FAILURE' in i2outp:
+            print('Retrive PoleDisk info failed', i2geturl, i2outp, answers.status_code)
             sys.exit(0)
         soutp = i2outp
         try:
@@ -297,11 +313,15 @@ def JobInspectAll():
     # Relies on:	REST server working
     #-
     # First get a list of all the nominally active slots
-    jigeturl = copy.deepcopy(U.basicgeturl)
-    jigeturl.append(U.targetdumpinggetactive)
-    jioutp, jierro, jicode = U.getoutputerrorsimplecommand(jigeturl, 1)
-    if int(jicode) != 0:
-        print('JobInspectAll: active slots check failure', jigeturl, jioutp, jierro)
+    #jigeturl = copy.deepcopy(U.basicgeturl)
+    #jigeturl.append(U.targetdumpinggetactive)
+    jigeturl = U.targetdumpinggetactive
+    answers = requests.get(jigeturl)
+    jioutp = answers.text
+    #jioutp, jierro, jicode = U.getoutputerrorsimplecommand(jigeturl, 1)
+    #if int(jicode) != 0:
+    if answers.status_code >= 300:
+        print('JobInspectAll: active slots check failure', jigeturl, jioutp, answers.status_code)
         sys.exit(0)
     try:
         my_json = json.loads(U.singletodouble(jioutp))
@@ -424,11 +444,14 @@ def JobDecisionCompleted(notmatched):
             print('JobDecisionCompleted summary line info shows problems for', tentative, summaryinfo)
             print('Rerun the rsync?', answerline, 'X')
             sys.exit(0)
-        jdposturl = copy.deepcopy(U.basicposturl)
-        jdposturl.append(U.targetdumpingpolediskdone + U.mangle(str(jid)))
-        jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
-        if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-            print('JobDecisionCompleted: Set status of PoleDisk failed', jid, jderro)
+        #jdposturl = copy.deepcopy(U.basicposturl)
+        #jdposturl.append(U.targetdumpingpolediskdone + U.mangle(str(jid)))
+        gdposturl = U.targetdumpingpolediskdone + U.mangle(str(jid))
+        answers = requests.post(gdposturl)
+        jdoutp = answers.text
+        #jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
+        if 'FAILURE' in jdoutp:
+            print('JobDecisionCompleted: Set status of PoleDisk failed', jid, gdposturl, answers.status_code)
             sys.exit(0)
         donelist.append(jdone)
     # Done flagging completed jobs
@@ -450,16 +473,19 @@ def GetExpectedCount(trialdirname):
     #-
     #  This checks whether the fragment matches anything in the DB
     # The information is for the first one found!
-    gegeturl = copy.deepcopy(U.basicgeturl)
-    gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
-    geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)
-    if gecode != 0 or len(geoutp) <= 0:
-        print('GetExpectedCount: Problem getting info for directory', trialdirname, geerro, gecode)
+    #gegeturl = copy.deepcopy(U.basicgeturl)
+    #gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
+    gegeturl = U.targetdumpinggetexpected + U.mangle(trialdirname)
+    answers = requests.get(gegeturl)
+    geoutp = answers.text
+    #geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)
+    if len(geoutp) <= 0:
+        print('GetExpectedCount: Problem getting info for directory', trialdirname, gegeturl, geoutp, answers.status_code)
         return -1
     try:
         gejson = json.loads(U.singletodouble(geoutp))
     except:
-        print('GetExpectedCount: No expected counts for directory', trialdirname, geerro)
+        print('GetExpectedCount: No expected counts for directory', trialdirname, geoutp, answers.status_code)
         return -1
     try:
         gen = int(gejson)
@@ -492,7 +518,7 @@ def DirectoryCheckFull(donelist):
     dcok = []
     if len(donelist) <= 0:
         return
-    dtargetdir = U.GiveTarget()
+    #dtargetdir = U.GiveTarget()
     for packet in donelist:
         # This repeats an earlier disk access!
         dstuff = InventoryOneFull(packet[4])
@@ -508,11 +534,14 @@ def DirectoryCheckFull(donelist):
             dtarg = ('/data/exp/' + tentativedir).replace('//', '/')
             if CountFilesInDir(dtarg, numberexpect):
                 dcok.append(dtarg)
-                dcposturl = copy.deepcopy(U.basicposturl)
-                dcposturl.append(U.targetdumpingenteredreadydir + U.mangle(dtarg))
-                dcoutp, dcerro, dccode = U.getoutputerrorsimplecommand(dcposturl, 1)
-                if dccode != 0 or 'FAILURE' in str(dcoutp):
-                    print('DirectoryCheckFull could not load', dtarg, dcerro)
+                #dcposturl = copy.deepcopy(U.basicposturl)
+                #dcposturl.append(U.targetdumpingenteredreadydir + U.mangle(dtarg))
+                dcposturl = U.targetdumpingenteredreadydir + U.mangle(dtarg)
+                answers = requests.post(dcposturl)
+                dcoutp = answers.text
+                #dcoutp, dcerro, dccode = U.getoutputerrorsimplecommand(dcposturl, 1)
+                if 'FAILURE' in dcoutp:
+                    print('DirectoryCheckFull could not load', dcposturl, dtarg, answers.status_code)
                     continue
     return
 
@@ -578,11 +607,14 @@ def JobDecision(dumperstatus, jdumpnextAction):
         print('JobDecision:  log space running short')
         return
     # Pick up the next one
-    jdgeturl = copy.deepcopy(U.basicgeturl)
-    jdgeturl.append(U.targetdumpinggetwaiting)
-    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
-    if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
-        print('Get next undone disk failed', jdoutp, jderro)
+    #jdgeturl = copy.deepcopy(U.basicgeturl)
+    #jdgeturl.append(U.targetdumpinggetwaiting)
+    jdgeturl = U.targetdumpinggetwaiting
+    answers = requests.get(jdgeturl)
+    jdoutp = answers.text
+    #jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
+    if 'FAILURE' in jdoutp:
+        print('Get next undone disk failed', jdgeturl, jdoutp, answers.status_code)
         sys.exit(0)
     if len(jdoutp) <= 2:
         return		# Nothing left to do here
@@ -601,10 +633,15 @@ def JobDecision(dumperstatus, jdumpnextAction):
     if int(xcode) != 0:
         print('JobDecision: failed to copy to new script', xoutp, xerro)
         sys.exit(0)
-    jdgeturl = copy.deepcopy(U.basicgeturl)
-    jdgeturl.append(U.targetdumpingslotcontents)
-    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
-    if int(jdcode) != 0:
+    #jdgeturl = copy.deepcopy(U.basicgeturl)
+    #jdgeturl.append(U.targetdumpingslotcontents)
+    jdgeturl = U.targetdumpingslotcontents
+    answers = requests.get(jdgeturl)
+    jdoutp = answers.text
+    #
+    #jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdgeturl, 1)
+    #if int(jdcode) != 0:
+    if answers.status_code >300:
         print('JobDecision: SlotContents failure', jdgeturl, jdoutp)
         sys.exit(0)
     sl_json = json.loads(U.singletodouble(jdoutp))
@@ -635,10 +672,14 @@ def JobDecision(dumperstatus, jdumpnextAction):
         sys.exit(0)
     #
     # Update PoleDisk info
-    jdposturl = copy.deepcopy(U.basicposturl)
-    jdposturl.append(U.targetdumpingpolediskstart + U.mangle(str(jid)))
-    jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
-    if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
+    #jdposturl = copy.deepcopy(U.basicposturl)
+    #jdposturl.append(U.targetdumpingpolediskstart + U.mangle(str(jid)))
+    jdposturl = U.targetdumpingpolediskstart + U.mangle(str(jid))
+    answers = requests.post(jdposturl)
+    jdoutp = answers.text
+    #jdoutp, jderro, jdcode = U.getoutputerrorsimplecommand(jdposturl, 1)
+    #if int(jdcode) != 0 or 'FAILURE' in str(jdoutp):
+    if 'FAILURE' in str(jdoutp):
         print('JobDecision:  update PoleDisk w/ start time failed', jdoutp)
         sys.exit(0)
     # If we're running in DumpOne mode, Pause 
