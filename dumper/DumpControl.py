@@ -47,31 +47,6 @@ def GiveTops(desiredtrees):
             toplist.append(tip)
     return toplist
 
-###
-#  Count the number of files in the specified directory and compare
-#   with the expected number
-def CountFilesInDir(cfidname, cfidexpectedcount):
-    ''' Count the files (beware of subdirectories!) in this directory,
-         compare with expected number '''
-    #+
-    # Arguments:	directory name to look in
-    # Returns:		boolean:  True if counts= expected, else False
-    # Side Effects:	print and die if the directory isn't visible
-    # Relies on:	FLAT DIRECTORY structure, all files at this level
-    #			 with no subdirectories
-    # NOTE:  May want to replace with a find in case I do need to traverse
-    #         trees
-    #-
-    cfidcommand = ['/bin/ls', cfidname]
-    cfidoutp, cfiderro, cfidcode = U.getoutputerrorsimplecommand(cfidcommand, 1)
-    if int(cfidcode) != 0:
-        print('CountFilesInDir failed to see', cfidname, cfiderro)
-        sys.exit(0)
-    #
-    return len(cfidoutp.split()) == cfidexpectedcount
-
-####
-# Return the subdirectory names
 
 ###
 # Inventory a slot.  Pass it the json for the slot (has old info)
@@ -457,93 +432,6 @@ def JobDecisionCompleted(notmatched):
     # Done flagging completed jobs
     return donelist
 
-###
-# Get the expected count from the DB
-def GetExpectedCount(trialdirname):
-    ''' Given the directory, how many files do we expect to find in it? '''
-    #+
-    # Arguments:	directory fragment
-    # Returns:		number expected, or -1 if there was a problem
-    # Side Effects:	None
-    # Relies on:	REST server working
-    #			"expected" table is already populated with the
-    #			 expected file count
-    #			NOTE:  not trivially retrieved from Pole DB; warehouser
-    #			 would know but we aren't warehousing these things
-    #-
-    #  This checks whether the fragment matches anything in the DB
-    # The information is for the first one found!
-    #gegeturl = copy.deepcopy(U.basicgeturl)
-    #gegeturl.append(U.targetdumpinggetexpected + U.mangle(trialdirname))
-    gegeturl = U.targetdumpinggetexpected + U.mangle(trialdirname)
-    answers = requests.get(gegeturl)
-    geoutp = answers.text
-    #geoutp, geerro, gecode = U.getoutputerrorsimplecommand(gegeturl, 1)
-    if len(geoutp) <= 0:
-        print('GetExpectedCount: Problem getting info for directory', trialdirname, gegeturl, geoutp, answers.status_code)
-        return -1
-    try:
-        gejson = json.loads(U.singletodouble(geoutp))
-    except:
-        print('GetExpectedCount: No expected counts for directory', trialdirname, geoutp, answers.status_code)
-        return -1
-    try:
-        gen = int(gejson)
-    except:
-        try:
-            genumber = gejson[0]['number']
-            gen = int(genumber)
-        except:
-            return -1
-    return gen
-
-###
-# Determine whether any of the directories are now full.  Return the
-# target directory in question if so
-def DirectoryCheckFull(donelist):
-    ''' Is any of the recently dumped directories full yet? '''
-    #+
-    # Arguments:	list of arrays of dump information
-    #			[uuid,slot#,datebegun,poledisk_id,slotname]
-    # Returns:		Nothing
-    # Side Effects:	Changes in REST server DB
-    #			print messages on failure
-    # Relies on:	REST server working
-    #			GiveTarget
-    #			InventoryOneFull
-    #			GetExpectedCount
-    #			CountFilesInDir
-    #-
-    # Each entry in the array is an array with [uuid,slot#,datebegun,poledisk_id,slotname]
-    dcok = []
-    if len(donelist) <= 0:
-        return
-    #dtargetdir = U.GiveTarget()
-    for packet in donelist:
-        # This repeats an earlier disk access!
-        dstuff = InventoryOneFull(packet[4])
-        for tentativedir in dstuff[4]:
-            # It should, in theory not have been full before, and thus
-            #  there should not be anything in FullDirectories.  But,
-            #  to be on the safe side, check before registering it
-            numberexpect = GetExpectedCount(tentativedir)
-            if numberexpect < 0:
-                print('DirectoryCheckFull has nothing for', tentativedir)
-                continue
-            #dtarg = dtargetdir + '/' + tentativedir
-            dtarg = ('/data/exp/' + tentativedir).replace('//', '/')
-            if CountFilesInDir(dtarg, numberexpect):
-                dcok.append(dtarg)
-                #dcposturl = copy.deepcopy(U.basicposturl)
-                #dcposturl.append(U.targetdumpingenteredreadydir + U.mangle(dtarg))
-                dcposturl = U.targetdumpingenteredreadydir + U.mangle(dtarg)
-                answers = requests.post(dcposturl)
-                dcoutp = answers.text
-                #dcoutp, dcerro, dccode = U.getoutputerrorsimplecommand(dcposturl, 1)
-                if 'FAILURE' in dcoutp:
-                    print('DirectoryCheckFull could not load', dcposturl, dtarg, answers.status_code)
-                    continue
-    return
 
 ###
 # Load
@@ -563,7 +451,6 @@ def JobDecision(dumperstatus, jdumpnextAction):
     # Relies on:	REST server working
     #			JobInspectAll
     #			JobDecisionCompleted
-    #			DirectoryCheckFull
     #			CheckLogSpace
     #			InventoryOneFull
     #			GiveTarget
@@ -582,7 +469,6 @@ def JobDecision(dumperstatus, jdumpnextAction):
     #
     # Now look through the completed list and see what needs doing with
     # the directories it loaded.  It will push info into FullDirectories
-    #DirectoryCheckFull(donelist)
     # Above replaced with findfull.py, called from "dumpscript"
     #
     # Next see how long the current set of jobs has been taking
