@@ -137,7 +137,7 @@ class coordinate():
                         answer, error, code = U.getoutputerrorsimplecommand(cmd, 1)
                     if code != 0:
                         print('coordinate2::Launch command failure: ', cmd, answer, error, code)
-                        return
+                        continue   # may just be one machine
                     self.countModule[prekey + mtype["name"]] += 1
     #
 
